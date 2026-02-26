@@ -61,6 +61,10 @@ export interface AsanaTask {
     gid: string;
     name: string;
   } | null;
+  workspace?: {
+    gid: string;
+    name: string;
+  };
   projects?: AsanaProject[];
   num_subtasks?: number;
   memberships?: Array<{

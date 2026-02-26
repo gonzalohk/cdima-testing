@@ -1,0 +1,330 @@
+import React, { useState } from 'react';
+import { AsanaTask } from '../types/asana.types';
+import { asanaService } from '../services/asana.service';
+
+interface MaterialItem {
+  id: number;
+  detalle: string;
+  cantidad: string;
+  unidad: string;
+  observaciones: string;
+}
+
+interface MaterialRequestModalProps {
+  task: AsanaTask;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClose, onSuccess }) => {
+  const [area, setArea] = useState('');
+  const [subArea, setSubArea] = useState('');
+  const [lugar, setLugar] = useState('');
+  const [fechaNecesaria, setFechaNecesaria] = useState('');
+  const [materiales, setMateriales] = useState<MaterialItem[]>([
+    { id: 1, detalle: '', cantidad: '', unidad: '', observaciones: '' }
+  ]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const agregarMaterial = () => {
+    const newId = Math.max(...materiales.map(m => m.id), 0) + 1;
+    setMateriales([...materiales, { id: newId, detalle: '', cantidad: '', unidad: '', observaciones: '' }]);
+  };
+
+  const eliminarMaterial = (id: number) => {
+    if (materiales.length > 1) {
+      setMateriales(materiales.filter(m => m.id !== id));
+    }
+  };
+
+  const actualizarMaterial = (id: number, campo: keyof MaterialItem, valor: string) => {
+    setMateriales(materiales.map(m => 
+      m.id === id ? { ...m, [campo]: valor } : m
+    ));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // Validaciones
+      if (!area.trim()) {
+        throw new Error('El área es obligatoria');
+      }
+      if (!subArea.trim()) {
+        throw new Error('La sub área es obligatoria');
+      }
+      if (!lugar.trim()) {
+        throw new Error('El lugar es obligatorio');
+      }
+      if (!fechaNecesaria) {
+        throw new Error('La fecha necesaria es obligatoria');
+      }
+
+      // Validar que haya al menos un material con detalle
+      const materialesValidos = materiales.filter(m => m.detalle.trim());
+      if (materialesValidos.length === 0) {
+        throw new Error('Debe agregar al menos un material');
+      }
+
+      // Construir el nombre de la subtarea
+      const subtaskName = `SOLICITUD DE MATERIAL - ${task.name}`;
+
+      // Construir las notas con toda la información
+      const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const materialesTexto = materialesValidos.map((m, index) => 
+        `${index + 1}. ${m.detalle}
+   Cantidad: ${m.cantidad || '-'}
+   Unidad: ${m.unidad || '-'}
+   Observaciones: ${m.observaciones || '-'}`
+      ).join('\n\n');
+
+      const notes = `SOLICITUD DE MATERIAL
+
+Actividad: ${task.name}
+
+INFORMACIÓN GENERAL:
+• Área: ${area}
+• Sub Área: ${subArea}
+• Lugar de entrega: ${lugar}
+• Fecha necesaria: ${new Date(fechaNecesaria).toLocaleDateString('es-ES')}
+• Fecha de solicitud: ${fechaSolicitud}
+
+MATERIALES SOLICITADOS:
+${materialesTexto}
+
+---
+Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
+
+      // Obtener el workspace del primer proyecto de la tarea
+      const workspaceGid = task.projects?.[0]?.workspace?.gid;
+      if (!workspaceGid) {
+        throw new Error('No se pudo obtener el workspace de la tarea');
+      }
+
+      // Crear la subtarea
+      await asanaService.createSubtask(task.gid, workspaceGid, {
+        name: subtaskName,
+        notes: notes,
+        due_on: fechaNecesaria
+      });
+
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear la solicitud');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="modal-header">
+          <h2>Solicitud de Material</h2>
+          <button className="modal-close" onClick={onClose}>&times;</button>
+        </div>
+
+        {error && (
+          <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+              <strong>Actividad:</strong> {task.name}
+            </div>
+
+            <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Información General</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label className="form-label">Área *</label>
+                <select
+                  className="form-input"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccione un área</option>
+                  <option value="Erradicación de Violencia">Erradicación de Violencia</option>
+                  <option value="Empoderamiento Político">Empoderamiento Político</option>
+                  <option value="Empoderamiento Productivo">Empoderamiento Productivo</option>
+                  <option value="Administrativa y Financiera">Administrativa y Financiera</option>
+                  <option value="Comunicación">Comunicación</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="form-label">Sub Área *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={subArea}
+                  onChange={(e) => setSubArea(e.target.value)}
+                  required
+                  placeholder="Ej: Logística"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label className="form-label">Lugar de entrega *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={lugar}
+                  onChange={(e) => setLugar(e.target.value)}
+                  required
+                  placeholder="Ej: Oficina principal"
+                />
+              </div>
+              
+              <div>
+                <label className="form-label">Fecha necesaria *</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={fechaNecesaria}
+                  onChange={(e) => setFechaNecesaria(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Materiales Solicitados</h3>
+            
+            {materiales.map((material, index) => (
+              <div key={material.id} style={{ 
+                marginBottom: '1rem', 
+                padding: '1rem', 
+                border: '1px solid #dee2e6', 
+                borderRadius: '4px',
+                backgroundColor: '#fff'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <strong>Material {index + 1}</strong>
+                  {materiales.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => eliminarMaterial(material.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#dc3545',
+                        cursor: 'pointer',
+                        fontSize: '1.2rem',
+                        padding: '0 0.5rem'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.875rem' }}>Detalle *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={material.detalle}
+                      onChange={(e) => actualizarMaterial(material.id, 'detalle', e.target.value)}
+                      required
+                      placeholder="Descripción del material"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.875rem' }}>Cantidad</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={material.cantidad}
+                      onChange={(e) => actualizarMaterial(material.id, 'cantidad', e.target.value)}
+                      placeholder="Ej: 10"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.875rem' }}>Unidad</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={material.unidad}
+                      onChange={(e) => actualizarMaterial(material.id, 'unidad', e.target.value)}
+                      placeholder="Ej: piezas"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.875rem' }}>Observaciones</label>
+                  <textarea
+                    className="form-input"
+                    value={material.observaciones}
+                    onChange={(e) => actualizarMaterial(material.id, 'observaciones', e.target.value)}
+                    placeholder="Notas adicionales"
+                    rows={2}
+                    style={{ resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={agregarMaterial}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#f8f9fa',
+                border: '2px dashed #6c757d',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                width: '100%',
+                color: '#6c757d',
+                fontWeight: '500'
+              }}
+            >
+              + Agregar otro material
+            </button>
+          </div>
+
+          <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="button"
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={loading}
+            >
+              {loading ? 'Creando solicitud...' : 'Crear Solicitud'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default MaterialRequestModal;

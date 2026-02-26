@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AsanaTask } from '../types/asana.types';
+import MaterialRequestModal from './MaterialRequestModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -8,6 +9,8 @@ interface TaskInfoProps {
 }
 
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) => {
+  const [showMaterialModal, setShowMaterialModal] = useState(false);
+
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -101,10 +104,20 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
   const aggregatedValues = calculateAggregatedValues();
 
   return (
-    <div className="card">
-      <h2>Información de la Actividad</h2>
-      <div className="task-info">
-        <h3 style={{ marginTop: 0, color: '#333' }}>{task.name}</h3>
+    <>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
+          <button
+            onClick={() => setShowMaterialModal(true)}
+            className="button-primary"
+            style={{ fontSize: '0.9rem' }}
+          >
+            📋 Solicitud de Material
+          </button>
+        </div>
+        <div className="task-info">
+          <h3 style={{ marginTop: 0, color: '#333' }}>{task.name}</h3>
         
         <div className="task-info-grid">
           <div className="info-item">
@@ -187,8 +200,21 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             </p>
           </div>
         )}
+        </div>
       </div>
-    </div>
+
+      {showMaterialModal && (
+        <MaterialRequestModal
+          task={task}
+          onClose={() => setShowMaterialModal(false)}
+          onSuccess={() => {
+            setShowMaterialModal(false);
+            // El padre debería manejar el refresh de las subtareas
+            window.location.reload(); // Solución temporal, idealmente pasaríamos un callback
+          }}
+        />
+      )}
+    </>
   );
 };
 

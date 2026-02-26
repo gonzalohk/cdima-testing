@@ -27,18 +27,21 @@ class AsanaService {
     localStorage.removeItem('asana_token');
   }
 
-  private async fetchAsana<T>(endpoint: string): Promise<T> {
+  private async fetchAsana<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const token = this.getToken();
     if (!token) {
       throw new Error('Token de acceso no configurado');
     }
 
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'GET',
+      method: options?.method || 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...options?.headers,
       },
+      ...options,
     });
 
     if (!response.ok) {
@@ -70,7 +73,7 @@ class AsanaService {
 
   async getTask(taskGid: string): Promise<AsanaTask> {
     return this.fetchAsana<AsanaTask>(
-      `/tasks/${taskGid}?opt_fields=name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,projects.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
+      `/tasks/${taskGid}?opt_fields=name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,workspace.gid,projects.gid,projects.name,projects.workspace.gid,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
     );
   }
 
@@ -92,6 +95,23 @@ class AsanaService {
     return this.fetchAsana<AsanaSection[]>(
       `/projects/${projectGid}/sections`
     );
+  }
+
+  async createSubtask(parentTaskGid: string, workspaceGid: string, subtaskData: {
+    name: string;
+    notes?: string;
+    due_on?: string;
+  }): Promise<AsanaTask> {
+    return this.fetchAsana<AsanaTask>('/tasks', {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          ...subtaskData,
+          workspace: workspaceGid,
+          parent: parentTaskGid
+        }
+      })
+    });
   }
 }
 
