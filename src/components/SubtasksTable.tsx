@@ -59,7 +59,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Subtareas ({filteredSubtasks.length})</h2>
+        <h2 style={{ margin: 0 }}>Sub Actividades ({filteredSubtasks.length})</h2>
         <button
           onClick={onExportPDF}
           className="button-primary"
@@ -103,7 +103,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
 
       {filteredSubtasks.length === 0 ? (
         <div className="empty-state">
-          <p>No se encontraron subtareas</p>
+          <p>No se encontraron sub actividades</p>
         </div>
       ) : (
         <div className="table-container" style={{ overflowX: 'auto' }}>

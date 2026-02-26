@@ -172,7 +172,7 @@ export const exportToPDF = (
   const pendingCount = totalSubtasks - completedCount;
   const progressPercentage = totalSubtasks > 0 ? (completedCount / totalSubtasks) * 100 : 0;
   
-  doc.text(`Total de subtareas: ${totalSubtasks}`, margins.left, yPos);
+  doc.text(`Total de sub actividades: ${totalSubtasks}`, margins.left, yPos);
   
   yPos += 5;
   doc.text(`Completadas: ${completedCount}`, margins.left, yPos);
@@ -496,7 +496,7 @@ export const exportToPDF = (
     // H2: 14pt (Negrita)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Fuera de Plazo (${overdueTasks.length})`, margins.left, yPos);
+    doc.text(`Actividades Fuera de Plazo (${overdueTasks.length})`, margins.left, yPos);
     yPos += 7;
     
     const overdueData = generateTableData(overdueTasks);
@@ -547,7 +547,7 @@ export const exportToPDF = (
     // H2: 14pt (Negrita)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`En Proceso (${pendingTasks.length})`, margins.left, yPos);
+    doc.text(`Actividades En Proceso (${pendingTasks.length})`, margins.left, yPos);
     yPos += 7;
     
     const pendingData = generateTableData(pendingTasks);
@@ -598,7 +598,7 @@ export const exportToPDF = (
     // H2: 14pt (Negrita)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Ejecutadas (${completedTasks.length})`, margins.left, yPos);
+    doc.text(`Actividades Ejecutadas (${completedTasks.length})`, margins.left, yPos);
     yPos += 7;
     
     const completedData = generateTableData(completedTasks);

@@ -73,14 +73,14 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
       </div>
 
       <div className="form-group">
-        <label htmlFor="section">Sección ({sections.length})</label>
+        <label htmlFor="section">Año ({sections.length})</label>
         <select
           id="section"
           value={selectedSection}
           onChange={(e) => onSectionChange(e.target.value)}
           disabled={!selectedProject || loading}
         >
-          <option value="">Todas las secciones</option>
+          <option value="">Todas los años</option>
           {sections.map((section) => (
             <option key={section.gid} value={section.gid}>
               {section.name}

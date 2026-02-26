@@ -170,7 +170,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           </div>
 
           <div className="info-item">
-            <span className="info-label">Subtareas</span>
+            <span className="info-label">Sub Actividades</span>
             <span className="info-value">{subtasksCount}</span>
           </div>
 

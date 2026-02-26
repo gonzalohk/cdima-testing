@@ -99,7 +99,7 @@ const ReportPage: React.FC = () => {
             <h2>Información del Proyecto</h2>
             <div className="task-info">
               <p><strong>Proyecto:</strong> {projects.find(p => p.gid === selectedProject)?.name}</p>
-              <p><strong>Total de tareas:</strong> {statistics.total}</p>
+              <p><strong>Total de actividades:</strong> {statistics.total}</p>
             </div>
           </div>
 

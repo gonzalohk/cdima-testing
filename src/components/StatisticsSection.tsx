@@ -13,7 +13,7 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({ statistics }) => 
       <div className="statistics-grid">
         <div className="stat-card">
           <div className="stat-value">{statistics.total}</div>
-          <div className="stat-label">Total de Subtareas</div>
+          <div className="stat-label">Total de Sub Actividades</div>
         </div>
 
         <div className="stat-card success">
