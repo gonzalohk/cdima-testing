@@ -49,7 +49,7 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({ statistics }) => 
 
       {Object.keys(statistics.byAssignee).length > 0 && (
         <div className="assignee-stats">
-          <h3>Distribución por Asignado</h3>
+          <h3>Distribución por Responsable</h3>
           {Object.entries(statistics.byAssignee).map(([name, stats]) => (
             <div key={name} className="assignee-item">
               <span className="assignee-name">{name}</span>

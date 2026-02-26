@@ -134,13 +134,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           </div>
 
           <div className="info-item">
-            <span className="info-label">Responsable</span>
-            <span className="info-value">
-              {task.assignee?.name || 'Sin asignar'}
-            </span>
-          </div>
-
-          <div className="info-item">
             <span className="info-label">Fecha de Vencimiento</span>
             <span className="info-value">
               {task.due_on || 'Sin fecha'}

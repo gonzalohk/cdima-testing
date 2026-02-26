@@ -21,13 +21,11 @@ const ReportPage: React.FC = () => {
     selectedMainTask,
     searchTerm,
     statusFilter,
-    assigneeFilter,
     lugarFilter,
     loading,
     error,
     statistics,
     filteredSubtasks,
-    uniqueAssignees,
     uniqueLugares,
     handleWorkspaceChange,
     handleProjectChange,
@@ -36,7 +34,6 @@ const ReportPage: React.FC = () => {
     handleExportPDF,
     setSearchTerm,
     setStatusFilter,
-    setAssigneeFilter,
     setLugarFilter,
   } = useReportPage();
 
@@ -79,15 +76,12 @@ const ReportPage: React.FC = () => {
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
-            uniqueAssignees={uniqueAssignees}
             uniqueLugares={uniqueLugares}
             searchTerm={searchTerm}
             statusFilter={statusFilter}
-            assigneeFilter={assigneeFilter}
             lugarFilter={lugarFilter}
             onSearchChange={setSearchTerm}
             onStatusFilterChange={setStatusFilter}
-            onAssigneeFilterChange={setAssigneeFilter}
             onLugarFilterChange={setLugarFilter}
             onExportPDF={handleExportPDF}
           />
@@ -111,15 +105,12 @@ const ReportPage: React.FC = () => {
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
-            uniqueAssignees={uniqueAssignees}
             uniqueLugares={uniqueLugares}
             searchTerm={searchTerm}
             statusFilter={statusFilter}
-            assigneeFilter={assigneeFilter}
             lugarFilter={lugarFilter}
             onSearchChange={setSearchTerm}
             onStatusFilterChange={setStatusFilter}
-            onAssigneeFilterChange={setAssigneeFilter}
             onLugarFilterChange={setLugarFilter}
             onExportPDF={handleExportPDF}
           />

@@ -3,30 +3,24 @@ import { AsanaTask } from '../types/asana.types';
 
 interface SubtasksTableProps {
   filteredSubtasks: AsanaTask[];
-  uniqueAssignees: string[];
   uniqueLugares: string[];
   searchTerm: string;
   statusFilter: string;
-  assigneeFilter: string;
   lugarFilter: string;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
-  onAssigneeFilterChange: (value: string) => void;
   onLugarFilterChange: (value: string) => void;
   onExportPDF: () => void;
 }
 
 const SubtasksTable: React.FC<SubtasksTableProps> = ({
   filteredSubtasks,
-  uniqueAssignees,
   uniqueLugares,
   searchTerm,
   statusFilter,
-  assigneeFilter,
   lugarFilter,
   onSearchChange,
   onStatusFilterChange,
-  onAssigneeFilterChange,
   onLugarFilterChange,
   onExportPDF,
 }) => {
@@ -91,19 +85,6 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
           <option value="all">Todos los estados</option>
           <option value="completed">Completadas</option>
           <option value="pending">Pendientes</option>
-        </select>
-
-        <select
-          value={assigneeFilter}
-          onChange={(e) => onAssigneeFilterChange(e.target.value)}
-          className="filter-select"
-        >
-          <option value="all">Todos los asignados</option>
-          {uniqueAssignees.map((assignee) => (
-            <option key={assignee} value={assignee}>
-              {assignee}
-            </option>
-          ))}
         </select>
 
         <select
