@@ -5,17 +5,16 @@ import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
 import SubtasksTable from '../components/SubtasksTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 const ReportPage: React.FC = () => {
   const {
-    workspaces,
     projects,
     sections,
     mainTasks,
     filteredMainTasks,
     subtasks,
     selectedTask,
-    selectedWorkspace,
     selectedProject,
     selectedSection,
     selectedMainTask,
@@ -27,7 +26,6 @@ const ReportPage: React.FC = () => {
     statistics,
     filteredSubtasks,
     uniqueLugares,
-    handleWorkspaceChange,
     handleProjectChange,
     handleSectionChange,
     handleMainTaskChange,
@@ -48,23 +46,20 @@ const ReportPage: React.FC = () => {
       )}
 
       <HierarchicalSelector
-        workspaces={workspaces}
         projects={projects}
         sections={sections}
         mainTasks={mainTasks}
         filteredMainTasks={filteredMainTasks}
-        selectedWorkspace={selectedWorkspace}
         selectedProject={selectedProject}
         selectedSection={selectedSection}
         selectedMainTask={selectedMainTask}
         loading={loading}
-        onWorkspaceChange={handleWorkspaceChange}
         onProjectChange={handleProjectChange}
         onSectionChange={handleSectionChange}
         onMainTaskChange={handleMainTaskChange}
       />
 
-      {loading && <div className="loading">Cargando...</div>}
+      {loading && <LoadingOverlay message="Cargando datos..." />}
 
       {selectedTask && (
         <>

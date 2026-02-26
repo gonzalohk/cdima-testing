@@ -31,6 +31,7 @@ export const useReportPage = () => {
   // Estado para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [lugarFilter, setLugarFilter] = useState('all');
   
   // Estado UI
@@ -53,6 +54,16 @@ export const useReportPage = () => {
     try {
       const data = await asanaService.getWorkspaces();
       setWorkspaces(data);
+      
+      // Auto-seleccionar "My Workspace"
+      const myWorkspace = data.find(ws => ws.name === 'My workspace');
+      if (myWorkspace) {
+        setSelectedWorkspace(myWorkspace.gid);
+        // Cargar proyectos automáticamente
+        await loadProjects(myWorkspace.gid);
+      } else {
+        setError('No se encontró "My Workspace"');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar workspaces');
     } finally {
@@ -228,28 +239,20 @@ export const useReportPage = () => {
     const byAssignee: TaskStatistics['byAssignee'] = {};
     
     displayTasks.forEach((task) => {
-      // Usar Responsable de Actividad en lugar de assignee
-      const responsableField = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
-      let responsableName = 'Sin asignar';
-      if (responsableField?.display_value) {
-        responsableName = responsableField.display_value;
-      } else if (responsableField?.type === 'text' && responsableField.text_value) {
-        responsableName = responsableField.text_value;
+      const assigneeName = task.assignee?.name || 'Sin asignar';
+      if (!byAssignee[assigneeName]) {
+        byAssignee[assigneeName] = { total: 0, completed: 0, pending: 0 };
       }
-      
-      if (!byAssignee[responsableName]) {
-        byAssignee[responsableName] = { total: 0, completed: 0, pending: 0 };
-      }
-      byAssignee[responsableName].total += 1;
+      byAssignee[assigneeName].total += 1;
       
       // Verificar el campo Estado en lugar de completed
       const estado = task.custom_fields?.find(f => f.name === 'Estado');
       const isCompleted = estado?.enum_value?.name === 'EJECUTADO';
       
       if (isCompleted) {
-        byAssignee[responsableName].completed += 1;
+        byAssignee[assigneeName].completed += 1;
       } else {
-        byAssignee[responsableName].pending += 1;
+        byAssignee[assigneeName].pending += 1;
       }
     });
 
@@ -272,6 +275,10 @@ export const useReportPage = () => {
         (statusFilter === 'completed' && isCompleted) ||
         (statusFilter === 'pending' && !isCompleted);
       
+      const matchesAssignee =
+        assigneeFilter === 'all' ||
+        (task.assignee?.name || 'Sin asignar') === assigneeFilter;
+      
       // Filtro por lugar
       const lugarField = task.custom_fields?.find(f => f.name === 'Lugar');
       let lugarValue = '-';
@@ -285,9 +292,18 @@ export const useReportPage = () => {
         lugarFilter === 'all' ||
         lugarValue === lugarFilter;
       
-      return matchesSearch && matchesStatus && matchesLugar;
+      return matchesSearch && matchesStatus && matchesAssignee && matchesLugar;
     });
-  }, [displayTasks, searchTerm, statusFilter, lugarFilter]);
+  }, [displayTasks, searchTerm, statusFilter, assigneeFilter, lugarFilter]);
+
+  // Lista única de asignados para el filtro
+  const uniqueAssignees = useMemo(() => {
+    const assignees = new Set<string>();
+    displayTasks.forEach((task) => {
+      assignees.add(task.assignee?.name || 'Sin asignar');
+    });
+    return Array.from(assignees).sort();
+  }, [displayTasks]);
 
   // Lista única de lugares para el filtro
   const uniqueLugares = useMemo(() => {
@@ -334,6 +350,7 @@ export const useReportPage = () => {
     selectedMainTask,
     searchTerm,
     statusFilter,
+    assigneeFilter,
     lugarFilter,
     loading,
     error,
@@ -341,6 +358,7 @@ export const useReportPage = () => {
     // Datos computados
     statistics,
     filteredSubtasks,
+    uniqueAssignees,
     uniqueLugares,
     
     // Handlers
@@ -351,6 +369,7 @@ export const useReportPage = () => {
     handleExportPDF,
     setSearchTerm,
     setStatusFilter,
+    setAssigneeFilter,
     setLugarFilter,
   };
 };

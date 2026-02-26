@@ -1,35 +1,29 @@
 import React from 'react';
-import { AsanaWorkspace, AsanaProject, AsanaTask, AsanaSection } from '../types/asana.types';
+import { AsanaProject, AsanaTask, AsanaSection } from '../types/asana.types';
 
 interface HierarchicalSelectorProps {
-  workspaces: AsanaWorkspace[];
   projects: AsanaProject[];
   sections: AsanaSection[];
   mainTasks: AsanaTask[];
   filteredMainTasks: AsanaTask[];
-  selectedWorkspace: string;
   selectedProject: string;
   selectedSection: string;
   selectedMainTask: string;
   loading: boolean;
-  onWorkspaceChange: (value: string) => void;
   onProjectChange: (value: string) => void;
   onSectionChange: (value: string) => void;
   onMainTaskChange: (value: string) => void;
 }
 
 const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
-  workspaces,
   projects,
   sections,
   mainTasks,
   filteredMainTasks,
-  selectedWorkspace,
   selectedProject,
   selectedSection,
   selectedMainTask,
   loading,
-  onWorkspaceChange,
   onProjectChange,
   onSectionChange,
   onMainTaskChange,
@@ -39,29 +33,12 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
       <h2>Selección de Actividad</h2>
       
       <div className="form-group">
-        <label htmlFor="workspace">Workspace</label>
-        <select
-          id="workspace"
-          value={selectedWorkspace}
-          onChange={(e) => onWorkspaceChange(e.target.value)}
-          disabled={loading}
-        >
-          <option value="">Selecciona un workspace</option>
-          {workspaces.map((ws) => (
-            <option key={ws.gid} value={ws.gid}>
-              {ws.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="form-group">
         <label htmlFor="project">Proyecto</label>
         <select
           id="project"
           value={selectedProject}
           onChange={(e) => onProjectChange(e.target.value)}
-          disabled={!selectedWorkspace || loading}
+          disabled={loading}
         >
           <option value="">Selecciona un proyecto</option>
           {projects.map((project) => (

@@ -252,6 +252,194 @@
   color: var(--blackberry-cream);
 }
 
+/* ========================================
+   Estilos para Ficha de Actividad Profesional
+   ======================================== */
+
+/* Header de la actividad */
+.activity-header {
+  background: linear-gradient(135deg, var(--smoky-rose) 0%, var(--blackberry-cream) 100%);
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(129, 83, 85, 0.15);
+}
+
+.activity-title {
+  margin: 0;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Secciones de información */
+.info-section {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.info-section:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.info-section-highlighted {
+  background: linear-gradient(135deg, rgba(199, 224, 180, 0.15) 0%, rgba(242, 241, 239, 0.15) 100%);
+  border: 2px solid var(--tea-green);
+}
+
+/* Títulos de sección */
+.section-title {
+  margin: 0 0 1rem 0;
+  color: var(--blackberry-cream);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--ash-grey);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Grid de información general */
+.info-grid-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Items de información */
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #6c757d;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  color: #212529;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.info-value-highlight {
+  color: var(--smoky-rose);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Grid de beneficiarios */
+.info-grid-beneficiaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.info-item-beneficiary {
+  background-color: white;
+  padding: 1.25rem;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid var(--ash-grey);
+  transition: all 0.3s ease;
+}
+
+.info-item-beneficiary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--tea-green);
+}
+
+.info-item-total {
+  background: linear-gradient(135deg, var(--tea-green) 0%, var(--khaki-beige) 100%);
+  border-color: var(--tea-green);
+}
+
+.info-item-total .info-label {
+  color: var(--blackberry-cream);
+  font-weight: 700;
+}
+
+.info-item-total .info-value-large {
+  color: var(--blackberry-cream);
+}
+
+.info-value-large {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--smoky-rose);
+  margin-top: 0.5rem;
+}
+
+/* Contenido de notas */
+.notes-content {
+  background-color: #f8f9fa;
+  padding: 1.25rem;
+  border-radius: 8px;
+  color: #495057;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  border-left: 4px solid var(--smoky-rose);
+  margin-top: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .activity-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .activity-title {
+    font-size: 1.25rem;
+  }
+
+  .info-section {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .info-grid-section,
+  .info-grid-beneficiaries {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .info-value-large {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .activity-title {
+    font-size: 1.1rem;
+  }
+
+  .info-value-large {
+    font-size: 1.25rem;
+  }
+}
+
+/* ======================================== */
+
 .statistics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -646,4 +834,111 @@ select.form-input {
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ========================================
+   Loading Overlay - Máscara de Carga Elegante
+   ======================================== */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.loading-spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.spinner-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.spinner-ring:nth-child(1) {
+  border-top-color: var(--tea-green);
+  animation-delay: -0.45s;
+}
+
+.spinner-ring:nth-child(2) {
+  border-top-color: var(--khaki-beige);
+  animation-delay: -0.3s;
+}
+
+.spinner-ring:nth-child(3) {
+  border-top-color: var(--smoky-rose);
+  animation-delay: -0.15s;
+}
+
+.spinner-ring:nth-child(4) {
+  border-top-color: var(--blackberry-cream);
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Responsive para móviles */
+@media (max-width: 480px) {
+  .loading-spinner {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .loading-text {
+    font-size: 1rem;
+  }
 }

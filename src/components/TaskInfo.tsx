@@ -124,7 +124,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
   return (
     <>
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
@@ -145,84 +145,98 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             </button>
           </div>
         </div>
-        <div className="task-info">
-          <h3 style={{ marginTop: 0, color: '#333' }}>{task.name}</h3>
-        
-        <div className="task-info-grid">
-          <div className="info-item">
-            <span className="info-label">Estado</span>
-            <span className="info-value">
-              <span
-                className={`status-badge ${
-                  getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
-                }`}
-              >
-                {getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'Completada' : getMainTaskFieldValue('Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
-              </span>
-            </span>
-          </div>
 
-          <div className="info-item">
-            <span className="info-label">Fecha de Vencimiento</span>
-            <span className="info-value">
-              {task.due_on || 'Sin fecha'}
-            </span>
-          </div>
-
-          <div className="info-item">
-            <span className="info-label">Sub Actividades</span>
-            <span className="info-value">{subtasksCount}</span>
-          </div>
-
-          {task.custom_fields && task.custom_fields.length > 0 && (
-            <>
-              <div className="info-item">
-                <span className="info-label">Lugar</span>
-                <span className="info-value">{getMainTaskFieldValue('Lugar')}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Estado de Actividad</span>
-                <span className="info-value">{getMainTaskFieldValue('Estado')}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Mujeres</span>
-                <span className="info-value">{aggregatedValues.mujeres}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Hombres</span>
-                <span className="info-value">{aggregatedValues.hombres}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Total</span>
-                <span className="info-value">{aggregatedValues.total}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Población Meta</span>
-                <span className="info-value">{aggregatedValues.poblacionMeta}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Responsable de Actividad</span>
-                <span className="info-value">{getMainTaskFieldValue('Responsable de Actividad')}</span>
-              </div>
-            </>
-          )}
+        {/* Nombre de la actividad destacado */}
+        <div className="activity-header">
+          <h3 className="activity-title">{task.name}</h3>
         </div>
 
+        {/* Sección: Información General */}
+        <div className="info-section">
+          <h4 className="section-title">📋 Información General</h4>
+          <div className="info-grid-section">
+            <div className="info-item">
+              <span className="info-label">Estado</span>
+              <span className="info-value">
+                <span
+                  className={`status-badge ${
+                    getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
+                  }`}
+                >
+                  {getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'Completada' : getMainTaskFieldValue('Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
+                </span>
+              </span>
+            </div>
+
+            <div className="info-item">
+              <span className="info-label">Fecha de Vencimiento</span>
+              <span className="info-value">
+                {task.due_on || 'Sin fecha'}
+              </span>
+            </div>
+
+            <div className="info-item">
+              <span className="info-label">Sub Actividades</span>
+              <span className="info-value info-value-highlight">{subtasksCount}</span>
+            </div>
+          </div>
+        </div>
+
+        {task.custom_fields && task.custom_fields.length > 0 && (
+          <>
+            {/* Sección: Ubicación y Responsabilidad */}
+            <div className="info-section">
+              <h4 className="section-title">📍 Ubicación y Responsabilidad</h4>
+              <div className="info-grid-section">
+                <div className="info-item">
+                  <span className="info-label">Lugar</span>
+                  <span className="info-value">{getMainTaskFieldValue('Lugar')}</span>
+                </div>
+
+                <div className="info-item">
+                  <span className="info-label">Responsable de Actividad</span>
+                  <span className="info-value">{getMainTaskFieldValue('Responsable de Actividad')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección: Impacto - Beneficiarios */}
+            <div className="info-section info-section-highlighted">
+              <h4 className="section-title">👥 Impacto: Beneficiarios</h4>
+              <div className="info-grid-beneficiaries">
+                <div className="info-item-beneficiary">
+                  <span className="info-label">Mujeres</span>
+                  <span className="info-value-large">{aggregatedValues.mujeres}</span>
+                </div>
+
+                <div className="info-item-beneficiary">
+                  <span className="info-label">Hombres</span>
+                  <span className="info-value-large">{aggregatedValues.hombres}</span>
+                </div>
+
+                <div className="info-item-beneficiary info-item-total">
+                  <span className="info-label">Total</span>
+                  <span className="info-value-large">{aggregatedValues.total}</span>
+                </div>
+
+                <div className="info-item-beneficiary">
+                  <span className="info-label">Población Meta</span>
+                  <span className="info-value-large">{aggregatedValues.poblacionMeta}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Sección: Descripción/Notas */}
         {task.notes && (
-          <div style={{ marginTop: '1rem' }}>
-            <span className="info-label">Notas / Descripción</span>
-            <p style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap', color: '#495057' }}>
+          <div className="info-section">
+            <h4 className="section-title">📝 Descripción</h4>
+            <div className="notes-content">
               {task.notes}
-            </p>
+            </div>
           </div>
         )}
-        </div>
       </div>
 
       {showMaterialModal && (
