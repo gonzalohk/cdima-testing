@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AsanaTask } from '../types/asana.types';
 import MaterialRequestModal from './MaterialRequestModal';
+import FundsRequestModal from './FundsRequestModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -10,6 +11,7 @@ interface TaskInfoProps {
 
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) => {
   const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [showFundsModal, setShowFundsModal] = useState(false);
 
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -75,6 +77,22 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     return '-';
   };
 
+  // Verificar si existe una subtarea de SOLICITUD DE MATERIAL completada
+  const hasMaterialRequestCompleted = () => {
+    return subtasks.some(subtask => {
+      const isMaterialRequest = subtask.name.startsWith('SOLICITUD DE MATERIAL');
+      if (!isMaterialRequest) return false;
+      
+      // Verificar si está completada usando el campo Estado
+      const estadoField = subtask.custom_fields?.find(f => f.name === 'Estado');
+      const isCompleted = estadoField?.enum_value?.name === 'EJECUTADO';
+      
+      return isCompleted;
+    });
+  };
+
+  const isFundsButtonEnabled = hasMaterialRequestCompleted();
+
   // Calcular valores agregados de las subtareas
   const calculateAggregatedValues = () => {
     let totalMujeres = 0;
@@ -108,13 +126,24 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
-          <button
-            onClick={() => setShowMaterialModal(true)}
-            className="button-primary"
-            style={{ fontSize: '0.9rem' }}
-          >
-            📋 Solicitud de Material
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setShowMaterialModal(true)}
+              className="button-primary"
+              style={{ fontSize: '0.9rem' }}
+            >
+              📋 Solicitud de Material
+            </button>
+            <button
+              onClick={() => setShowFundsModal(true)}
+              className="button-primary"
+              style={{ fontSize: '0.9rem' }}
+              disabled={!isFundsButtonEnabled}
+              title={!isFundsButtonEnabled ? 'Debe completar una solicitud de material primero' : ''}
+            >
+              💰 Solicitud de Fondos
+            </button>
+          </div>
         </div>
         <div className="task-info">
           <h3 style={{ marginTop: 0, color: '#333' }}>{task.name}</h3>
@@ -204,6 +233,17 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             setShowMaterialModal(false);
             // El padre debería manejar el refresh de las subtareas
             window.location.reload(); // Solución temporal, idealmente pasaríamos un callback
+          }}
+        />
+      )}
+
+      {showFundsModal && (
+        <FundsRequestModal
+          task={task}
+          onClose={() => setShowFundsModal(false)}
+          onSuccess={() => {
+            setShowFundsModal(false);
+            window.location.reload();
           }}
         />
       )}

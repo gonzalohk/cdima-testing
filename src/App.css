@@ -146,6 +146,12 @@
   box-shadow: 0 4px 12px rgba(129, 83, 85, 0.4);
 }
 
+.button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+}
+
 .button-secondary {
   background-color: var(--khaki-beige);
   color: white;
