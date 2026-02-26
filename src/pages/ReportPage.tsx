@@ -72,7 +72,11 @@ const ReportPage: React.FC = () => {
           
           <StatisticsSection statistics={statistics} />
           
-          <BeneficiariesSummary subtasks={subtasks} />
+          <BeneficiariesSummary 
+            subtasks={subtasks} 
+            mainTask={selectedTask}
+            projectName={projects.find(p => p.gid === selectedProject)?.name}
+          />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
@@ -101,7 +105,10 @@ const ReportPage: React.FC = () => {
 
           <StatisticsSection statistics={statistics} />
           
-          <BeneficiariesSummary subtasks={filteredSubtasks} />
+          <BeneficiariesSummary 
+            subtasks={filteredSubtasks}
+            projectName={projects.find(p => p.gid === selectedProject)?.name}
+          />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}

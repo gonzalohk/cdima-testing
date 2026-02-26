@@ -1,11 +1,14 @@
 import React from 'react';
 import { AsanaTask } from '../types/asana.types';
+import { exportBeneficiariesToPDF } from '../services/pdf.service';
 
 interface BeneficiariesSummaryProps {
   subtasks: AsanaTask[];
+  mainTask?: AsanaTask;
+  projectName?: string;
 }
 
-const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks }) => {
+const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, mainTask, projectName }) => {
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -82,13 +85,34 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks })
   const totalWithoutReplicantes = totalsWithoutReplicantes.mujeres + totalsWithoutReplicantes.hombres;
   const totalWithReplicantes = totalsWithReplicantes.mujeres + totalsWithReplicantes.hombres;
 
+  const handleExportPDF = () => {
+    exportBeneficiariesToPDF(
+      tasksWithoutReplicantes,
+      tasksWithReplicantes,
+      totalsWithoutReplicantes,
+      totalsWithReplicantes,
+      totalWithoutReplicantes,
+      totalWithReplicantes,
+      mainTask,
+      projectName || 'Proyecto'
+    );
+  };
+
   if (tasksWithoutReplicantes.length === 0 && tasksWithReplicantes.length === 0) {
     return null;
   }
 
   return (
     <div className="card">
-      <h2>Resumen de Beneficiarios</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2 style={{ margin: 0 }}>Resumen de Beneficiarios</h2>
+        <button
+          onClick={handleExportPDF}
+          className="button-primary"
+        >
+          📄 Exportar Reporte
+        </button>
+      </div>
       
       {tasksWithoutReplicantes.length > 0 && (
         <>
@@ -101,10 +125,10 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks })
                 <tr>
                   <th style={{ minWidth: '200px' }}>Nombre</th>
                   <th style={{ minWidth: '120px' }}>Lugar</th>
+                  <th style={{ minWidth: '100px' }}>Población Meta</th>
                   <th style={{ minWidth: '80px' }}>Mujeres</th>
                   <th style={{ minWidth: '80px' }}>Hombres</th>
                   <th style={{ minWidth: '80px' }}>Total</th>
-                  <th style={{ minWidth: '100px' }}>Población Meta</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,19 +144,19 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks })
                     <tr key={task.gid}>
                       <td>{task.name}</td>
                       <td>{getCustomFieldValue(task, 'Lugar')}</td>
+                      <td>{getCustomFieldValue(task, 'Población Meta')}</td>
                       <td>{mujeres}</td>
                       <td>{hombres}</td>
                       <td>{total > 0 ? total : '-'}</td>
-                      <td>{getCustomFieldValue(task, 'Población Meta')}</td>
                     </tr>
                   );
                 })}
                 <tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
                   <td colSpan={2}>TOTAL</td>
+                  <td>-</td>
                   <td>{totalsWithoutReplicantes.mujeres}</td>
                   <td>{totalsWithoutReplicantes.hombres}</td>
                   <td>{totalWithoutReplicantes}</td>
-                  <td>-</td>
                 </tr>
               </tbody>
             </table>
@@ -151,10 +175,10 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks })
                 <tr>
                   <th style={{ minWidth: '200px' }}>Nombre</th>
                   <th style={{ minWidth: '120px' }}>Lugar</th>
+                  <th style={{ minWidth: '100px' }}>Replicantes</th>
                   <th style={{ minWidth: '80px' }}>Mujeres</th>
                   <th style={{ minWidth: '80px' }}>Hombres</th>
                   <th style={{ minWidth: '80px' }}>Total</th>
-                  <th style={{ minWidth: '100px' }}>Replicantes</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,19 +194,19 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks })
                     <tr key={task.gid}>
                       <td>{task.name}</td>
                       <td>{getCustomFieldValue(task, 'Lugar')}</td>
+                      <td>{getCustomFieldValue(task, 'Replicantes')}</td>
                       <td>{mujeres}</td>
                       <td>{hombres}</td>
                       <td>{total > 0 ? total : '-'}</td>
-                      <td>{getCustomFieldValue(task, 'Replicantes')}</td>
                     </tr>
                   );
                 })}
                 <tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
                   <td colSpan={2}>TOTAL</td>
+                  <td>-</td>
                   <td>{totalsWithReplicantes.mujeres}</td>
                   <td>{totalsWithReplicantes.hombres}</td>
                   <td>{totalWithReplicantes}</td>
-                  <td>-</td>
                 </tr>
               </tbody>
             </table>

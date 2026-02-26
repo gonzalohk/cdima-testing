@@ -639,3 +639,176 @@ export const exportToPDF = (
   const fileName = `reporte_${mainTask.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().getTime()}.pdf`;
   doc.save(fileName);
 };
+
+export const exportBeneficiariesToPDF = (
+  tasksWithoutReplicantes: AsanaTask[],
+  tasksWithReplicantes: AsanaTask[],
+  totalsWithoutReplicantes: { mujeres: number; hombres: number },
+  totalsWithReplicantes: { mujeres: number; hombres: number },
+  totalWithoutReplicantes: number,
+  totalWithReplicantes: number,
+  mainTask?: AsanaTask,
+  projectName: string = 'Proyecto'
+) => {
+  const margins = {
+    top: 25,
+    bottom: 25,
+    left: 30,
+    right: 25
+  };
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  let yPos = margins.top;
+
+  // H1: Título principal (20pt, Negrita)
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REPORTE DE BENEFICIARIOS', margins.left, yPos);
+  yPos += 10;
+
+  // Información del proyecto/actividad
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  if (mainTask) {
+    doc.text(`Actividad: ${mainTask.name}`, margins.left, yPos);
+    yPos += 7;
+  }
+  doc.text(`Proyecto: ${projectName}`, margins.left, yPos);
+  yPos += 7;
+  doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, margins.left, yPos);
+  yPos += 12;
+
+  // Tabla de Beneficiarios Directos
+  if (tasksWithoutReplicantes.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Beneficiarios Directos (sin replicantes)', margins.left, yPos);
+    yPos += 7;
+
+    const directosData = tasksWithoutReplicantes.map(task => {
+      const mujeres = getCustomFieldValue(task, 'Mujeres ');
+      const hombres = getCustomFieldValue(task, 'Hombres');
+      const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
+      const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
+      const total = mujeresNum + hombresNum;
+
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Lugar'),
+        getCustomFieldValue(task, 'Población Meta'),
+        mujeres,
+        hombres,
+        total > 0 ? total.toString() : '-'
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Nombre', 'Lugar', 'Población Meta', 'Mujeres', 'Hombres', 'Total']],
+      body: directosData,
+      foot: [[
+        'TOTAL',
+        '',
+        '-',
+        totalsWithoutReplicantes.mujeres.toString(),
+        totalsWithoutReplicantes.hombres.toString(),
+        totalWithoutReplicantes.toString()
+      ]],
+      theme: 'grid',
+      headStyles: {
+        fillColor: [66, 139, 202],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      footStyles: {
+        fillColor: [248, 249, 250],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        overflow: 'linebreak',
+      },
+      margin: { left: margins.left, right: margins.right },
+      tableWidth: 'auto',
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // Tabla de Beneficiarios Indirectos
+  if (tasksWithReplicantes.length > 0) {
+    // Si no hay espacio suficiente, añadir nueva página
+    if (yPos > 160) {
+      doc.addPage();
+      yPos = margins.top;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Beneficiarios Indirectos (con replicantes)', margins.left, yPos);
+    yPos += 7;
+
+    const indirectosData = tasksWithReplicantes.map(task => {
+      const mujeres = getCustomFieldValue(task, 'Mujeres ');
+      const hombres = getCustomFieldValue(task, 'Hombres');
+      const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
+      const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
+      const total = mujeresNum + hombresNum;
+
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Lugar'),
+        getCustomFieldValue(task, 'Replicantes'),
+        mujeres,
+        hombres,
+        total > 0 ? total.toString() : '-'
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Nombre', 'Lugar', 'Replicantes', 'Mujeres', 'Hombres', 'Total']],
+      body: indirectosData,
+      foot: [[
+        'TOTAL',
+        '',
+        '-',
+        totalsWithReplicantes.mujeres.toString(),
+        totalsWithReplicantes.hombres.toString(),
+        totalWithReplicantes.toString()
+      ]],
+      theme: 'grid',
+      headStyles: {
+        fillColor: [66, 139, 202],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      footStyles: {
+        fillColor: [248, 249, 250],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        overflow: 'linebreak',
+      },
+      margin: { left: margins.left, right: margins.right },
+      tableWidth: 'auto',
+    });
+  }
+
+  // Guardar PDF
+  const taskName = mainTask?.name || 'beneficiarios';
+  const fileName = `reporte_beneficiarios_${taskName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().getTime()}.pdf`;
+  doc.save(fileName);
+};
