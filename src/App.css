@@ -253,188 +253,132 @@
 }
 
 /* ========================================
-   Estilos para Ficha de Actividad Profesional
+   Estilos para Ficha de Actividad Profesional COMPACTA
    ======================================== */
 
-/* Header de la actividad */
-.activity-header {
+/* Header compacto de la actividad */
+.activity-header-compact {
   background: linear-gradient(135deg, var(--smoky-rose) 0%, var(--blackberry-cream) 100%);
-  padding: 1.5rem 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(129, 83, 85, 0.15);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
 }
 
-.activity-title {
+.activity-title-compact {
   margin: 0;
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  line-height: 1.4;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  line-height: 1.3;
 }
 
-/* Secciones de información */
-.info-section {
-  background-color: #ffffff;
-  border: 1px solid #e9ecef;
-  border-radius: 10px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  transition: box-shadow 0.3s ease;
-}
-
-.info-section:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.info-section-highlighted {
-  background: linear-gradient(135deg, rgba(199, 224, 180, 0.15) 0%, rgba(242, 241, 239, 0.15) 100%);
-  border: 2px solid var(--tea-green);
-}
-
-/* Títulos de sección */
-.section-title {
-  margin: 0 0 1rem 0;
-  color: var(--blackberry-cream);
-  font-size: 1.1rem;
-  font-weight: 600;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--ash-grey);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Grid de información general */
-.info-grid-section {
+/* Grid compacto único */
+.info-grid-compact {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-/* Items de información */
+/* Items de información compactos y sutiles */
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
+}
+
+.info-item-highlight {
+  padding: 0.5rem;
+  background: linear-gradient(135deg, rgba(199, 224, 180, 0.1) 0%, rgba(242, 241, 239, 0.1) 100%);
+  border-radius: 6px;
 }
 
 .info-label {
   font-weight: 600;
   color: #6c757d;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .info-value {
   color: #212529;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
 .info-value-highlight {
   color: var(--smoky-rose);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
-/* Grid de beneficiarios */
-.info-grid-beneficiaries {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.25rem;
-  margin-top: 1rem;
-}
-
-.info-item-beneficiary {
-  background-color: white;
-  padding: 1.25rem;
-  border-radius: 8px;
-  text-align: center;
-  border: 2px solid var(--ash-grey);
-  transition: all 0.3s ease;
-}
-
-.info-item-beneficiary:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  border-color: var(--tea-green);
-}
-
-.info-item-total {
-  background: linear-gradient(135deg, var(--tea-green) 0%, var(--khaki-beige) 100%);
-  border-color: var(--tea-green);
-}
-
-.info-item-total .info-label {
-  color: var(--blackberry-cream);
-  font-weight: 700;
-}
-
-.info-item-total .info-value-large {
-  color: var(--blackberry-cream);
-}
-
-.info-value-large {
-  display: block;
-  font-size: 2rem;
-  font-weight: 700;
+.info-value-beneficiary {
   color: var(--smoky-rose);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.info-value-beneficiary-total {
+  color: var(--blackberry-cream);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+
+
+/* Contenido de notas compacto */
+.notes-content-compact {
+  background-color: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  color: #495057;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  border-left: 3px solid var(--smoky-rose);
   margin-top: 0.5rem;
 }
 
-/* Contenido de notas */
-.notes-content {
-  background-color: #f8f9fa;
-  padding: 1.25rem;
-  border-radius: 8px;
-  color: #495057;
-  font-size: 0.95rem;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  border-left: 4px solid var(--smoky-rose);
-  margin-top: 1rem;
-}
-
-/* Responsive adjustments */
+/* Responsive adjustments compacto */
 @media (max-width: 768px) {
-  .activity-header {
-    padding: 1rem 1.5rem;
+  .activity-header-compact {
+    padding: 0.6rem 1rem;
   }
 
-  .activity-title {
-    font-size: 1.25rem;
+  .activity-title-compact {
+    font-size: 1.1rem;
   }
 
-  .info-section {
-    padding: 1rem;
+  .info-grid-compact {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
   }
 
-  .section-title {
-    font-size: 1rem;
+  .info-value-beneficiary {
+    font-size: 1.1rem;
   }
 
-  .info-grid-section,
-  .info-grid-beneficiaries {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .info-value-large {
-    font-size: 1.5rem;
+  .info-value-beneficiary-total {
+    font-size: 1.3rem;
   }
 }
 
 @media (max-width: 480px) {
-  .activity-title {
-    font-size: 1.1rem;
+  .activity-title-compact {
+    font-size: 1rem;
   }
 
-  .info-value-large {
-    font-size: 1.25rem;
+  .info-grid-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .info-value-beneficiary {
+    font-size: 1rem;
+  }
+
+  .info-value-beneficiary-total {
+    font-size: 1.2rem;
   }
 }
 
@@ -941,4 +885,34 @@ select.form-input {
   .loading-text {
     font-size: 1rem;
   }
+}
+
+/* ========================================
+   Mini Progress Bar para Tabla
+   ======================================== */
+
+.mini-progress-bar {
+  flex: 1;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--tea-green) 0%, var(--khaki-beige) 100%);
+  transition: width 0.3s ease;
+}
+
+/* Clases de utilidad para colores */
+.text-success {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.text-warning {
+  color: #ffc107;
+  font-weight: 600;
 }

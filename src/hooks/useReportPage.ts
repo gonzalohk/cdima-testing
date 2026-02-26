@@ -237,26 +237,41 @@ export const useReportPage = () => {
     const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
 
     const byAssignee: TaskStatistics['byAssignee'] = {};
+    const byResponsable: TaskStatistics['byResponsable'] = {};
     
     displayTasks.forEach((task) => {
-      const assigneeName = task.assignee?.name || 'Sin asignar';
-      if (!byAssignee[assigneeName]) {
-        byAssignee[assigneeName] = { total: 0, completed: 0, pending: 0 };
+      // Agrupar por Lugar (Municipio)
+      const lugar = task.custom_fields?.find(f => f.name === 'Lugar');
+      const lugarName = lugar?.enum_value?.name || lugar?.text_value || 'Sin municipio';
+      
+      if (!byAssignee[lugarName]) {
+        byAssignee[lugarName] = { total: 0, completed: 0, pending: 0 };
       }
-      byAssignee[assigneeName].total += 1;
+      byAssignee[lugarName].total += 1;
+      
+      // Agrupar por Responsable de Actividad
+      const responsable = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
+      const responsableName = responsable?.enum_value?.name || responsable?.text_value || 'Sin responsable';
+      
+      if (!byResponsable[responsableName]) {
+        byResponsable[responsableName] = { total: 0, completed: 0, pending: 0 };
+      }
+      byResponsable[responsableName].total += 1;
       
       // Verificar el campo Estado en lugar de completed
       const estado = task.custom_fields?.find(f => f.name === 'Estado');
       const isCompleted = estado?.enum_value?.name === 'EJECUTADO';
       
       if (isCompleted) {
-        byAssignee[assigneeName].completed += 1;
+        byAssignee[lugarName].completed += 1;
+        byResponsable[responsableName].completed += 1;
       } else {
-        byAssignee[assigneeName].pending += 1;
+        byAssignee[lugarName].pending += 1;
+        byResponsable[responsableName].pending += 1;
       }
     });
 
-    return { total, completed, pending, completionPercentage, byAssignee };
+    return { total, completed, pending, completionPercentage, byAssignee, byResponsable };
   }, [displayTasks]);
 
   // Filtrado de subtareas

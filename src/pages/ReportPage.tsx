@@ -3,6 +3,7 @@ import { useReportPage } from '../hooks/useReportPage';
 import HierarchicalSelector from '../components/HierarchicalSelector';
 import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
+import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -67,6 +68,18 @@ const ReportPage: React.FC = () => {
           
           <StatisticsSection statistics={statistics} />
           
+          <ResponsibleDistribution 
+            title="Distribución por Municipio" 
+            columnName="Municipio"
+            byAssignee={statistics.byAssignee} 
+          />
+          
+          <ResponsibleDistribution 
+            title="Distribución por Responsable" 
+            columnName="Responsable"
+            byAssignee={statistics.byResponsable} 
+          />
+          
           <BeneficiariesSummary 
             subtasks={subtasks} 
             mainTask={selectedTask}
@@ -99,6 +112,18 @@ const ReportPage: React.FC = () => {
           </div>
 
           <StatisticsSection statistics={statistics} />
+          
+          <ResponsibleDistribution 
+            title="Distribución por Municipio" 
+            columnName="Municipio"
+            byAssignee={statistics.byAssignee} 
+          />
+          
+          <ResponsibleDistribution 
+            title="Distribución por Responsable" 
+            columnName="Responsable"
+            byAssignee={statistics.byResponsable} 
+          />
           
           <BeneficiariesSummary 
             subtasks={filteredSubtasks}

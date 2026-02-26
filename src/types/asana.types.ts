@@ -93,6 +93,13 @@ export interface TaskStatistics {
       pending: number;
     };
   };
+  byResponsable: {
+    [responsableName: string]: {
+      total: number;
+      completed: number;
+      pending: number;
+    };
+  };
 }
 
 // Configuración de API

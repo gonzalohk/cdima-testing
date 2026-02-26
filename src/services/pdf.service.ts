@@ -183,13 +183,13 @@ export const exportToPDF = (
   yPos += 5;
   doc.text(`Progreso: ${progressPercentage.toFixed(1)}%`, margins.left, yPos);
   
-  // Distribución por asignado - calculada con lógica del campo Estado
-  // Agrupar subtareas por Responsable de Actividad (campo personalizado)
+  // Distribución por municipio - calculada con lógica del campo Estado
+  // Agrupar subtareas por Lugar (campo personalizado)
   const byAssignee: { [key: string]: { total: number; completed: number; pending: number } } = {};
   
   subtasks.forEach(task => {
-    const responsable = getCustomFieldValue(task, 'Responsable de Actividad');
-    const assigneeName = responsable !== '-' ? responsable : 'Sin asignar';
+    const lugar = getCustomFieldValue(task, 'Lugar');
+    const assigneeName = lugar !== '-' ? lugar : 'Sin municipio';
     if (!byAssignee[assigneeName]) {
       byAssignee[assigneeName] = { total: 0, completed: 0, pending: 0 };
     }
@@ -208,7 +208,7 @@ export const exportToPDF = (
     // H2: 14pt (Negrita)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Distribución por Responsable', margins.left, yPos);
+    doc.text('Distribución por Municipio', margins.left, yPos);
     
     yPos += 7;
     const assigneeData = Object.entries(byAssignee).map(([name, stats]) => [
@@ -220,8 +220,63 @@ export const exportToPDF = (
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Responsable', 'Total', 'Completadas', 'Pendientes']],
+      head: [['Municipio', 'Total', 'Completadas', 'Pendientes']],
       body: assigneeData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [66, 139, 202],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 10,
+        cellPadding: 3
+      },
+      margin: { left: margins.left, right: margins.right },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  // Distribución por Responsable - calculada con lógica del campo Estado
+  // Agrupar subtareas por Responsable de Actividad (campo personalizado)
+  const byResponsable: { [key: string]: { total: number; completed: number; pending: number } } = {};
+  
+  subtasks.forEach(task => {
+    const responsable = getCustomFieldValue(task, 'Responsable de Actividad');
+    const responsableName = responsable !== '-' ? responsable : 'Sin responsable';
+    if (!byResponsable[responsableName]) {
+      byResponsable[responsableName] = { total: 0, completed: 0, pending: 0 };
+    }
+    byResponsable[responsableName].total += 1;
+    
+    const estado = getCustomFieldValue(task, 'Estado');
+    if (estado === 'EJECUTADO') {
+      byResponsable[responsableName].completed += 1;
+    } else {
+      byResponsable[responsableName].pending += 1;
+    }
+  });
+  
+  if (Object.keys(byResponsable).length > 0) {
+    yPos += 10;
+    // H2: 14pt (Negrita)
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Distribución por Responsable', margins.left, yPos);
+    
+    yPos += 7;
+    const responsableData = Object.entries(byResponsable).map(([name, stats]) => [
+      name,
+      stats.total.toString(),
+      stats.completed.toString(),
+      stats.pending.toString(),
+    ]);
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Responsable', 'Total', 'Completadas', 'Pendientes']],
+      body: responsableData,
       theme: 'grid',
       headStyles: { 
         fillColor: [66, 139, 202],
