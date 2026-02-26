@@ -4,11 +4,12 @@ import { AsanaTask } from '../types/asana.types';
 interface TaskInfoProps {
   task: AsanaTask;
   subtasksCount: number;
+  subtasks: AsanaTask[];
 }
 
-const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount }) => {
-  // Función auxiliar para obtener el valor de un campo personalizado
-  const getCustomFieldValue = (fieldName: string): string => {
+const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) => {
+  // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
+  const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
     const field = task.custom_fields.find(f => f.name === fieldName);
     if (!field) return '-';
@@ -39,6 +40,66 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount }) => {
     return '-';
   };
 
+  // Función auxiliar para obtener el valor de un campo personalizado de la tarea principal
+  const getMainTaskFieldValue = (fieldName: string): string => {
+    if (!task.custom_fields) return '-';
+    const field = task.custom_fields.find(f => f.name === fieldName);
+    if (!field) return '-';
+    
+    // Si tiene display_value, usarlo directamente
+    if (field.display_value) return field.display_value;
+    
+    // Para multi_enum, concatenar los valores
+    if (field.type === 'multi_enum' && field.multi_enum_values && field.multi_enum_values.length > 0) {
+      return field.multi_enum_values.map(v => v.name).join(', ');
+    }
+    
+    // Para enum, usar el nombre del valor
+    if (field.type === 'enum' && field.enum_value) {
+      return field.enum_value.name;
+    }
+    
+    // Para number
+    if (field.type === 'number' && field.number_value !== null && field.number_value !== undefined) {
+      return field.number_value.toString();
+    }
+    
+    // Para text
+    if (field.type === 'text' && field.text_value) {
+      return field.text_value;
+    }
+    
+    return '-';
+  };
+
+  // Calcular valores agregados de las subtareas
+  const calculateAggregatedValues = () => {
+    let totalMujeres = 0;
+    let totalHombres = 0;
+    let totalPoblacionMeta = 0;
+
+    subtasks.forEach(subtask => {
+      const mujeres = getCustomFieldValue(subtask, 'Mujeres ');
+      const hombres = getCustomFieldValue(subtask, 'Hombres');
+      const poblacion = getCustomFieldValue(subtask, 'Población Meta');
+
+      totalMujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
+      totalHombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+      totalPoblacionMeta += poblacion !== '-' ? parseInt(poblacion) || 0 : 0;
+    });
+
+    const total = totalMujeres + totalHombres;
+
+    return {
+      mujeres: totalMujeres > 0 ? totalMujeres.toString() : '-',
+      hombres: totalHombres > 0 ? totalHombres.toString() : '-',
+      total: total > 0 ? total.toString() : '-',
+      poblacionMeta: totalPoblacionMeta > 0 ? totalPoblacionMeta.toString() : '-'
+    };
+  };
+
+  const aggregatedValues = calculateAggregatedValues();
+
   return (
     <div className="card">
       <h2>Información de la Actividad</h2>
@@ -51,10 +112,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount }) => {
             <span className="info-value">
               <span
                 className={`status-badge ${
-                  getCustomFieldValue('Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
+                  getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
                 }`}
               >
-                {getCustomFieldValue('Estado') === 'EJECUTADO' ? 'Completada' : getCustomFieldValue('Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
+                {getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'Completada' : getMainTaskFieldValue('Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
               </span>
             </span>
           </div>
@@ -82,32 +143,37 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount }) => {
             <>
               <div className="info-item">
                 <span className="info-label">Lugar</span>
-                <span className="info-value">{getCustomFieldValue('Lugar')}</span>
+                <span className="info-value">{getMainTaskFieldValue('Lugar')}</span>
               </div>
 
               <div className="info-item">
                 <span className="info-label">Estado de Actividad</span>
-                <span className="info-value">{getCustomFieldValue('Estado')}</span>
+                <span className="info-value">{getMainTaskFieldValue('Estado')}</span>
               </div>
 
               <div className="info-item">
                 <span className="info-label">Mujeres</span>
-                <span className="info-value">{getCustomFieldValue('Mujeres ')}</span>
+                <span className="info-value">{aggregatedValues.mujeres}</span>
               </div>
 
               <div className="info-item">
                 <span className="info-label">Hombres</span>
-                <span className="info-value">{getCustomFieldValue('Hombres')}</span>
+                <span className="info-value">{aggregatedValues.hombres}</span>
+              </div>
+
+              <div className="info-item">
+                <span className="info-label">Total</span>
+                <span className="info-value">{aggregatedValues.total}</span>
               </div>
 
               <div className="info-item">
                 <span className="info-label">Población Meta</span>
-                <span className="info-value">{getCustomFieldValue('Población Meta')}</span>
+                <span className="info-value">{aggregatedValues.poblacionMeta}</span>
               </div>
 
               <div className="info-item">
                 <span className="info-label">Responsable de Actividad</span>
-                <span className="info-value">{getCustomFieldValue('Responsable de Actividad')}</span>
+                <span className="info-value">{getMainTaskFieldValue('Responsable de Actividad')}</span>
               </div>
             </>
           )}

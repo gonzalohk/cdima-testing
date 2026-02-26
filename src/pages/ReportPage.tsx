@@ -4,6 +4,7 @@ import HierarchicalSelector from '../components/HierarchicalSelector';
 import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
 import SubtasksTable from '../components/SubtasksTable';
+import BeneficiariesSummary from '../components/BeneficiariesSummary';
 
 const ReportPage: React.FC = () => {
   const {
@@ -70,9 +71,11 @@ const ReportPage: React.FC = () => {
 
       {selectedTask && (
         <>
-          <TaskInfo task={selectedTask} subtasksCount={subtasks.length} />
+          <TaskInfo task={selectedTask} subtasksCount={subtasks.length} subtasks={subtasks} />
           
           <StatisticsSection statistics={statistics} />
+          
+          <BeneficiariesSummary subtasks={subtasks} />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
@@ -103,6 +106,8 @@ const ReportPage: React.FC = () => {
           </div>
 
           <StatisticsSection statistics={statistics} />
+          
+          <BeneficiariesSummary subtasks={filteredSubtasks} />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}

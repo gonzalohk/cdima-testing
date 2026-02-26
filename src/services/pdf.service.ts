@@ -238,6 +238,189 @@ export const exportToPDF = (
     yPos = (doc as any).lastAutoTable.finalY + 10;
   }
   
+  // Resumen de Beneficiarios
+  // Clasificar subtareas según tengan o no replicantes
+  const tasksWithoutReplicantes: AsanaTask[] = [];
+  const tasksWithReplicantes: AsanaTask[] = [];
+
+  subtasks.forEach(task => {
+    const mujeres = getCustomFieldValue(task, 'Mujeres ');
+    const hombres = getCustomFieldValue(task, 'Hombres');
+    const poblacionMeta = getCustomFieldValue(task, 'Población Meta');
+    const replicantes = getCustomFieldValue(task, 'Replicantes');
+
+    // Solo considerar tareas que tengan al menos uno de los campos de beneficiarios
+    const hasBeneficiaries = (mujeres !== '-' && parseInt(mujeres) > 0) || 
+                            (hombres !== '-' && parseInt(hombres) > 0) ||
+                            (poblacionMeta !== '-' && parseInt(poblacionMeta) > 0);
+
+    if (hasBeneficiaries) {
+      if (replicantes === '-' || !replicantes) {
+        tasksWithoutReplicantes.push(task);
+      } else {
+        tasksWithReplicantes.push(task);
+      }
+    }
+  });
+
+  // Calcular totales para tareas sin replicantes
+  let totalMujeresSinReplicantes = 0;
+  let totalHombresSinReplicantes = 0;
+  
+  tasksWithoutReplicantes.forEach(task => {
+    const mujeres = getCustomFieldValue(task, 'Mujeres ');
+    const hombres = getCustomFieldValue(task, 'Hombres');
+    
+    totalMujeresSinReplicantes += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
+    totalHombresSinReplicantes += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+  });
+
+  const totalSinReplicantes = totalMujeresSinReplicantes + totalHombresSinReplicantes;
+
+  // Tabla 1: Beneficiarios Directos (sin replicantes)
+  if (tasksWithoutReplicantes.length > 0) {
+    yPos += 10;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Beneficiarios Directos (sin replicantes)', margins.left, yPos);
+    
+    yPos += 7;
+    const dataWithoutReplicantes = tasksWithoutReplicantes.map(task => {
+      const mujeres = getCustomFieldValue(task, 'Mujeres ');
+      const hombres = getCustomFieldValue(task, 'Hombres');
+      
+      const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
+      const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
+      const total = mujeresNum + hombresNum;
+      
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Lugar'),
+        mujeres,
+        hombres,
+        total > 0 ? total.toString() : '-',
+        getCustomFieldValue(task, 'Población Meta')
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Nombre', 'Lugar', 'Mujeres', 'Hombres', 'Total', 'Pob. Meta']],
+      body: dataWithoutReplicantes,
+      foot: [[
+        'TOTAL',
+        '',
+        totalMujeresSinReplicantes.toString(),
+        totalHombresSinReplicantes.toString(),
+        totalSinReplicantes.toString(),
+        '-'
+      ]],
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [66, 139, 202],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      footStyles: {
+        fillColor: [248, 249, 250],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: 3
+      },
+      bodyStyles: {
+        fontSize: 9
+      },
+      margin: { left: margins.left, right: margins.right },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // Calcular totales para tareas con replicantes
+  let totalMujeresConReplicantes = 0;
+  let totalHombresConReplicantes = 0;
+  
+  tasksWithReplicantes.forEach(task => {
+    const mujeres = getCustomFieldValue(task, 'Mujeres ');
+    const hombres = getCustomFieldValue(task, 'Hombres');
+    
+    totalMujeresConReplicantes += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
+    totalHombresConReplicantes += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+  });
+
+  const totalConReplicantes = totalMujeresConReplicantes + totalHombresConReplicantes;
+
+  // Tabla 2: Beneficiarios Indirectos (con replicantes)
+  if (tasksWithReplicantes.length > 0) {
+    // Verificar si necesitamos una nueva página
+    const availableSpace = doc.internal.pageSize.getHeight() - margins.bottom;
+    if (yPos > availableSpace - 60) {
+      doc.addPage();
+      yPos = margins.top;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Beneficiarios Indirectos (con replicantes)', margins.left, yPos);
+    
+    yPos += 7;
+    const dataWithReplicantes = tasksWithReplicantes.map(task => {
+      const mujeres = getCustomFieldValue(task, 'Mujeres ');
+      const hombres = getCustomFieldValue(task, 'Hombres');
+      
+      const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
+      const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
+      const total = mujeresNum + hombresNum;
+      
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Lugar'),
+        mujeres,
+        hombres,
+        total > 0 ? total.toString() : '-',
+        getCustomFieldValue(task, 'Replicantes')
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Nombre', 'Lugar', 'Mujeres', 'Hombres', 'Total', 'Replicantes']],
+      body: dataWithReplicantes,
+      foot: [[
+        'TOTAL',
+        '',
+        totalMujeresConReplicantes.toString(),
+        totalHombresConReplicantes.toString(),
+        totalConReplicantes.toString(),
+        '-'
+      ]],
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [66, 139, 202],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      footStyles: {
+        fillColor: [248, 249, 250],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: 3
+      },
+      bodyStyles: {
+        fontSize: 9
+      },
+      margin: { left: margins.left, right: margins.right },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+  
   // Nueva página para subtareas en formato horizontal
   doc.addPage('a4', 'landscape'); // Orientación horizontal
   
