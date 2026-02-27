@@ -214,7 +214,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
         {/* Notas en la parte inferior */}
         {task.notes && (
           <div className="notes-content-compact">
-            <strong>📝 Descripción:</strong> {task.notes}
+            <strong>📝 Resultados:</strong> {task.notes}
           </div>
         )}
       </div>

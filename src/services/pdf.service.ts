@@ -224,7 +224,7 @@ export const exportToPDF = (
       body: assigneeData,
       theme: 'grid',
       headStyles: { 
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },
@@ -279,7 +279,7 @@ export const exportToPDF = (
       body: responsableData,
       theme: 'grid',
       headStyles: { 
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },
@@ -372,7 +372,7 @@ export const exportToPDF = (
       ]],
       theme: 'grid',
       headStyles: { 
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },
@@ -454,7 +454,7 @@ export const exportToPDF = (
       ]],
       theme: 'grid',
       headStyles: { 
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },
@@ -521,25 +521,12 @@ export const exportToPDF = (
   // Función para generar datos de tabla con campos personalizados
   const generateTableData = (tasks: AsanaTask[]) => {
     return tasks.map(task => {
-      const mujeres = getCustomFieldValue(task, 'Mujeres ');
-      const hombres = getCustomFieldValue(task, 'Hombres');
-      
-      // Calcular total (Mujeres + Hombres)
-      let total = '-';
-      const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
-      const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
-      if (mujeresNum !== 0 || hombresNum !== 0) {
-        total = (mujeresNum + hombresNum).toString();
-      }
-      
       return [
         task.name,
+        task.notes || '-',
         task.due_on || 'Sin fecha',
         getCustomFieldValue(task, 'Lugar'),
         getCustomFieldValue(task, 'Estado'),
-        mujeres,
-        hombres,
-        total,
         getCustomFieldValue(task, 'Población Meta'),
         getCustomFieldValue(task, 'Responsable de Actividad'),
       ];
@@ -560,12 +547,10 @@ export const exportToPDF = (
       startY: yPos,
       head: [[
         'Nombre',
+        'Descripción',
         'Vencimiento',
         'Lugar',
         'Estado',
-        'Mujeres',
-        'Hombres',
-        'Total',
         'Pob. Meta',
         'Responsable'
       ]],
@@ -581,6 +566,9 @@ export const exportToPDF = (
         fontSize: 9,
         cellPadding: 3,
         overflow: 'linebreak',
+      },
+      columnStyles: {
+        1: { cellWidth: 80 } // Descripción con ancho fijo
       },
       // Tabla ocupa todo el ancho disponible entre márgenes
       margin: { left: margins.left, right: margins.right },
@@ -611,12 +599,10 @@ export const exportToPDF = (
       startY: yPos,
       head: [[
         'Nombre',
+        'Descripción',
         'Vencimiento',
         'Lugar',
         'Estado',
-        'Mujeres',
-        'Hombres',
-        'Total',
         'Pob. Meta',
         'Responsable'
       ]],
@@ -632,6 +618,9 @@ export const exportToPDF = (
         fontSize: 9,
         cellPadding: 3,
         overflow: 'linebreak',
+      },
+      columnStyles: {
+        1: { cellWidth: 80 } // Descripción con ancho fijo
       },
       // Tabla ocupa todo el ancho disponible entre márgenes
       margin: { left: margins.left, right: margins.right },
@@ -662,12 +651,10 @@ export const exportToPDF = (
       startY: yPos,
       head: [[
         'Nombre',
+        'Descripción',
         'Vencimiento',
         'Lugar',
         'Estado',
-        'Mujeres',
-        'Hombres',
-        'Total',
         'Pob. Meta',
         'Responsable'
       ]],
@@ -683,6 +670,9 @@ export const exportToPDF = (
         fontSize: 9,
         cellPadding: 3,
         overflow: 'linebreak',
+      },
+      columnStyles: {
+        1: { cellWidth: 80 } // Descripción con ancho fijo
       },
       // Tabla ocupa todo el ancho disponible entre márgenes
       margin: { left: margins.left, right: margins.right },
@@ -776,7 +766,7 @@ export const exportBeneficiariesToPDF = (
       ]],
       theme: 'grid',
       headStyles: {
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },
@@ -842,7 +832,7 @@ export const exportBeneficiariesToPDF = (
       ]],
       theme: 'grid',
       headStyles: {
-        fillColor: [66, 139, 202],
+        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
         fontSize: 10,
         fontStyle: 'bold'
       },

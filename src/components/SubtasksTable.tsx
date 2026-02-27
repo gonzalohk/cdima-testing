@@ -111,32 +111,28 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
             <thead>
               <tr>
                 <th style={{ minWidth: '200px' }}>Nombre</th>
+                <th style={{ minWidth: '300px' }}>Descripción</th>
                 <th style={{ minWidth: '120px' }}>Vencimiento</th>
                 <th style={{ minWidth: '120px' }}>Lugar</th>
                 <th style={{ minWidth: '100px' }}>Estado</th>
-                <th style={{ minWidth: '80px' }}>Mujeres</th>
-                <th style={{ minWidth: '80px' }}>Hombres</th>
-                <th style={{ minWidth: '80px' }}>Total</th>
                 <th style={{ minWidth: '100px' }}>Población Meta</th>
                 <th style={{ minWidth: '150px' }}>Responsable</th>
               </tr>
             </thead>
             <tbody>
               {filteredSubtasks.map((task) => {
-                const mujeres = getCustomFieldValue(task, 'Mujeres ');
-                const hombres = getCustomFieldValue(task, 'Hombres');
-                
-                // Calcular total (Mujeres + Hombres)
-                let total = '-';
-                const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
-                const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
-                if (mujeresNum !== 0 || hombresNum !== 0) {
-                  total = (mujeresNum + hombresNum).toString();
-                }
-                
                 return (
                   <tr key={task.gid}>
                     <td>{task.name}</td>
+                    <td style={{ 
+                      maxWidth: '400px', 
+                      whiteSpace: 'normal', 
+                      wordWrap: 'break-word',
+                      fontSize: '0.9rem',
+                      color: '#555'
+                    }}>
+                      {task.notes || '-'}
+                    </td>
                     <td>{task.due_on || 'Sin fecha'}</td>
                     <td>{getCustomFieldValue(task, 'Lugar')}</td>
                     <td>
@@ -148,9 +144,6 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
                         {getCustomFieldValue(task, 'Estado') === 'EJECUTADO' ? 'Completada' : getCustomFieldValue(task, 'Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
                       </span>
                     </td>
-                    <td>{mujeres}</td>
-                    <td>{hombres}</td>
-                    <td>{total}</td>
                     <td>{getCustomFieldValue(task, 'Población Meta')}</td>
                     <td>{getCustomFieldValue(task, 'Responsable de Actividad')}</td>
                   </tr>

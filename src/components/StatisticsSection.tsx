@@ -24,7 +24,7 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({ statistics }) => 
       </div>
 
       <div className="statistics-grid">
-        <div className="stat-card">
+        <div className="stat-card success">
           <div className="stat-value">{statistics.total}</div>
           <div className="stat-label">Total de Sub Actividades</div>
         </div>
@@ -34,7 +34,7 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({ statistics }) => 
           <div className="stat-label">Completadas</div>
         </div>
 
-        <div className="stat-card warning">
+        <div className="stat-card success">
           <div className="stat-value">{statistics.pending}</div>
           <div className="stat-label">Pendientes</div>
         </div>

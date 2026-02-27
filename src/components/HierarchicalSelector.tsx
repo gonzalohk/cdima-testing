@@ -66,6 +66,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
         </select>
         {selectedSection && (
           <small className="form-hint">
+            <br/>
             Filtrando por: {sections.find((s) => s.gid === selectedSection)?.name}
           </small>
         )}
