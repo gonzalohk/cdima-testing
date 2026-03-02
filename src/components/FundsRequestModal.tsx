@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
+import { exportFundsRequestToPDF } from '../services/pdf.service';
+import Notification from './Notification';
 
 interface FundItem {
   id: number;
@@ -16,14 +18,15 @@ interface FundsRequestModalProps {
 
 const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
-  const [subArea, setSubArea] = useState('');
   const [lugar, setLugar] = useState('');
-  const [fechaNecesaria, setFechaNecesaria] = useState('');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFinalizacion, setFechaFinalizacion] = useState('');
   const [fondos, setFondos] = useState<FundItem[]>([
     { id: 1, descripcion: '', importeBolivianos: '' }
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const agregarFondo = () => {
     const newId = Math.max(...fondos.map(f => f.id), 0) + 1;
@@ -52,14 +55,17 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
       if (!area.trim()) {
         throw new Error('El área es obligatoria');
       }
-      if (!subArea.trim()) {
-        throw new Error('La sub área es obligatoria');
-      }
       if (!lugar.trim()) {
         throw new Error('El lugar es obligatorio');
       }
-      if (!fechaNecesaria) {
-        throw new Error('La fecha necesaria es obligatoria');
+      if (!fechaInicio) {
+        throw new Error('La fecha de inicio es obligatoria');
+      }
+      if (!fechaFinalizacion) {
+        throw new Error('La fecha de finalización es obligatoria');
+      }
+      if (new Date(fechaFinalizacion) < new Date(fechaInicio)) {
+        throw new Error('La fecha de finalización debe ser posterior a la fecha de inicio');
       }
 
       // Validar que haya al menos un fondo con descripción
@@ -97,9 +103,9 @@ Actividad: ${task.name}
 
 INFORMACIÓN GENERAL:
 • Área: ${area}
-• Sub Área: ${subArea}
 • Lugar de entrega: ${lugar}
-• Fecha necesaria: ${new Date(fechaNecesaria).toLocaleDateString('es-ES')}
+• Fecha de inicio: ${new Date(fechaInicio).toLocaleDateString('es-ES')}
+• Fecha de finalización: ${new Date(fechaFinalizacion).toLocaleDateString('es-ES')}
 • Fecha de solicitud: ${fechaSolicitud}
 
 FONDOS SOLICITADOS:
@@ -120,11 +126,14 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
       await asanaService.createSubtask(task.gid, workspaceGid, {
         name: subtaskName,
         notes: notes,
-        due_on: fechaNecesaria
+        due_on: fechaFinalizacion
       });
 
-      onSuccess();
-      onClose();
+      setNotification({ message: '¡Solicitud de fondos creada exitosamente!', type: 'success' });
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear la solicitud');
     } finally {
@@ -133,7 +142,15 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
           <h2>Solicitud de Fondos</h2>
@@ -154,57 +171,54 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
 
             <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Información General</h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label className="form-label">Área *</label>
-                <select
-                  className="form-input"
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  required
-                >
-                  <option value="">Seleccione un área</option>
-                  <option value="Erradicación de Violencia">Erradicación de Violencia</option>
-                  <option value="Empoderamiento Político">Empoderamiento Político</option>
-                  <option value="Empoderamiento Productivo">Empoderamiento Productivo</option>
-                  <option value="Administrativa y Financiera">Administrativa y Financiera</option>
-                  <option value="Comunicación">Comunicación</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="form-label">Sub Área *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={subArea}
-                  onChange={(e) => setSubArea(e.target.value)}
-                  required
-                  placeholder="Ej: Logística"
-                />
-              </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Área *</label>
+              <select
+                className="form-input"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                required
+              >
+                <option value="">Seleccione un área</option>
+                <option value="Erradicación de Violencia">Erradicación de Violencia</option>
+                <option value="Empoderamiento Político">Empoderamiento Político</option>
+                <option value="Empoderamiento Productivo">Empoderamiento Productivo</option>
+                <option value="Administrativa y Financiera">Administrativa y Financiera</option>
+                <option value="Comunicación">Comunicación</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Lugar de Entrega *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={lugar}
+                onChange={(e) => setLugar(e.target.value)}
+                required
+                placeholder="Ej: Oficina Central"
+              />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
-                <label className="form-label">Lugar de Entrega *</label>
+                <label className="form-label">Fecha de inicio *</label>
                 <input
-                  type="text"
+                  type="date"
                   className="form-input"
-                  value={lugar}
-                  onChange={(e) => setLugar(e.target.value)}
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
                   required
-                  placeholder="Ej: Oficina Central"
                 />
               </div>
               
               <div>
-                <label className="form-label">Fecha Necesaria *</label>
+                <label className="form-label">Fecha de finalización *</label>
                 <input
                   type="date"
                   className="form-input"
-                  value={fechaNecesaria}
-                  onChange={(e) => setFechaNecesaria(e.target.value)}
+                  value={fechaFinalizacion}
+                  onChange={(e) => setFechaFinalizacion(e.target.value)}
                   required
                 />
               </div>
@@ -277,6 +291,31 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
           <div className="modal-footer">
             <button
               type="button"
+              onClick={() => {
+                // Validar que hay datos para imprimir
+                const fondosValidos = fondos.filter(f => f.descripcion.trim());
+                if (!area || !lugar || !fechaInicio || !fechaFinalizacion || fondosValidos.length === 0) {
+                  setError('Complete todos los campos requeridos antes de imprimir');
+                  return;
+                }
+                exportFundsRequestToPDF({
+                  taskName: task.name,
+                  area,
+                  lugar,
+                  fechaInicio,
+                  fechaFinalizacion,
+                  fondos: fondosValidos
+                });
+                setNotification({ message: 'PDF generado exitosamente', type: 'success' });
+              }}
+              className="button"
+              style={{ backgroundColor: '#17a2b8', color: 'white', marginRight: 'auto' }}
+              disabled={loading}
+            >
+              🖨️ Imprimir PDF
+            </button>
+            <button
+              type="button"
               onClick={onClose}
               className="button"
               disabled={loading}
@@ -294,6 +333,7 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
         </form>
       </div>
     </div>
+    </>
   );
 };
 

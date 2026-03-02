@@ -240,13 +240,13 @@ export const exportToPDF = (
   
   // Distribución por Responsable - calculada con lógica del campo Estado
   // Agrupar subtareas por Responsable de Actividad (campo personalizado)
-  const byResponsable: { [key: string]: { total: number; completed: number; pending: number } } = {};
+  const byResponsable: { [key: string]: { total: number; completed: number; pending: number; poblacionMeta: number } } = {};
   
   subtasks.forEach(task => {
     const responsable = getCustomFieldValue(task, 'Responsable de Actividad');
     const responsableName = responsable !== '-' ? responsable : 'Sin responsable';
     if (!byResponsable[responsableName]) {
-      byResponsable[responsableName] = { total: 0, completed: 0, pending: 0 };
+      byResponsable[responsableName] = { total: 0, completed: 0, pending: 0, poblacionMeta: 0 };
     }
     byResponsable[responsableName].total += 1;
     
@@ -255,6 +255,12 @@ export const exportToPDF = (
       byResponsable[responsableName].completed += 1;
     } else {
       byResponsable[responsableName].pending += 1;
+    }
+    
+    // Sumar población meta
+    const poblacionMeta = getCustomFieldValue(task, 'Población Meta');
+    if (poblacionMeta !== '-') {
+      byResponsable[responsableName].poblacionMeta += parseInt(poblacionMeta) || 0;
     }
   });
   
@@ -271,11 +277,12 @@ export const exportToPDF = (
       stats.total.toString(),
       stats.completed.toString(),
       stats.pending.toString(),
+      stats.poblacionMeta.toString(),
     ]);
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Responsable', 'Total', 'Completadas', 'Pendientes']],
+      head: [['Responsable', 'Total', 'Completadas', 'Pendientes', 'Pob. Meta']],
       body: responsableData,
       theme: 'grid',
       headStyles: { 
@@ -321,13 +328,16 @@ export const exportToPDF = (
   // Calcular totales para tareas sin replicantes
   let totalMujeresSinReplicantes = 0;
   let totalHombresSinReplicantes = 0;
+  let totalPoblacionMetaSinReplicantes = 0;
   
   tasksWithoutReplicantes.forEach(task => {
     const mujeres = getCustomFieldValue(task, 'Mujeres ');
     const hombres = getCustomFieldValue(task, 'Hombres');
+    const poblacionMeta = getCustomFieldValue(task, 'Población Meta');
     
     totalMujeresSinReplicantes += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
     totalHombresSinReplicantes += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+    totalPoblacionMetaSinReplicantes += poblacionMeta !== '-' ? parseInt(poblacionMeta) || 0 : 0;
   });
 
   const totalSinReplicantes = totalMujeresSinReplicantes + totalHombresSinReplicantes;
@@ -368,7 +378,7 @@ export const exportToPDF = (
         totalMujeresSinReplicantes.toString(),
         totalHombresSinReplicantes.toString(),
         totalSinReplicantes.toString(),
-        '-'
+        totalPoblacionMetaSinReplicantes.toString()
       ]],
       theme: 'grid',
       headStyles: { 
@@ -680,18 +690,18 @@ export const exportToPDF = (
     });
   }
   
-  // Guardar PDF
-  const fileName = `reporte_${mainTask.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().getTime()}.pdf`;
-  doc.save(fileName);
+  // Abrir PDF en nueva pestaña
+  window.open(doc.output('bloburl'), '_blank');
 };
 
 export const exportBeneficiariesToPDF = (
   tasksWithoutReplicantes: AsanaTask[],
   tasksWithReplicantes: AsanaTask[],
-  totalsWithoutReplicantes: { mujeres: number; hombres: number },
+  totalsWithoutReplicantes: { mujeres: number; hombres: number; poblacionMeta?: number },
   totalsWithReplicantes: { mujeres: number; hombres: number },
   totalWithoutReplicantes: number,
   totalWithReplicantes: number,
+  totalPoblacionMetaSinReplicantes: number = 0,
   mainTask?: AsanaTask,
   projectName: string = 'Proyecto'
 ) => {
@@ -759,7 +769,7 @@ export const exportBeneficiariesToPDF = (
       foot: [[
         'TOTAL',
         '',
-        '-',
+        totalPoblacionMetaSinReplicantes.toString(),
         totalsWithoutReplicantes.mujeres.toString(),
         totalsWithoutReplicantes.hombres.toString(),
         totalWithoutReplicantes.toString()
@@ -852,8 +862,401 @@ export const exportBeneficiariesToPDF = (
     });
   }
 
-  // Guardar PDF
-  const taskName = mainTask?.name || 'beneficiarios';
-  const fileName = `reporte_beneficiarios_${taskName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().getTime()}.pdf`;
-  doc.save(fileName);
+  // Abrir PDF en nueva pestaña
+  window.open(doc.output('bloburl'), '_blank');
+};
+
+// Interfaz para los materiales
+interface MaterialItem {
+  detalle: string;
+  cantidad: string;
+  unidad: string;
+  observaciones: string;
+}
+
+// Interfaz para datos de solicitud de material
+interface MaterialRequestData {
+  taskName: string;
+  area: string;
+  lugar: string;
+  fechaInicio: string;
+  fechaFinalizacion: string;
+  materiales: MaterialItem[];
+}
+
+export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
+  const margins = {
+    top: 25,
+    bottom: 25,
+    left: 30,
+    right: 25
+  };
+
+  const doc = new jsPDF({
+    format: 'a4'
+  });
+
+  // Logo de la ONG
+  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZ0AAAGdCAIAAABGvTn1AAAAY3pUWHRSYXcgcHJvZmlsZSB0eXBlIGlwdGMAAHjaPcG5DYBADATA3FVQwvq8/srhOSQyAvoXEgEzct3PLsvHSqw42DxAED9t3TEiAaUlZ8yEMxiT5Jbla5p3qldGurdT4gTkBaIiE+28t0FhAAAgAElEQVR4Xuydd3wURf/Hv7vXS3qjcwkhCSRAaEGC9CIoHQlN0UeKnWZ7BPXhseCjP4qogAIKioqggkCUEgUB6YSShNACORLSc7lc7nJty/z+mLAcKbd3l0sIcd+vecHe7Ozs5G7vc9+Z+c53CIQQCAgICDQjSL4CAgICAg8Ygq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND5isgINDcoGkaJpORoaikSZNWrly1Zs2a9u3b83UEBJobgr32j2Ljxo1Dhw717+IbFxfXsmXLP/7447HHHvNM1BiGwasQBeC++wCBEPw/AAD8JfDP/wMOwP8P/gf/EP///8Y/+u/+3/wP/qf/N//Of9X/29/4H/y//h//lftlZ+dh63zmxFqqCp3TdQQ="
+
+  try {
+    doc.addImage(logoBase64, 'PNG', margins.left, margins.top - 15, 35, 35);
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error);
+  }
+
+  // Título principal
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SOLICITUD DE MATERIAL', 105, margins.top + 5, { align: 'center' });
+
+  // Fecha de solicitud
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
+
+  // Línea separadora
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setLineWidth(0.5);
+  doc.line(margins.left, margins.top + 33, pageWidth - margins.right, margins.top + 33);
+
+  // Información general
+  let yPos = margins.top + 40;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  const textWidth = pageWidth - margins.left - margins.right;
+  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
+  doc.text(activityText, margins.left, yPos);
+  yPos += activityText.length * 5 + 2;
+
+  doc.text(`Área: ${data.area}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  yPos += 10;
+
+  // Materiales solicitados
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MATERIALES SOLICITADOS', margins.left, yPos);
+  yPos += 7;
+
+  // Tabla de materiales
+  const materialesData = data.materiales.map((m, index) => [
+    (index + 1).toString(),
+    m.detalle,
+    m.cantidad || '-',
+    m.unidad || '-',
+    m.observaciones || '-'
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['#', 'Detalle', 'Cantidad', 'Unidad', 'Observaciones']],
+    body: materialesData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [44, 95, 141],
+      fontSize: 10,
+      fontStyle: 'bold'
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      overflow: 'linebreak',
+    },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 'auto' }
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  // Sección de firmas
+  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
+  signaturesY += 15;
+
+  // Verificar si hay espacio suficiente, si no, agregar nueva página
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (signaturesY > pageHeight - 60) {
+    doc.addPage();
+    signaturesY = margins.top;
+  }
+
+  // Título de la sección de firmas
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
+  signaturesY += 2;
+
+  // Línea separadora
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, signaturesY, pageWidth - margins.right, signaturesY);
+  signaturesY += 15;
+
+  // Configurar las tres columnas para firmas
+  const columnWidth = (pageWidth - margins.left - margins.right) / 3;
+  const col1X = margins.left;
+  const col2X = margins.left + columnWidth;
+  const col3X = margins.left + columnWidth * 2;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  
+  // Primera columna: Solicitado por
+  doc.text('Solicitado por:', col1X, signaturesY);
+  
+  // Segunda columna: Vo. Bo.
+  doc.text('Vo. Bo.:', col2X, signaturesY);
+  
+  // Tercera columna: Entregado por
+  doc.text('Entregado por:', col3X, signaturesY);
+  
+  signaturesY += 15;
+  
+  // Líneas para las firmas
+  doc.setLineWidth(0.5);
+  const lineWidth = columnWidth - 10;
+  doc.line(col1X, signaturesY, col1X + lineWidth, signaturesY);
+  doc.line(col2X, signaturesY, col2X + lineWidth, signaturesY);
+  doc.line(col3X, signaturesY, col3X + lineWidth, signaturesY);
+  
+  signaturesY += 5;
+  
+  // Texto "Firma" debajo de cada línea
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Firma', col1X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.text('Firma', col2X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.text('Firma', col3X + lineWidth / 2, signaturesY, { align: 'center' });
+
+  // Pie de página
+  let finalY = signaturesY + 10;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
+  
+  finalY += 4;
+  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
+
+  // Abrir PDF en nueva pestaña
+  window.open(doc.output('bloburl'), '_blank');
+};
+
+// Interfaz para datos de solicitud de fondos
+interface FundItem {
+  descripcion: string;
+  importeBolivianos: string;
+}
+
+interface FundsRequestData {
+  taskName: string;
+  area: string;
+  lugar: string;
+  fechaInicio: string;
+  fechaFinalizacion: string;
+  fondos: FundItem[];
+}
+
+export const exportFundsRequestToPDF = (data: FundsRequestData) => {
+  const margins = {
+    top: 25,
+    bottom: 25,
+    left: 30,
+    right: 25
+  };
+
+  const doc = new jsPDF({
+    format: 'a4'
+  });
+
+  // Logo de la ONG
+  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZ0AAAGdCAIAAABGvTn1AAAAY3pUWHRSYXcgcHJvZmlsZSB0eXBlIGlwdGMAAHjaPcG5DYBADATA3FVQwvq8/srhOSQyAvoXEgEzct3PLsvHSqw42DxAED9t3TEiAaUlZ8yEMxiT5Jbla5p3qldGurdT4gTkBaIiE+28t0FhAAAgAElEQVR4Xuydd3wURf/Hv7vXS3qjcwkhCSRAaEGC9CIoHQlN0UeKnWZ7BPXhseCjP4qogAIKioqggkCUEgUB6YSShNACORLSc7lc7nJty/z+mLAcKbd3l0sIcd+vecHe7Ozs5G7vc9+Z+c53CIQQCAgICDQjSL4CAgICAg8Ygq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND5isgINDcoGkaJpORoaikSZNWrly1Zs2a9u3b83UEBJobgr32j2Ljxo1Dhw317+IbFxfXsmXLP/7447HHHvNM1BiGwasQBeC++wCBEPw/AAD8JfDP/wMOwP8P/gf/EP///8Y/+u/+3/wP/qf/N//Of9X/29/4H/y//h//lftlZ+dh63zmxFqqCp3TdQQ="
+
+  try {
+    doc.addImage(logoBase64, 'PNG', margins.left, margins.top - 15, 35, 35);
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error);
+  }
+
+  // Título principal
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SOLICITUD DE FONDOS', 105, margins.top + 5, { align: 'center' });
+
+  // Fecha de solicitud
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
+
+  // Línea separadora
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setLineWidth(0.5);
+  doc.line(margins.left, margins.top + 33, pageWidth - margins.right, margins.top + 33);
+
+  // Información general
+  let yPos = margins.top + 40;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  const textWidth = pageWidth - margins.left - margins.right;
+  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
+  doc.text(activityText, margins.left, yPos);
+  yPos += activityText.length * 5 + 2;
+
+  doc.text(`Área: ${data.area}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  yPos += 10;
+
+  // Fondos solicitados
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FONDOS SOLICITADOS', margins.left, yPos);
+  yPos += 7;
+
+  // Calcular total
+  const total = data.fondos.reduce((sum, f) => sum + (parseFloat(f.importeBolivianos) || 0), 0);
+
+  // Tabla de fondos
+  const fondosData = data.fondos.map((f, index) => [
+    (index + 1).toString(),
+    f.descripcion,
+    `Bs. ${parseFloat(f.importeBolivianos).toFixed(2)}`
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['#', 'Descripción', 'Importe']],
+    body: fondosData,
+    foot: [['', 'TOTAL', `Bs. ${total.toFixed(2)}`]],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [44, 95, 141],
+      fontSize: 10,
+      fontStyle: 'bold'
+    },
+    footStyles: {
+      fillColor: [248, 249, 250],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 10
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      overflow: 'linebreak',
+    },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 30, halign: 'right' }
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  // Sección de firmas
+  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
+  signaturesY += 15;
+
+  // Verificar si hay espacio suficiente, si no, agregar nueva página
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (signaturesY > pageHeight - 60) {
+    doc.addPage();
+    signaturesY = margins.top;
+  }
+
+  // Título de la sección de firmas
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
+  signaturesY += 2;
+
+  // Línea separadora
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, signaturesY, pageWidth - margins.right, signaturesY);
+  signaturesY += 15;
+
+  // Configurar las tres columnas para firmas
+  const columnWidth = (pageWidth - margins.left - margins.right) / 3;
+  const col1X = margins.left;
+  const col2X = margins.left + columnWidth;
+  const col3X = margins.left + columnWidth * 2;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  
+  // Primera columna: Solicitado por
+  doc.text('Solicitado por:', col1X, signaturesY);
+  
+  // Segunda columna: Vo. Bo.
+  doc.text('Vo. Bo.:', col2X, signaturesY);
+  
+  // Tercera columna: Entregado por
+  doc.text('Entregado por:', col3X, signaturesY);
+  
+  signaturesY += 15;
+  
+  // Líneas para las firmas
+  doc.setLineWidth(0.5);
+  const lineWidth = columnWidth - 10;
+  doc.line(col1X, signaturesY, col1X + lineWidth, signaturesY);
+  doc.line(col2X, signaturesY, col2X + lineWidth, signaturesY);
+  doc.line(col3X, signaturesY, col3X + lineWidth, signaturesY);
+  
+  signaturesY += 5;
+  
+  // Texto "Firma" debajo de cada línea
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Firma', col1X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.text('Firma', col2X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.text('Firma', col3X + lineWidth / 2, signaturesY, { align: 'center' });
+
+  // Pie de página
+  let finalY = signaturesY + 10;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
+  
+  finalY += 4;
+  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
+
+  // Abrir PDF en nueva pestaña
+  window.open(doc.output('bloburl'), '_blank');
 };

@@ -198,9 +198,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                 <span className="info-value-beneficiary">{aggregatedValues.hombres}</span>
               </div>
 
-              <div className="info-item info-item-highlight">
+              <div className="info-item">
                 <span className="info-label">👥 Total Beneficiarios</span>
-                <span className="info-value-beneficiary-total">{aggregatedValues.total}</span>
+                <span className="info-value-beneficiary">{aggregatedValues.total}</span>
               </div>
 
               <div className="info-item">
@@ -225,8 +225,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowMaterialModal(false)}
           onSuccess={() => {
             setShowMaterialModal(false);
-            // El padre debería manejar el refresh de las subtareas
-            window.location.reload(); // Solución temporal, idealmente pasaríamos un callback
           }}
         />
       )}
@@ -237,7 +235,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowFundsModal(false)}
           onSuccess={() => {
             setShowFundsModal(false);
-            window.location.reload();
           }}
         />
       )}

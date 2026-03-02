@@ -4,6 +4,7 @@ import {
   AsanaTask,
   AsanaWorkspace,
 } from '../types/asana.types';
+import config from '../config/env';
 
 const BASE_URL = 'https://app.asana.com/api/1.0';
 
@@ -17,7 +18,11 @@ class AsanaService {
 
   getToken(): string {
     if (!this.token) {
-      this.token = localStorage.getItem('asana_token') || '';
+      // Primero intenta obtener el token desde localStorage
+      const storedToken = localStorage.getItem('asana_token');
+      
+      // Si no hay token en localStorage, usa el de las variables de entorno
+      this.token = config.asanaToken || storedToken;
     }
     return this.token;
   }

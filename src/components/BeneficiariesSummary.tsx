@@ -64,12 +64,14 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
   const totalsWithoutReplicantes = tasksWithoutReplicantes.reduce((acc, task) => {
     const mujeres = getCustomFieldValue(task, 'Mujeres ');
     const hombres = getCustomFieldValue(task, 'Hombres');
+    const poblacionMeta = getCustomFieldValue(task, 'Población Meta');
     
     acc.mujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
     acc.hombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+    acc.poblacionMeta += poblacionMeta !== '-' ? parseInt(poblacionMeta) || 0 : 0;
     
     return acc;
-  }, { mujeres: 0, hombres: 0 });
+  }, { mujeres: 0, hombres: 0, poblacionMeta: 0 });
 
   // Calcular totales para tareas con replicantes
   const totalsWithReplicantes = tasksWithReplicantes.reduce((acc, task) => {
@@ -93,6 +95,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
       totalsWithReplicantes,
       totalWithoutReplicantes,
       totalWithReplicantes,
+      totalsWithoutReplicantes.poblacionMeta,
       mainTask,
       projectName || 'Proyecto'
     );
@@ -117,7 +120,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
       {tasksWithoutReplicantes.length > 0 && (
         <>
           <h3 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-            Beneficiarios Directos (sin replicantes)
+            Beneficiarios Directos
           </h3>
           <div className="table-container" style={{ overflowX: 'auto', marginBottom: '2rem' }}>
             <table>
