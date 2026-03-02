@@ -22,7 +22,7 @@ class AsanaService {
       const storedToken = localStorage.getItem('asana_token');
       
       // Si no hay token en localStorage, usa el de las variables de entorno
-      this.token = config.asanaToken || storedToken;
+      this.token = storedToken || config.asanaToken || '';
     }
     return this.token;
   }
