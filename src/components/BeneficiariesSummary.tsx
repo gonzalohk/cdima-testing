@@ -156,7 +156,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                 })}
                 <tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
                   <td colSpan={2}>TOTAL</td>
-                  <td>-</td>
+                  <td>{totalsWithoutReplicantes.poblacionMeta}</td>
                   <td>{totalsWithoutReplicantes.mujeres}</td>
                   <td>{totalsWithoutReplicantes.hombres}</td>
                   <td>{totalWithoutReplicantes}</td>
