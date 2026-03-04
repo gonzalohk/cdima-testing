@@ -7,6 +7,7 @@ import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
+import { exportDistributionToPDF } from '../services/pdf.service';
 
 const ReportPage: React.FC = () => {
   const {
@@ -35,6 +36,26 @@ const ReportPage: React.FC = () => {
     setStatusFilter,
     setLugarFilter,
   } = useReportPage();
+
+  const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
+
+  const handleExportMunicipios = () => {
+    exportDistributionToPDF(
+      statistics.byAssignee,
+      'Distribución por Municipio',
+      'Municipio',
+      projectName
+    );
+  };
+
+  const handleExportResponsables = () => {
+    exportDistributionToPDF(
+      statistics.byResponsable,
+      'Distribución por Responsable',
+      'Responsable',
+      projectName
+    );
+  };
 
   return (
     <div>
@@ -71,13 +92,15 @@ const ReportPage: React.FC = () => {
           <ResponsibleDistribution 
             title="Distribución por Municipio" 
             columnName="Municipio"
-            byAssignee={statistics.byAssignee} 
+            byAssignee={statistics.byAssignee}
+            onExport={handleExportMunicipios}
           />
           
           <ResponsibleDistribution 
             title="Distribución por Responsable" 
             columnName="Responsable"
-            byAssignee={statistics.byResponsable} 
+            byAssignee={statistics.byResponsable}
+            onExport={handleExportResponsables}
           />
           
           <BeneficiariesSummary 
@@ -116,13 +139,15 @@ const ReportPage: React.FC = () => {
           <ResponsibleDistribution 
             title="Distribución por Municipio" 
             columnName="Municipio"
-            byAssignee={statistics.byAssignee} 
+            byAssignee={statistics.byAssignee}
+            onExport={handleExportMunicipios}
           />
           
           <ResponsibleDistribution 
             title="Distribución por Responsable" 
             columnName="Responsable"
-            byAssignee={statistics.byResponsable} 
+            byAssignee={statistics.byResponsable}
+            onExport={handleExportResponsables}
           />
           
           <BeneficiariesSummary 

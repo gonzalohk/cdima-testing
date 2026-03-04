@@ -185,6 +185,25 @@
   background-color: #229954;
 }
 
+.btn-export {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-gray) 100%);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-export:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(44, 95, 141, 0.4);
+}
+
 .alert {
   padding: 1rem;
   border-radius: 6px;

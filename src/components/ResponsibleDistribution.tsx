@@ -5,16 +5,24 @@ interface ResponsibleDistributionProps {
   title: string;
   columnName: string;
   byAssignee: TaskStatistics['byAssignee'];
+  onExport?: () => void;
 }
 
-const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title, columnName, byAssignee }) => {
+const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title, columnName, byAssignee, onExport }) => {
   if (Object.keys(byAssignee).length === 0) {
     return null;
   }
 
   return (
     <div className="card">
-      <h2>{title}</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2 style={{ margin: 0 }}>{title}</h2>
+        {onExport && (
+          <button onClick={onExport} className="btn-export">
+            📄 Exportar Reporte
+          </button>
+        )}
+      </div>
       
       <div className="table-container">
         <table className="data-table">
