@@ -184,23 +184,39 @@ export const exportToPDF = (
   doc.text(`Progreso: ${progressPercentage.toFixed(1)}%`, margins.left, yPos);
   
   // Distribución por municipio - calculada con lógica del campo Estado
-  // Agrupar subtareas por Lugar (campo personalizado)
+  // Agrupar subtareas por Lugar (campo personalizado) - dividir múltiples municipios
   const byAssignee: { [key: string]: { total: number; completed: number; pending: number } } = {};
   
   subtasks.forEach(task => {
     const lugar = getCustomFieldValue(task, 'Lugar');
-    const assigneeName = lugar !== '-' ? lugar : 'Sin municipio';
-    if (!byAssignee[assigneeName]) {
-      byAssignee[assigneeName] = { total: 0, completed: 0, pending: 0 };
+    
+    // Dividir por comas para obtener múltiples municipios
+    let municipios: string[] = [];
+    if (lugar !== '-') {
+      municipios = lugar.split(',').map(m => m.trim()).filter(m => m);
     }
-    byAssignee[assigneeName].total += 1;
+    
+    // Si no hay municipios, usar 'Sin municipio'
+    if (municipios.length === 0) {
+      municipios = ['Sin municipio'];
+    }
     
     const estado = getCustomFieldValue(task, 'Estado');
-    if (estado === 'EJECUTADO') {
-      byAssignee[assigneeName].completed += 1;
-    } else {
-      byAssignee[assigneeName].pending += 1;
-    }
+    const isCompleted = estado === 'EJECUTADO';
+    
+    // Contar cada municipio por separado
+    municipios.forEach(municipio => {
+      if (!byAssignee[municipio]) {
+        byAssignee[municipio] = { total: 0, completed: 0, pending: 0 };
+      }
+      byAssignee[municipio].total += 1;
+      
+      if (isCompleted) {
+        byAssignee[municipio].completed += 1;
+      } else {
+        byAssignee[municipio].pending += 1;
+      }
+    });
   });
   
   if (Object.keys(byAssignee).length > 0) {

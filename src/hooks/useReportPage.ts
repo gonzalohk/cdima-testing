@@ -240,14 +240,40 @@ export const useReportPage = () => {
     const byResponsable: TaskStatistics['byResponsable'] = {};
     
     displayTasks.forEach((task) => {
-      // Agrupar por Lugar (Municipio)
+      // Agrupar por Lugar (Municipio) - dividir múltiples municipios separados por coma
       const lugar = task.custom_fields?.find(f => f.name === 'Lugar');
-      const lugarName = lugar?.enum_value?.name || lugar?.text_value || 'Sin municipio';
+      let lugarNames: string[] = [];
       
-      if (!byAssignee[lugarName]) {
-        byAssignee[lugarName] = { total: 0, completed: 0, pending: 0 };
+      if (lugar?.enum_value?.name) {
+        lugarNames = lugar.enum_value.name.split(',').map(m => m.trim()).filter(m => m);
+      } else if (lugar?.text_value) {
+        lugarNames = lugar.text_value.split(',').map(m => m.trim()).filter(m => m);
+      } else if (lugar?.display_value) {
+        lugarNames = lugar.display_value.split(',').map(m => m.trim()).filter(m => m);
       }
-      byAssignee[lugarName].total += 1;
+      
+      // Si no hay municipios, usar 'Sin municipio'
+      if (lugarNames.length === 0) {
+        lugarNames = ['Sin municipio'];
+      }
+      
+      // Verificar el campo Estado
+      const estado = task.custom_fields?.find(f => f.name === 'Estado');
+      const isCompleted = estado?.enum_value?.name === 'EJECUTADO';
+      
+      // Contar cada municipio por separado
+      lugarNames.forEach(lugarName => {
+        if (!byAssignee[lugarName]) {
+          byAssignee[lugarName] = { total: 0, completed: 0, pending: 0 };
+        }
+        byAssignee[lugarName].total += 1;
+        
+        if (isCompleted) {
+          byAssignee[lugarName].completed += 1;
+        } else {
+          byAssignee[lugarName].pending += 1;
+        }
+      });
       
       // Agrupar por Responsable de Actividad
       const responsable = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
@@ -258,15 +284,9 @@ export const useReportPage = () => {
       }
       byResponsable[responsableName].total += 1;
       
-      // Verificar el campo Estado en lugar de completed
-      const estado = task.custom_fields?.find(f => f.name === 'Estado');
-      const isCompleted = estado?.enum_value?.name === 'EJECUTADO';
-      
       if (isCompleted) {
-        byAssignee[lugarName].completed += 1;
         byResponsable[responsableName].completed += 1;
       } else {
-        byAssignee[lugarName].pending += 1;
         byResponsable[responsableName].pending += 1;
       }
     });
@@ -294,18 +314,24 @@ export const useReportPage = () => {
         assigneeFilter === 'all' ||
         (task.assignee?.name || 'Sin asignar') === assigneeFilter;
       
-      // Filtro por lugar
+      // Filtro por lugar - verificar si alguno de los municipios coincide
       const lugarField = task.custom_fields?.find(f => f.name === 'Lugar');
-      let lugarValue = '-';
+      let municipios: string[] = [];
+      
       if (lugarField?.display_value) {
-        lugarValue = lugarField.display_value;
+        municipios = lugarField.display_value.split(',').map(m => m.trim()).filter(m => m);
       } else if (lugarField?.type === 'multi_enum' && lugarField.multi_enum_values && lugarField.multi_enum_values.length > 0) {
-        lugarValue = lugarField.multi_enum_values.map(v => v.name).join(', ');
+        const joinedValue = lugarField.multi_enum_values.map(v => v.name).join(', ');
+        municipios = joinedValue.split(',').map(m => m.trim()).filter(m => m);
+      }
+      
+      if (municipios.length === 0) {
+        municipios = ['-'];
       }
       
       const matchesLugar =
         lugarFilter === 'all' ||
-        lugarValue === lugarFilter;
+        municipios.includes(lugarFilter);
       
       return matchesSearch && matchesStatus && matchesAssignee && matchesLugar;
     });
@@ -320,18 +346,26 @@ export const useReportPage = () => {
     return Array.from(assignees).sort();
   }, [displayTasks]);
 
-  // Lista única de lugares para el filtro
+  // Lista única de lugares para el filtro - dividir municipios por coma
   const uniqueLugares = useMemo(() => {
     const lugares = new Set<string>();
     displayTasks.forEach((task) => {
       const lugarField = task.custom_fields?.find(f => f.name === 'Lugar');
-      let lugarValue = '-';
+      let municipios: string[] = [];
+      
       if (lugarField?.display_value) {
-        lugarValue = lugarField.display_value;
+        municipios = lugarField.display_value.split(',').map(m => m.trim()).filter(m => m);
       } else if (lugarField?.type === 'multi_enum' && lugarField.multi_enum_values && lugarField.multi_enum_values.length > 0) {
-        lugarValue = lugarField.multi_enum_values.map(v => v.name).join(', ');
+        const joinedValue = lugarField.multi_enum_values.map(v => v.name).join(', ');
+        municipios = joinedValue.split(',').map(m => m.trim()).filter(m => m);
       }
-      lugares.add(lugarValue);
+      
+      if (municipios.length === 0) {
+        municipios = ['-'];
+      }
+      
+      // Agregar cada municipio individualmente
+      municipios.forEach(m => lugares.add(m));
     });
     // Eliminar el valor '-' si existe y hay otros lugares
     const lugaresArray = Array.from(lugares).sort();
