@@ -210,6 +210,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
               <th style={{ minWidth: '300px' }}>Nombre de la Solicitud</th>
               <th style={{ minWidth: '180px' }}>Tipo de Solicitud</th>
               <th style={{ minWidth: '160px' }}>Fecha de Generación</th>
+              <th style={{ minWidth: '140px' }}>Estado</th>
               <th style={{ minWidth: '120px', textAlign: 'center' }}>Acción</th>
             </tr>
           </thead>
@@ -217,6 +218,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
             {solicitudes.map((task) => {
               const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
               const fechaGeneracion = extractFechaSolicitud(task.notes);
+              const esFinalizada = task.completed;
 
               return (
                 <tr key={task.gid}>
@@ -238,6 +240,22 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
                     </span>
                   </td>
                   <td>{fechaGeneracion}</td>
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '12px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        backgroundColor: esFinalizada ? '#e8f5e9' : '#fff3e0',
+                        color: esFinalizada ? '#2e7d32' : '#f57c00',
+                        border: `1px solid ${esFinalizada ? '#81c784' : '#ffb74d'}`,
+                      }}
+                    >
+                      {esFinalizada ? '✓ Finalizada' : '⏸ Pendiente'}
+                    </span>
+                  </td>
                   <td style={{ textAlign: 'center' }}>
                     <button
                       onClick={() => handlePrint(task)}
