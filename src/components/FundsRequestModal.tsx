@@ -122,14 +122,46 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
         throw new Error('No se pudo obtener el workspace de la tarea');
       }
 
+      // Buscar el campo personalizado "Tipo de Solicitud"
+      const tipoSolicitudField = task.custom_fields?.find(
+        field => field.name === 'Tipo de Solicitud'
+      );
+      
+      // Preparar custom_fields si existe el campo
+      const customFields: Record<string, string> = {};
+      if (tipoSolicitudField?.gid) {
+        // Buscar el enum_value para "Solicitud de Fondos"
+        const solicitudFondosValue = tipoSolicitudField.enum_options?.find(
+          option => option.name === 'Solicitud de Fondos'
+        );
+        
+        if (solicitudFondosValue?.gid) {
+          customFields[tipoSolicitudField.gid] = solicitudFondosValue.gid;
+        }
+      }
+
       // Crear la subtarea
       await asanaService.createSubtask(task.gid, workspaceGid, {
         name: subtaskName,
         notes: notes,
-        due_on: fechaFinalizacion
+        due_on: fechaFinalizacion,
+        custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 
       setNotification({ message: '¡Solicitud de fondos creada exitosamente!', type: 'success' });
+      
+      // Generar PDF automáticamente
+      setTimeout(() => {
+        exportFundsRequestToPDF({
+          taskName: task.name,
+          area,
+          lugar,
+          fechaInicio,
+          fechaFinalizacion,
+          fondos: fondosValidos
+        });
+      }, 500);
+      
       setTimeout(() => {
         onSuccess();
         onClose();
@@ -289,31 +321,6 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
           </div>
 
           <div className="modal-footer">
-            <button
-              type="button"
-              onClick={() => {
-                // Validar que hay datos para imprimir
-                const fondosValidos = fondos.filter(f => f.descripcion.trim());
-                if (!area || !lugar || !fechaInicio || !fechaFinalizacion || fondosValidos.length === 0) {
-                  setError('Complete todos los campos requeridos antes de imprimir');
-                  return;
-                }
-                exportFundsRequestToPDF({
-                  taskName: task.name,
-                  area,
-                  lugar,
-                  fechaInicio,
-                  fechaFinalizacion,
-                  fondos: fondosValidos
-                });
-                setNotification({ message: 'PDF generado exitosamente', type: 'success' });
-              }}
-              className="button"
-              style={{ backgroundColor: '#17a2b8', color: 'white', marginRight: 'auto' }}
-              disabled={loading}
-            >
-              🖨️ Imprimir PDF
-            </button>
             <button
               type="button"
               onClick={onClose}

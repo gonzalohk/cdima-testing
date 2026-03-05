@@ -20,6 +20,7 @@ export interface CustomField {
   type: 'enum' | 'multi_enum' | 'number' | 'text' | 'date' | 'people';
   display_value?: string | null;
   enum_value?: CustomFieldEnumOption | null;
+  enum_options?: CustomFieldEnumOption[];
   multi_enum_values?: CustomFieldEnumOption[];
   number_value?: number | null;
   text_value?: string | null;

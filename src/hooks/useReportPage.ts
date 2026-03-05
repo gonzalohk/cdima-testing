@@ -56,7 +56,7 @@ export const useReportPage = () => {
       setWorkspaces(data);
       
       // Auto-seleccionar "My Workspace"
-      const myWorkspace = data.find(ws => ws.name === 'My workspace');
+      const myWorkspace = data.find(ws => ws.name === 'CDIMA');
       if (myWorkspace) {
         setSelectedWorkspace(myWorkspace.gid);
         // Cargar proyectos automáticamente

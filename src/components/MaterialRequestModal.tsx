@@ -118,14 +118,46 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
         throw new Error('No se pudo obtener el workspace de la tarea');
       }
 
+      // Buscar el campo personalizado "Tipo de Solicitud"
+      const tipoSolicitudField = task.custom_fields?.find(
+        field => field.name === 'Tipo de Solicitud'
+      );
+      
+      // Preparar custom_fields si existe el campo
+      const customFields: Record<string, string> = {};
+      if (tipoSolicitudField?.gid) {
+        // Buscar el enum_value para "Solicitud de Material"
+        const solicitudMaterialValue = tipoSolicitudField.enum_options?.find(
+          option => option.name === 'Solicitud de Material'
+        );
+        
+        if (solicitudMaterialValue?.gid) {
+          customFields[tipoSolicitudField.gid] = solicitudMaterialValue.gid;
+        }
+      }
+
       // Crear la subtarea
       await asanaService.createSubtask(task.gid, workspaceGid, {
         name: subtaskName,
         notes: notes,
-        due_on: fechaFinalizacion
+        due_on: fechaFinalizacion,
+        custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 
       setNotification({ message: '¡Solicitud de material creada exitosamente!', type: 'success' });
+      
+      // Generar PDF automáticamente
+      setTimeout(() => {
+        exportMaterialRequestToPDF({
+          taskName: task.name,
+          area,
+          lugar,
+          fechaInicio,
+          fechaFinalizacion,
+          materiales: materialesValidos
+        });
+      }, 500);
+      
       setTimeout(() => {
         onSuccess();
         onClose();
@@ -318,49 +350,22 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
             </button>
           </div>
 
-          <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between' }}>
+          <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button
               type="button"
-              onClick={() => {
-                // Validar que hay datos para imprimir
-                const materialesValidos = materiales.filter(m => m.detalle.trim());
-                if (!area || !lugar || !fechaInicio || !fechaFinalizacion || materialesValidos.length === 0) {
-                  setError('Complete todos los campos requeridos antes de imprimir');
-                  return;
-                }
-                exportMaterialRequestToPDF({
-                  taskName: task.name,
-                  area,
-                  lugar,
-                  fechaInicio,
-                  fechaFinalizacion,
-                  materiales: materialesValidos
-                });
-                setNotification({ message: 'PDF generado exitosamente', type: 'success' });
-              }}
+              onClick={onClose}
               className="button"
-              style={{ backgroundColor: '#17a2b8', color: 'white' }}
               disabled={loading}
             >
-              🖨️ Imprimir PDF
+              Cancelar
             </button>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={onClose}
-                className="button"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="button-primary"
-                disabled={loading}
-              >
-                {loading ? 'Creando solicitud...' : 'Crear Solicitud'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={loading}
+            >
+              {loading ? 'Creando solicitud...' : 'Crear Solicitud'}
+            </button>
           </div>
         </form>
       </div>

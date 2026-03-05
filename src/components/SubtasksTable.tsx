@@ -56,10 +56,16 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     return '-';
   };
 
+  // Filtrar las subtareas que NO tienen "Tipo de Solicitud"
+  const subtasksWithoutRequests = filteredSubtasks.filter(task => {
+    const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
+    return tipoSolicitud === '-';
+  });
+
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Sub Actividades ({filteredSubtasks.length})</h2>
+        <h2 style={{ margin: 0 }}>Sub Actividades ({subtasksWithoutRequests.length})</h2>
         <button
           onClick={onExportPDF}
           className="button-primary"
@@ -101,7 +107,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
         </select>
       </div>
 
-      {filteredSubtasks.length === 0 ? (
+      {subtasksWithoutRequests.length === 0 ? (
         <div className="empty-state">
           <p>No se encontraron sub actividades</p>
         </div>
@@ -120,7 +126,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filteredSubtasks.map((task) => {
+              {subtasksWithoutRequests.map((task) => {
                 return (
                   <tr key={task.gid}>
                     <td>{task.name}</td>

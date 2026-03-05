@@ -5,6 +5,7 @@ import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
 import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
+import RequestsTable from '../components/RequestsTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { exportDistributionToPDF } from '../services/pdf.service';
@@ -109,6 +110,8 @@ const ReportPage: React.FC = () => {
             projectName={projects.find(p => p.gid === selectedProject)?.name}
           />
           
+          <RequestsTable subtasks={subtasks} />
+          
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
             uniqueLugares={uniqueLugares}
@@ -154,6 +157,8 @@ const ReportPage: React.FC = () => {
             subtasks={filteredSubtasks}
             projectName={projects.find(p => p.gid === selectedProject)?.name}
           />
+          
+          <RequestsTable subtasks={filteredSubtasks} />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
