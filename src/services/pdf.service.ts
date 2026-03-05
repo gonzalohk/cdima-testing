@@ -898,6 +898,7 @@ interface MaterialRequestData {
   fechaInicio: string;
   fechaFinalizacion: string;
   materiales: MaterialItem[];
+  fechaGeneracion?: string;
 }
 
 export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
@@ -929,12 +930,13 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   // Fecha de solicitud
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+  const fechaSolicitud = data.fechaGeneracion || new Date().toLocaleString('es-ES', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/La_Paz'
   });
   doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
 
@@ -962,9 +964,9 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   yPos += 5;
   doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
   yPos += 5;
-  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
   yPos += 5;
-  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
   yPos += 10;
 
   // Materiales solicitados
@@ -1091,6 +1093,7 @@ interface FundsRequestData {
   fechaInicio: string;
   fechaFinalizacion: string;
   fondos: FundItem[];
+  fechaGeneracion?: string;
 }
 
 export const exportFundsRequestToPDF = (data: FundsRequestData) => {
@@ -1122,12 +1125,13 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   // Fecha de solicitud
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+  const fechaSolicitud = data.fechaGeneracion || new Date().toLocaleString('es-ES', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/La_Paz'
   });
   doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
 
@@ -1155,9 +1159,9 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   yPos += 5;
   doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
   yPos += 5;
-  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
   yPos += 5;
-  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES')}`, margins.left, yPos);
+  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
   yPos += 10;
 
   // Fondos solicitados

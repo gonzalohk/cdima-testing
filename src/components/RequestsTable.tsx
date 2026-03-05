@@ -1,8 +1,23 @@
 import React from 'react';
 import { AsanaTask } from '../types/asana.types';
+import { exportFundsRequestToPDF, exportMaterialRequestToPDF } from '../services/pdf.service';
 
 interface RequestsTableProps {
   subtasks: AsanaTask[];
+}
+
+interface FundItem {
+  id: number;
+  descripcion: string;
+  importeBolivianos: string;
+}
+
+interface MaterialItem {
+  id: number;
+  detalle: string;
+  cantidad: string;
+  unidad: string;
+  observaciones: string;
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
@@ -38,6 +53,142 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
     return '-';
   };
 
+  // Parsear información de solicitud de fondos desde las notas
+  const parseFundsRequest = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    
+    // Extraer el nombre de la actividad
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    
+    // Extraer área
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    
+    // Extraer lugar
+    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    
+    // Extraer fecha de inicio
+    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
+    
+    // Extraer fecha de finalización
+    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
+    
+    // Extraer fondos solicitados
+    const fondos: FundItem[] = [];
+    const fondosSection = notes.match(/FONDOS SOLICITADOS:\s*([\s\S]+?)(?=\n\nTOTAL:|\n\n---)/);
+    
+    if (fondosSection) {
+      const fondosText = fondosSection[1];
+      const fondosItems = fondosText.split(/\n\n(?=\d+\.)/);
+      
+      fondosItems.forEach((item, index) => {
+        const descMatch = item.match(/\d+\.\s*(.+)/);
+        const importeMatch = item.match(/Importe:\s*Bs\.\s*([\d.]+)/);
+        
+        if (descMatch) {
+          fondos.push({
+            id: index + 1,
+            descripcion: descMatch[1].trim(),
+            importeBolivianos: importeMatch ? importeMatch[1] : '0'
+          });
+        }
+      });
+    }
+    
+    return {
+      taskName,
+      area,
+      lugar,
+      fechaInicio,
+      fechaFinalizacion,
+      fondos
+    };
+  };
+
+  // Parsear información de solicitud de material desde las notas
+  const parseMaterialRequest = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    
+    // Extraer el nombre de la actividad
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    
+    // Extraer área
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    
+    // Extraer lugar
+    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    
+    // Extraer fecha de inicio
+    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
+    
+    // Extraer fecha de finalización
+    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
+    
+    // Extraer materiales solicitados
+    const materiales: MaterialItem[] = [];
+    const materialesSection = notes.match(/MATERIALES SOLICITADOS:\s*([\s\S]+?)(?=\n\n---)/);
+    
+    if (materialesSection) {
+      const materialesText = materialesSection[1];
+      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);
+      
+      materialesItems.forEach((item, index) => {
+        const detalleMatch = item.match(/\d+\.\s*(.+)/);
+        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
+        const unidadMatch = item.match(/Unidad:\s*(.+)/);
+        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
+        
+        if (detalleMatch) {
+          materiales.push({
+            id: index + 1,
+            detalle: detalleMatch[1].trim(),
+            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
+            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
+            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
+          });
+        }
+      });
+    }
+    
+    return {
+      taskName,
+      area,
+      lugar,
+      fechaInicio,
+      fechaFinalizacion,
+      materiales
+    };
+  };
+
+  // Manejar clic en botón imprimir
+  const handlePrint = (task: AsanaTask) => {
+    const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
+    const fechaGeneracion = extractFechaSolicitud(task.notes);
+    
+    if (tipoSolicitud === 'Solicitud de Fondos') {
+      const data = parseFundsRequest(task);
+      exportFundsRequestToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    } else if (tipoSolicitud === 'Solicitud de Material') {
+      const data = parseMaterialRequest(task);
+      exportMaterialRequestToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    }
+  };
+
   // Filtrar solo las subtareas que tienen "Tipo de Solicitud"
   const solicitudes = subtasks.filter(task => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
@@ -59,6 +210,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
               <th style={{ minWidth: '300px' }}>Nombre de la Solicitud</th>
               <th style={{ minWidth: '180px' }}>Tipo de Solicitud</th>
               <th style={{ minWidth: '160px' }}>Fecha de Generación</th>
+              <th style={{ minWidth: '120px', textAlign: 'center' }}>Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -86,6 +238,19 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
                     </span>
                   </td>
                   <td>{fechaGeneracion}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      onClick={() => handlePrint(task)}
+                      className="button-primary"
+                      style={{
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🖨️ Imprimir
+                    </button>
+                  </td>
                 </tr>
               );
             })}

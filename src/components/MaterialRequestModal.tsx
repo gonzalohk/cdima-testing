@@ -80,12 +80,13 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
       const subtaskName = `SOLICITUD DE MATERIAL - ${task.name}`;
 
       // Construir las notas con toda la información
-      const fechaSolicitud = new Date().toLocaleDateString('es-ES', {
+      const fechaSolicitud = new Date().toLocaleString('es-ES', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'America/La_Paz'
       });
 
       const materialesTexto = materialesValidos.map((m, index) => 
@@ -102,8 +103,8 @@ Actividad: ${task.name}
 INFORMACIÓN GENERAL:
 • Área: ${area}
 • Lugar de entrega: ${lugar}
-• Fecha de inicio: ${new Date(fechaInicio).toLocaleDateString('es-ES')}
-• Fecha de finalización: ${new Date(fechaFinalizacion).toLocaleDateString('es-ES')}
+• Fecha de inicio: ${new Date(fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}
+• Fecha de finalización: ${new Date(fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}
 • Fecha de solicitud: ${fechaSolicitud}
 
 MATERIALES SOLICITADOS:
