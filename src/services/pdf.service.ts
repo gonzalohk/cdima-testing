@@ -1088,6 +1088,191 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   window.open(doc.output('bloburl'), '_blank');
 };
 
+// Interfaz para datos de solicitud de devolución
+interface MaterialReturnData {
+  taskName: string;
+  area: string;
+  lugar: string;
+  materiales: MaterialItem[];
+  fechaGeneracion?: string;
+}
+
+export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
+  const margins = {
+    top: 25,
+    bottom: 25,
+    left: 30,
+    right: 25
+  };
+
+  const doc = new jsPDF({
+    format: 'a4'
+  });
+
+  // Logo de la ONG
+  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZ0AAAGdCAIAAABGvTn1AAAAY3pUWHRSYXcgcHJvZmlsZSB0eXBlIGlwdGMAAHjaPcG5DYBADATA3FVQwvq8/srhOSQyAvoXEgEzct3PLsvHSqw42DxAED9t3TEiAaUlZ8yEMxiT5Jbla5p3qldGurdT4gTkBaIiE+28t0FhAAAgAElEQVR4Xuydd3wURf/Hv7vXS3qjcwkhCSRAaEGC9CIoHQlN0UeKnWZ7BPXhseCjP4qogAIKioqggkCUEgUB6YSShNACORLSc7lc7nJty/z+mLAcKbd3l0sIcd+vecHe7Ozs5G7vc9+Z+c53CIQQCAgICDQjSL4CAgICAg8Ygq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHyFRAQaG5QFIXZbHZ7RU5Ozs2bN5977rnIyEi+6gQEHhwEe+2fxcqVK4cMGeLj49OyZcu47t2/+uorsbn0fNQYhuErIiBwfyAQQu+rAAD8JfCP/wMOwP8P/gf/EP///8Y/+u/+3/wP/qf/N//Of9X/ 29/4H/y//h//lftlZ+dh6zzmxFqqCp3TdQQ="
+
+  try {
+    doc.addImage(logoBase64, 'PNG', margins.left, margins.top - 15, 35, 35);
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error);
+  }
+
+  // Título principal
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SOLICITUD DE DEVOLUCION', 105, margins.top + 5, { align: 'center' });
+
+  // Fecha de solicitud
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const fechaSolicitud = data.fechaGeneracion || new Date().toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/La_Paz'
+  });
+  doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
+
+  // Línea separadora
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setLineWidth(0.5);
+  doc.line(margins.left, margins.top + 33, pageWidth - margins.right, margins.top + 33);
+
+  // Información general
+  let yPos = margins.top + 40;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  const textWidth = pageWidth - margins.left - margins.right;
+  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
+  doc.text(activityText, margins.left, yPos);
+  yPos += activityText.length * 5 + 2;
+
+  doc.text(`Área: ${data.area}`, margins.left, yPos);
+  yPos += 5;
+  doc.text(`Lugar de devolución: ${data.lugar}`, margins.left, yPos);
+  yPos += 10;
+
+  // Materiales a devolver
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MATERIALES A DEVOLVER', margins.left, yPos);
+  yPos += 7;
+
+  // Tabla de materiales
+  const materialesData = data.materiales.map((m, index) => [
+    (index + 1).toString(),
+    m.detalle,
+    m.cantidad || '-',
+    m.unidad || '-',
+    m.observaciones || '-'
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['#', 'Detalle', 'Cantidad', 'Unidad', 'Observaciones']],
+    body: materialesData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [44, 95, 141],
+      fontSize: 10,
+      fontStyle: 'bold'
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      overflow: 'linebreak',
+    },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 'auto' }
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  // Sección de firmas
+  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
+  signaturesY += 15;
+
+  // Verificar si hay espacio suficiente, si no, agregar nueva página
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (signaturesY > pageHeight - 60) {
+    doc.addPage();
+    signaturesY = margins.top;
+  }
+
+  // Título de la sección de firmas
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
+  signaturesY += 2;
+
+  // Línea separadora
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, signaturesY, pageWidth - margins.right, signaturesY);
+  signaturesY += 15;
+
+  // Configurar las tres columnas para firmas
+  const columnWidth = (pageWidth - margins.left - margins.right) / 3;
+  const col1X = margins.left;
+  const col2X = margins.left + columnWidth;
+  const col3X = margins.left + columnWidth * 2;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+
+  // Columna 1: Solicitado por
+  doc.text('SOLICITADO POR:', col1X, signaturesY);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.line(col1X, signaturesY + 20, col1X + columnWidth - 5, signaturesY + 20);
+  doc.text('Nombre y firma', col1X, signaturesY + 25);
+  doc.text(`Fecha: __/__/____`, col1X, signaturesY + 30);
+
+  // Columna 2: Revisado por
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REVISADO POR:', col2X, signaturesY);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.line(col2X, signaturesY + 20, col2X + columnWidth - 5, signaturesY + 20);
+  doc.text('Nombre y firma', col2X, signaturesY + 25);
+  doc.text(`Fecha: __/__/____`, col2X, signaturesY + 30);
+
+  // Columna 3: Aprobado por
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('APROBADO POR:', col3X, signaturesY);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.line(col3X, signaturesY + 20, col3X + columnWidth - 5, signaturesY + 20);
+  doc.text('Nombre y firma', col3X, signaturesY + 25);
+  doc.text(`Fecha: __/__/____`, col3X, signaturesY + 30);
+
+  // Pie de página
+  let finalY = signaturesY + 40;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
+  
+  finalY += 4;
+  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
+
+  // Abrir PDF en nueva pestaña
+  window.open(doc.output('bloburl'), '_blank');
+};
+
 // Interfaz para datos de solicitud de fondos
 interface FundItem {
   descripcion: string;

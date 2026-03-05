@@ -1,6 +1,6 @@
 import React from 'react';
 import { AsanaTask } from '../types/asana.types';
-import { exportFundsRequestToPDF, exportMaterialRequestToPDF } from '../services/pdf.service';
+import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
 
 interface RequestsTableProps {
   subtasks: AsanaTask[];
@@ -169,6 +169,54 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
     };
   };
 
+  // Parsear información de solicitud de devolución desde las notas
+  const parseMaterialReturn = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    
+    // Extraer el nombre de la actividad
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    
+    // Extraer área
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    
+    // Extraer lugar de devolución
+    const lugarMatch = notes.match(/•\s*Lugar de devolución:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    
+    // Extraer materiales a devolver
+    const materiales: MaterialItem[] = [];
+    const materialesSection = notes.match(/MATERIALES A DEVOLVER:\s*([\s\S]+?)(?=\n\n---)/);    
+    if (materialesSection) {
+      const materialesText = materialesSection[1];
+      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);      
+      materialesItems.forEach((item, index) => {
+        const detalleMatch = item.match(/\d+\.\s*(.+)/);
+        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
+        const unidadMatch = item.match(/Unidad:\s*(.+)/);
+        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
+        
+        if (detalleMatch) {
+          materiales.push({
+            id: index + 1,
+            detalle: detalleMatch[1].trim(),
+            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
+            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
+            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
+          });
+        }
+      });
+    }
+    
+    return {
+      taskName,
+      area,
+      lugar,
+      materiales
+    };
+  };
+
   // Manejar clic en botón imprimir
   const handlePrint = (task: AsanaTask) => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
@@ -183,6 +231,12 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
     } else if (tipoSolicitud === 'Solicitud de Material') {
       const data = parseMaterialRequest(task);
       exportMaterialRequestToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    } else if (tipoSolicitud === 'Solicitud de Devolucion') {
+      const data = parseMaterialReturn(task);
+      exportMaterialReturnToPDF({
         ...data,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
@@ -231,9 +285,19 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
                         borderRadius: '12px',
                         fontSize: '0.875rem',
                         fontWeight: '500',
-                        backgroundColor: tipoSolicitud === 'Solicitud de Fondos' ? '#e3f2fd' : '#fff3e0',
-                        color: tipoSolicitud === 'Solicitud de Fondos' ? '#1976d2' : '#f57c00',
-                        border: `1px solid ${tipoSolicitud === 'Solicitud de Fondos' ? '#90caf9' : '#ffb74d'}`,
+                        backgroundColor: 
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#e3f2fd' : 
+                          tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
+                          '#fff3e0',
+                        color: 
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#1976d2' : 
+                          tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
+                          '#f57c00',
+                        border: `1px solid ${
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#90caf9' : 
+                          tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
+                          '#ffb74d'
+                        }`,
                       }}
                     >
                       {tipoSolicitud}

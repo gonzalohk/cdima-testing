@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AsanaTask } from '../types/asana.types';
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
+import MaterialReturnModal from './MaterialReturnModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -12,6 +13,7 @@ interface TaskInfoProps {
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) => {
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -143,6 +145,13 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             >
               💰 Solicitud de Fondos
             </button>
+            <button
+              onClick={() => setShowReturnModal(true)}
+              className="button-primary"
+              style={{ fontSize: '0.9rem' }}
+            >
+              🔄 Solicitud de Devolución
+            </button>
           </div>
         </div>
 
@@ -235,6 +244,16 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowFundsModal(false)}
           onSuccess={() => {
             setShowFundsModal(false);
+          }}
+        />
+      )}
+
+      {showReturnModal && (
+        <MaterialReturnModal
+          task={task}
+          onClose={() => setShowReturnModal(false)}
+          onSuccess={() => {
+            setShowReturnModal(false);
           }}
         />
       )}
