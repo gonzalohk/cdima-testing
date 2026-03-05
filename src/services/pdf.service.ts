@@ -185,9 +185,13 @@ export const exportToPDF = (
   
   // Distribución por municipio - calculada con lógica del campo Estado
   // Agrupar subtareas por Lugar (campo personalizado) - dividir múltiples municipios
+  // Excluir subtareas que tienen "Tipo de Solicitud" definido (solicitudes de fondos/materiales)
   const byAssignee: { [key: string]: { total: number; completed: number; pending: number } } = {};
   
-  subtasks.forEach(task => {
+  subtasks.filter(task => {
+    const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
+    return tipoSolicitud === '-';
+  }).forEach(task => {
     const lugar = getCustomFieldValue(task, 'Lugar');
     
     // Dividir por comas para obtener múltiples municipios
@@ -256,9 +260,13 @@ export const exportToPDF = (
   
   // Distribución por Responsable - calculada con lógica del campo Estado
   // Agrupar subtareas por Responsable de Actividad (campo personalizado)
+  // Excluir subtareas que tienen "Tipo de Solicitud" definido (solicitudes de fondos/materiales)
   const byResponsable: { [key: string]: { total: number; completed: number; pending: number; poblacionMeta: number } } = {};
   
-  subtasks.forEach(task => {
+  subtasks.filter(task => {
+    const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
+    return tipoSolicitud === '-';
+  }).forEach(task => {
     const responsable = getCustomFieldValue(task, 'Responsable de Actividad');
     const responsableName = responsable !== '-' ? responsable : 'Sin responsable';
     if (!byResponsable[responsableName]) {

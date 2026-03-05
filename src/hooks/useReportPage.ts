@@ -239,7 +239,13 @@ export const useReportPage = () => {
     const byAssignee: TaskStatistics['byAssignee'] = {};
     const byResponsable: TaskStatistics['byResponsable'] = {};
     
-    displayTasks.forEach((task) => {
+    // Excluir subtareas que tienen "Tipo de Solicitud" definido (solicitudes de fondos/materiales)
+    const tasksForDistribution = displayTasks.filter((task) => {
+      const tipoSolicitud = task.custom_fields?.find(f => f.name === 'Tipo de Solicitud');
+      return !tipoSolicitud?.enum_value?.name || tipoSolicitud?.enum_value?.name === '';
+    });
+    
+    tasksForDistribution.forEach((task) => {
       // Agrupar por Lugar (Municipio) - dividir múltiples municipios separados por coma
       const lugar = task.custom_fields?.find(f => f.name === 'Lugar');
       let lugarNames: string[] = [];
