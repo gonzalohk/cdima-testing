@@ -123,9 +123,23 @@ class AsanaService {
 
   // Métodos para Biblioteca de Recursos
   async getTaskAttachments(taskGid: string): Promise<AsanaAttachment[]> {
-    return this.fetchAsana<AsanaAttachment[]>(
-      `/tasks/${taskGid}/attachments`
+    const attachments = await this.fetchAsana<AsanaAttachment[]>(
+      `/tasks/${taskGid}/attachments?opt_fields=gid,name,resource_type,resource_subtype,view_url,download_url,host,parent`
     );
+    
+    // Log para debugging
+    if (attachments.length > 0) {
+      console.log(`Attachments for task ${taskGid}:`, attachments.map(a => ({
+        name: a.name,
+        hasViewUrl: !!a.view_url,
+        hasDownloadUrl: !!a.download_url,
+        viewUrl: a.view_url,
+        downloadUrl: a.download_url,
+        host: a.host
+      })));
+    }
+    
+    return attachments;
   }
 
   async getTaskWithAttachments(taskGid: string): Promise<AsanaTask> {

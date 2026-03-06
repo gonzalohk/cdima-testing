@@ -1299,52 +1299,93 @@ select.form-input {
 }
 
 /* Drive Link */
-.drive-link {
+.drive-link-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.drive-link-container:hover {
+  border-color: #d0d0d0;
+  background: #fafafa;
+}
+
+.drive-link-info {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.75rem;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.2s;
-  background: white;
+  flex: 1;
+  min-width: 0;
 }
 
-.drive-link:hover {
-  background: var(--primary-blue);
-  border-color: var(--primary-blue);
-  transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
-}
-
-.drive-link-icon {
-  font-size: 1.25rem;
+.drive-link-file-icon {
+  color: #666;
   flex-shrink: 0;
 }
 
-.drive-link-text {
+.drive-link-label {
   font-size: 0.875rem;
   color: #1a1a1a;
-  flex: 1;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.drive-link:hover .drive-link-text {
-  color: white;
+.drive-link-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.drive-link-arrow {
-  color: #999;
-  font-size: 0.875rem;
+.drive-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
-.drive-link:hover .drive-link-arrow {
+.drive-link-btn svg {
+  flex-shrink: 0;
+}
+
+.drive-link-view {
+  background: white;
+  color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.drive-link-view:hover {
+  background: var(--primary-blue);
   color: white;
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.drive-link-download {
+  background: white;
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.drive-link-download:hover {
+  background: #10b981;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
 /* Task Subtasks Section */

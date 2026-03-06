@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
-import { AsanaProject, AsanaTask, AsanaWorkspace, AsanaAttachment } from '../types/asana.types';
+import { AsanaProject, AsanaTask, AsanaAttachment } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 
 interface Link {
   id: string;
   label: string;
-  url: string;
+  viewUrl?: string;
+  downloadUrl?: string;
 }
 
 interface Subtask {
@@ -63,13 +64,25 @@ const getSectionTypeColor = (sectionName: string): { tipo: string; color: string
 const convertAttachmentsToLinks = (attachments?: AsanaAttachment[]): Link[] => {
   if (!attachments || attachments.length === 0) return [];
   
-  return attachments
+  const links = attachments
     .filter(att => att.view_url || att.download_url)
     .map(att => ({
       id: att.gid,
       label: att.name,
-      url: att.view_url || att.download_url || '#'
+      viewUrl: att.view_url,
+      downloadUrl: att.download_url
     }));
+  
+  // Log para debugging
+  if (links.length > 0) {
+    console.log('Converted links:', links.map(l => ({
+      label: l.label,
+      hasView: !!l.viewUrl,
+      hasDownload: !!l.downloadUrl
+    })));
+  }
+  
+  return links;
 };
 
 // Convertir tarea de Asana a Task del componente
@@ -95,23 +108,49 @@ const convertAsanaTaskToTask = (asanaTask: AsanaTask): Task => {
 // Componente para enlaces de Google Drive
 const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
   return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noreferrer"
-      className="drive-link"
-      style={{ '--accent-color': accentColor } as React.CSSProperties}
-    >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-      </svg>
-      {link.label}
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-        <polyline points="15 3 21 3 21 9"/>
-        <line x1="10" y1="14" x2="21" y2="3"/>
-      </svg>
-    </a>
+    <div className="drive-link-container">
+      <div className="drive-link-info">
+        <svg className="drive-link-file-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span className="drive-link-label">{link.label}</span>
+      </div>
+      <div className="drive-link-actions">
+        {link.viewUrl && (
+          <a
+            href={link.viewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="drive-link-btn drive-link-view"
+            title="Ver en Drive"
+            style={{ '--accent-color': accentColor } as React.CSSProperties}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>Ver</span>
+          </a>
+        )}
+        {link.downloadUrl && (
+          <a
+            href={link.downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="drive-link-btn drive-link-download"
+            title="Descargar"
+            style={{ '--accent-color': accentColor } as React.CSSProperties}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Descargar</span>
+          </a>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -267,7 +306,6 @@ const SectionCard: React.FC<{
 // Componente principal
 const ResourceLibraryPage: React.FC = () => {
   const navigate = useNavigate();
-  const [workspaces, setWorkspaces] = useState<AsanaWorkspace[]>([]);
   const [projects, setProjects] = useState<AsanaProject[]>([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [sections, setSections] = useState<Section[]>([]);
@@ -291,7 +329,6 @@ const ResourceLibraryPage: React.FC = () => {
     setError('');
     try {
       const data = await asanaService.getWorkspaces();
-      setWorkspaces(data);
       
       // Auto-seleccionar "CDIMA"
       const cdima = data.find(ws => ws.name === 'CDIMA');
