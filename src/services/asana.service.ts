@@ -1,4 +1,5 @@
 import {
+  AsanaAttachment,
   AsanaProject,
   AsanaSection,
   AsanaTask,
@@ -119,6 +120,66 @@ class AsanaService {
       })
     });
   }
+
+  // Métodos para Biblioteca de Recursos
+  async getTaskAttachments(taskGid: string): Promise<AsanaAttachment[]> {
+    return this.fetchAsana<AsanaAttachment[]>(
+      `/tasks/${taskGid}/attachments`
+    );
+  }
+
+  async getTaskWithAttachments(taskGid: string): Promise<AsanaTask> {
+    const task = await this.getTask(taskGid);
+    const attachments = await this.getTaskAttachments(taskGid);
+    return { ...task, attachments };
+  }
+
+  async getSubtasksWithAttachments(taskGid: string): Promise<AsanaTask[]> {
+    const subtasks = await this.getSubtasks(taskGid);
+    const subtasksWithAttachments = await Promise.all(
+      subtasks.map(async (subtask) => {
+        const attachments = await this.getTaskAttachments(subtask.gid);
+        return { ...subtask, attachments };
+      })
+    );
+    return subtasksWithAttachments;
+  }
+
+  async getProjectResourceLibrary(projectGid: string): Promise<{
+    sections: AsanaSection[];
+    tasksBySection: Map<string, AsanaTask[]>;
+  }> {
+    const [sections, tasks] = await Promise.all([
+      this.getSections(projectGid),
+      this.getProjectTasks(projectGid),
+    ]);
+
+    // Filtrar solo tareas principales (no subtareas)
+    const parentTasks = tasks.filter(task => !task.parent);
+
+    // Obtener attachments para todas las tareas principales
+    const tasksWithAttachments = await Promise.all(
+      parentTasks.map(async (task) => {
+        const [attachments, subtasks] = await Promise.all([
+          this.getTaskAttachments(task.gid),
+          task.num_subtasks ? this.getSubtasksWithAttachments(task.gid) : Promise.resolve([])
+        ]);
+        return { ...task, attachments, subtasks };
+      })
+    );
+
+    // Organizar tareas por sección
+    const tasksBySection = new Map<string, AsanaTask[]>();
+    sections.forEach(section => {
+      const sectionTasks = tasksWithAttachments.filter(task =>
+        task.memberships?.some(m => m.section?.gid === section.gid)
+      );
+      tasksBySection.set(section.gid, sectionTasks);
+    });
+
+    return { sections, tasksBySection };
+  }
 }
 
 export const asanaService = new AsanaService();
+

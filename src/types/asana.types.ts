@@ -29,6 +29,20 @@ export interface CustomField {
   resource_type: string;
 }
 
+export interface AsanaAttachment {
+  gid: string;
+  name: string;
+  resource_type: string;
+  resource_subtype: string;
+  view_url?: string;
+  download_url?: string;
+  host: string;
+  parent?: {
+    gid: string;
+    name: string;
+  };
+}
+
 export interface AsanaSection {
   gid: string;
   name: string;
@@ -73,6 +87,8 @@ export interface AsanaTask {
     section: { gid: string; name: string };
   }>;
   custom_fields?: CustomField[];
+  attachments?: AsanaAttachment[];
+  subtasks?: AsanaTask[];
 }
 
 export interface AsanaWorkspace {
