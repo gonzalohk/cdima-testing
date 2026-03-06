@@ -4,24 +4,30 @@ import { AsanaTask } from '../types/asana.types';
 interface SubtasksTableProps {
   filteredSubtasks: AsanaTask[];
   uniqueLugares: string[];
+  uniqueResponsables: string[];
   searchTerm: string;
   statusFilter: string;
   lugarFilter: string;
+  responsableFilter: string;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onLugarFilterChange: (value: string) => void;
+  onResponsableFilterChange: (value: string) => void;
   onExportPDF: () => void;
 }
 
 const SubtasksTable: React.FC<SubtasksTableProps> = ({
   filteredSubtasks,
   uniqueLugares,
+  uniqueResponsables,
   searchTerm,
   statusFilter,
   lugarFilter,
+  responsableFilter,
   onSearchChange,
   onStatusFilterChange,
   onLugarFilterChange,
+  onResponsableFilterChange,
   onExportPDF,
 }) => {
   // Función auxiliar para obtener el valor de un campo personalizado
@@ -102,6 +108,19 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
           {uniqueLugares.map((lugar) => (
             <option key={lugar} value={lugar}>
               {lugar}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={responsableFilter}
+          onChange={(e) => onResponsableFilterChange(e.target.value)}
+          className="filter-select"
+        >
+          <option value="all">Todos los responsables</option>
+          {uniqueResponsables.map((responsable) => (
+            <option key={responsable} value={responsable}>
+              {responsable}
             </option>
           ))}
         </select>

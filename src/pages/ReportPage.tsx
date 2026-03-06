@@ -24,11 +24,13 @@ const ReportPage: React.FC = () => {
     searchTerm,
     statusFilter,
     lugarFilter,
+    responsableFilter,
     loading,
     error,
     statistics,
     filteredSubtasks,
     uniqueLugares,
+    uniqueResponsables,
     handleProjectChange,
     handleSectionChange,
     handleMainTaskChange,
@@ -36,6 +38,7 @@ const ReportPage: React.FC = () => {
     setSearchTerm,
     setStatusFilter,
     setLugarFilter,
+    setResponsableFilter,
   } = useReportPage();
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
@@ -115,12 +118,15 @@ const ReportPage: React.FC = () => {
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
             uniqueLugares={uniqueLugares}
+            uniqueResponsables={uniqueResponsables}
             searchTerm={searchTerm}
             statusFilter={statusFilter}
             lugarFilter={lugarFilter}
+            responsableFilter={responsableFilter}
             onSearchChange={setSearchTerm}
             onStatusFilterChange={setStatusFilter}
             onLugarFilterChange={setLugarFilter}
+            onResponsableFilterChange={setResponsableFilter}
             onExportPDF={handleExportPDF}
           />
         </>
@@ -163,12 +169,15 @@ const ReportPage: React.FC = () => {
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
             uniqueLugares={uniqueLugares}
+            uniqueResponsables={uniqueResponsables}
             searchTerm={searchTerm}
             statusFilter={statusFilter}
             lugarFilter={lugarFilter}
+            responsableFilter={responsableFilter}
             onSearchChange={setSearchTerm}
             onStatusFilterChange={setStatusFilter}
             onLugarFilterChange={setLugarFilter}
+            onResponsableFilterChange={setResponsableFilter}
             onExportPDF={handleExportPDF}
           />
         </>

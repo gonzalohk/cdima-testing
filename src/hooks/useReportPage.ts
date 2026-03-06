@@ -33,6 +33,7 @@ export const useReportPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [lugarFilter, setLugarFilter] = useState('all');
+  const [responsableFilter, setResponsableFilter] = useState('all');
   
   // Estado UI
   const [loading, setLoading] = useState(false);
@@ -339,9 +340,17 @@ export const useReportPage = () => {
         lugarFilter === 'all' ||
         municipios.includes(lugarFilter);
       
-      return matchesSearch && matchesStatus && matchesAssignee && matchesLugar;
+      // Filtro por responsable
+      const responsableField = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
+      const responsableName = responsableField?.enum_value?.name || responsableField?.text_value || '-';
+      
+      const matchesResponsable =
+        responsableFilter === 'all' ||
+        responsableName === responsableFilter;
+      
+      return matchesSearch && matchesStatus && matchesAssignee && matchesLugar && matchesResponsable;
     });
-  }, [displayTasks, searchTerm, statusFilter, assigneeFilter, lugarFilter]);
+  }, [displayTasks, searchTerm, statusFilter, assigneeFilter, lugarFilter, responsableFilter]);
 
   // Lista única de asignados para el filtro
   const uniqueAssignees = useMemo(() => {
@@ -378,6 +387,17 @@ export const useReportPage = () => {
     return lugaresArray.filter(l => l !== '-' || lugaresArray.length === 1);
   }, [displayTasks]);
 
+  // Lista única de responsables para el filtro
+  const uniqueResponsables = useMemo(() => {
+    const responsables = new Set<string>();
+    displayTasks.forEach((task) => {
+      const responsableField = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
+      const responsableName = responsableField?.enum_value?.name || responsableField?.text_value || '-';
+      responsables.add(responsableName);
+    });
+    return Array.from(responsables).sort();
+  }, [displayTasks]);
+
   const handleExportPDF = () => {
     if (!selectedTask && !selectedProject) return;
     
@@ -407,6 +427,7 @@ export const useReportPage = () => {
     statusFilter,
     assigneeFilter,
     lugarFilter,
+    responsableFilter,
     loading,
     error,
     
@@ -415,6 +436,7 @@ export const useReportPage = () => {
     filteredSubtasks,
     uniqueAssignees,
     uniqueLugares,
+    uniqueResponsables,
     
     // Handlers
     handleWorkspaceChange,
@@ -426,5 +448,6 @@ export const useReportPage = () => {
     setStatusFilter,
     setAssigneeFilter,
     setLugarFilter,
+    setResponsableFilter,
   };
 };
