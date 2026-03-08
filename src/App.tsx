@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ReportPage from './pages/ReportPage';
 import ResourceLibraryPage from './pages/ResourceLibraryPage';
+import PlanningPage from './pages/PlanningPage';
 import './App.css';
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="report" element={<ReportPage />} />
           <Route path="biblioteca" element={<ResourceLibraryPage />} />
+          <Route path="planificacion" element={<PlanningPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
