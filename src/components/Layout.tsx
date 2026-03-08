@@ -41,6 +41,14 @@ const Layout: React.FC = () => {
               Biblioteca de Recursos
             </Link>
           </li>
+          <li>
+            <Link 
+              to="/planificacion" 
+              className={`nav-link ${location.pathname === '/planificacion' ? 'active' : ''}`}
+            >
+              Planificación
+            </Link>
+          </li>
         </ul>
       </nav>
       

@@ -71,6 +71,7 @@ export interface AsanaTask {
   notes?: string;
   completed: boolean;
   due_on?: string;
+  start_on?: string;
   assignee?: AsanaUser | null;
   parent?: {
     gid: string;
