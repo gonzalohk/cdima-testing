@@ -62,8 +62,21 @@ const ReportPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1 className="page-title">Reporte de Actividades</h1>
+    <div className="planning-page">
+      {/* Header */}
+      <div className="planning-header">
+        <div className="planning-header-left">
+          <div className="planning-icon">📊</div>
+          <div className="planning-info">
+            <h1 className="planning-title">Reporte de Actividades</h1>
+            <p className="planning-subtitle">
+              {selectedProject 
+                ? `${projectName} · ${statistics.total} ${statistics.total === 1 ? 'actividad' : 'actividades'}`
+                : 'Selecciona un proyecto para ver el reporte'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {error && (
         <div className="alert alert-error">

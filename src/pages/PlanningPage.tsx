@@ -9,6 +9,7 @@ import { AsanaTask, AsanaProject } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getTaskColor } from '../utils/colors';
 
 // Configurar moment en español
 moment.locale('es');
@@ -134,9 +135,14 @@ const PlanningPage: React.FC = () => {
           ? moment(task.due_on).toDate()
           : moment(task.start_on).toDate();
 
+        // Agregar responsable al título si existe
+        const titleWithAssignee = task.assignee?.name 
+          ? `${task.name} (${task.assignee.name})`
+          : task.name;
+
         return {
           id: task.gid,
-          title: task.name,
+          title: titleWithAssignee,
           start: startDate,
           end: endDate,
           resource: {
@@ -252,27 +258,18 @@ const PlanningPage: React.FC = () => {
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isCompleted = event.resource.completed;
-    const isSubtask = event.resource.isSubtask;
-
-    let backgroundColor = '#2563eb'; // Azul por defecto
-    let borderColor = '#1e40af';
-
-    if (isCompleted) {
-      backgroundColor = '#10b981'; // Verde para completadas
-      borderColor = '#059669';
-    } else if (isSubtask) {
-      backgroundColor = '#8b5cf6'; // Púrpura para subtareas
-      borderColor = '#7c3aed';
-    }
+    
+    // Obtener colores únicos basados en el ID de la tarea
+    const colors = getTaskColor(event.id);
 
     return {
       style: {
-        backgroundColor,
-        borderColor,
-        borderLeft: `4px solid ${borderColor}`,
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+        borderLeft: `4px solid ${colors.border}`,
         borderRadius: '6px',
-        opacity: isCompleted ? 0.7 : 1,
-        color: 'white',
+        opacity: isCompleted ? 0.65 : 1,
+        color: colors.text,
         fontSize: '0.875rem',
         fontWeight: 500,
         padding: '4px 8px',
@@ -334,33 +331,6 @@ const PlanningPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Export Button */}
-        <button
-          className="export-pdf-btn"
-          onClick={exportToPDF}
-          disabled={exporting || events.length === 0}
-          title="Exportar a PDF"
-        >
-          {exporting ? (
-            <>
-              <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" opacity="0.25"/>
-                <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
-              </svg>
-              Exportando...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Exportar PDF
-            </>
-          )}
-        </button>
-        
         {/* View Selector */}
         <div className="planning-view-selector">
           <button
@@ -402,27 +372,56 @@ const PlanningPage: React.FC = () => {
       {/* Legend */}
       <div className="planning-legend">
         <div className="legend-item">
-          <div className="legend-color" style={{ backgroundColor: '#2563eb' }}></div>
-          <span>Tareas pendientes</span>
+          <div className="legend-color" style={{ background: 'linear-gradient(135deg, #FFE5E5, #E5F4E5, #E5E5FF, #FFF4E5)' }}></div>
+          <span>Cada color representa una tarea diferente</span>
         </div>
         <div className="legend-item">
-          <div className="legend-color" style={{ backgroundColor: '#8b5cf6' }}></div>
-          <span>Subtareas</span>
+          <div className="legend-color" style={{ backgroundColor: '#999', opacity: 0.65 }}></div>
+          <span>Opacidad reducida indica tarea completada</span>
         </div>
         <div className="legend-item">
-          <div className="legend-color" style={{ backgroundColor: '#10b981' }}></div>
-          <span>Completadas</span>
+          <span style={{ fontWeight: 600, color: '#666' }}>
+            📌 Los nombres entre paréntesis indican el responsable
+          </span>
         </div>
       </div>
 
       {/* Calendar */}
       <div className="planning-calendar-container" ref={calendarRef}>
+        {/* Export Button */}
+        <button
+          className="export-pdf-btn"
+          onClick={exportToPDF}
+          disabled={exporting || events.length === 0}
+          title="Exportar a PDF"
+          style={{ marginBottom: '1rem' }}
+        >
+          {exporting ? (
+            <>
+              <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+              </svg>
+              Exportando...
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exportar PDF
+            </>
+          )}
+        </button>
+        
         <Calendar
           localizer={localizer}
           events={events}
           startAccessor="start"
           endAccessor="end"
-          style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}
+          style={{ height: view === 'month' ? '1200px' : view === 'week' ? '800px' : '600px' }}
           view={view}
           onView={setView}
           date={date}
@@ -431,12 +430,12 @@ const PlanningPage: React.FC = () => {
           formats={formats}
           eventPropGetter={eventStyleGetter}
           onSelectEvent={(event) => setSelectedEvent(event)}
-          popup
           selectable
           step={60}
           showMultiDayTimes
           defaultView="week"
           views={['month', 'week', 'day']}
+          dayLayoutAlgorithm="no-overlap"
         />
       </div>
 

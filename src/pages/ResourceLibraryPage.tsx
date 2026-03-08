@@ -420,7 +420,7 @@ const ResourceLibraryPage: React.FC = () => {
 
   if (error) {
     return (
-      <div>
+      <div className="planning-page">
         <h1 className="page-title">Biblioteca de Recursos</h1>
         <div className="alert alert-error">{error}</div>
       </div>
@@ -429,7 +429,7 @@ const ResourceLibraryPage: React.FC = () => {
 
   if (sections.length === 0) {
     return (
-      <div>
+      <div className="planning-page">
         <h1 className="page-title">Biblioteca de Recursos</h1>
         <div className="card">
           <p>No se encontraron secciones con recursos en el proyecto "{projectName}".</p>
@@ -442,14 +442,14 @@ const ResourceLibraryPage: React.FC = () => {
   }
 
   return (
-    <div className="resource-library">
-      {/* Top bar */}
-      <div className="rl-topbar">
-        <div className="rl-topbar-left">
-          <div className="rl-project-icon">📚</div>
-          <div className="rl-project-info">
-            <h1 className="rl-project-name">{projectName}</h1>
-            <p className="rl-project-subtitle">
+    <div className="planning-page resource-library">
+      {/* Header */}
+      <div className="planning-header">
+        <div className="planning-header-left">
+          <div className="planning-icon">📚</div>
+          <div className="planning-info">
+            <h1 className="planning-title">{projectName}</h1>
+            <p className="planning-subtitle">
               {sections.length} {sections.length === 1 ? 'sección' : 'secciones'} · Portal de recursos técnicos
             </p>
           </div>
