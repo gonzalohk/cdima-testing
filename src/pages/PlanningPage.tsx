@@ -5,8 +5,9 @@ import moment from 'moment';
 import 'moment/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { asanaService } from '../services/asana.service';
-import { AsanaTask, AsanaProject } from '../types/asana.types';
+import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
+import StatisticsSection from '../components/StatisticsSection';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getTaskColor } from '../utils/colors';
@@ -156,6 +157,51 @@ const PlanningPage: React.FC = () => {
         };
       });
   }, [tasks]);
+
+  // Filtrar tareas del mes actual visible
+  const currentMonthTasks = useMemo(() => {
+    const startOfMonth = moment(date).startOf('month');
+    const endOfMonth = moment(date).endOf('month');
+    
+    return tasks.filter(task => {
+      // Verificar si la tarea tiene fechas en el rango del mes actual
+      const taskStart = task.start_on ? moment(task.start_on) : task.due_on ? moment(task.due_on) : null;
+      const taskEnd = task.due_on ? moment(task.due_on) : task.start_on ? moment(task.start_on) : null;
+      
+      if (!taskStart && !taskEnd) return false;
+      
+      // Incluir si la tarea comienza, termina o está en progreso durante el mes
+      return (taskStart && taskStart.isBetween(startOfMonth, endOfMonth, null, '[]')) ||
+             (taskEnd && taskEnd.isBetween(startOfMonth, endOfMonth, null, '[]')) ||
+             (taskStart && taskEnd && taskStart.isSameOrBefore(endOfMonth) && taskEnd.isSameOrAfter(startOfMonth));
+    });
+  }, [tasks, date]);
+
+  // Estadísticas del mes actual
+  const statistics: TaskStatistics = useMemo(() => {
+    const total = currentMonthTasks.length;
+    const completed = currentMonthTasks.filter(t => t.completed).length;
+    const pending = total - completed;
+    const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
+
+    return {
+      total,
+      completed,
+      pending,
+      completionPercentage,
+      byAssignee: {},
+      byResponsable: {}
+    };
+  }, [currentMonthTasks]);
+
+  // Tareas ejecutadas y pendientes del mes actual
+  const executedTasks = useMemo(() => {
+    return currentMonthTasks.filter(t => t.completed);
+  }, [currentMonthTasks]);
+
+  const pendingTasks = useMemo(() => {
+    return currentMonthTasks.filter(t => !t.completed);
+  }, [currentMonthTasks]);
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Planificación';
 
@@ -326,7 +372,7 @@ const PlanningPage: React.FC = () => {
           <div className="planning-info">
             <h1 className="planning-title">{projectName}</h1>
             <p className="planning-subtitle">
-              {events.length} {events.length === 1 ? 'tarea programada' : 'tareas programadas'}
+              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'tarea programada' : 'tareas programadas'} · {statistics.completed} ejecutadas · {statistics.pending} pendientes
             </p>
           </div>
         </div>
@@ -438,6 +484,143 @@ const PlanningPage: React.FC = () => {
           dayLayoutAlgorithm="no-overlap"
         />
       </div>
+
+      {/* Estadísticas del mes actual */}
+      {currentMonthTasks.length > 0 && (
+        <>
+          <StatisticsSection statistics={statistics} />
+
+          {/* Tareas Ejecutadas */}
+          <div className="card">
+            <h2>✓ Tareas Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            {executedTasks.length === 0 ? (
+              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay tareas ejecutadas en este mes</p>
+            ) : (
+              <div className="planning-tasks-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsable</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Inicio</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fin</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {executedTasks.map((task, index) => (
+                      <tr 
+                        key={task.gid}
+                        style={{ 
+                          borderBottom: index < executedTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 500, color: '#333' }}>{task.name}</div>
+                            {task.parent && (
+                              <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
+                                Subtarea de: {task.parent.name}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.assignee?.name || 'Sin asignar'}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            backgroundColor: '#e8f5e9',
+                            color: '#2e7d32'
+                          }}>
+                            ✓ Completada
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Tareas Pendientes */}
+          <div className="card">
+            <h2>○ Tareas Pendientes - {moment(date).format('MMMM YYYY')}</h2>
+            {pendingTasks.length === 0 ? (
+              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay tareas pendientes en este mes</p>
+            ) : (
+              <div className="planning-tasks-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsable</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Inicio</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fin</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingTasks.map((task, index) => (
+                      <tr 
+                        key={task.gid}
+                        style={{ 
+                          borderBottom: index < pendingTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 500, color: '#333' }}>{task.name}</div>
+                            {task.parent && (
+                              <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
+                                Subtarea de: {task.parent.name}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.assignee?.name || 'Sin asignar'}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                          {task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            backgroundColor: '#fff3e0',
+                            color: '#e65100'
+                          }}>
+                            ○ Pendiente
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Task Detail Modal */}
       {selectedEvent && (

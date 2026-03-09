@@ -6,6 +6,7 @@ import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
 import VerificationSourcesModal from './VerificationSourcesModal';
+import ContratacionModal from './ContratacionModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -18,8 +19,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showContratacionModal, setShowContratacionModal] = useState(false);
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [contratacionesAttachments, setContratacionesAttachments] = useState<Map<string, AsanaAttachment[]>>(new Map());
 
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
@@ -285,6 +288,34 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     return tipoSolicitud !== '-';
   });
 
+  // Filtrar contrataciones de las subtareas
+  const contrataciones = subtasks.filter(taskItem => {
+    return taskItem.name.startsWith('CONTRATACION - ');
+  });
+
+  // Cargar attachments de las contrataciones
+  useEffect(() => {
+    const loadContratacionesAttachments = async () => {
+      if (contrataciones.length > 0) {
+        const newAttachments = new Map<string, AsanaAttachment[]>();
+        
+        for (const contratacion of contrataciones) {
+          try {
+            const attachments = await asanaService.getTaskAttachments(contratacion.gid);
+            newAttachments.set(contratacion.gid, attachments);
+          } catch (error) {
+            console.error(`Error al cargar attachments de contratación ${contratacion.gid}:`, error);
+            newAttachments.set(contratacion.gid, []);
+          }
+        }
+        
+        setContratacionesAttachments(newAttachments);
+      }
+    };
+
+    loadContratacionesAttachments();
+  }, [contrataciones.length]);
+
   // Calcular valores agregados de las subtareas (excluyendo FUENTES DE VERIFICACION)
   const calculateAggregatedValues = () => {
     let totalMujeres = 0;
@@ -320,7 +351,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowMaterialModal(true)}
               className="button-primary"
@@ -341,6 +372,13 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
               style={{ fontSize: '0.9rem' }}
             >
               🔄 Solicitud de Devolución
+            </button>
+            <button
+              onClick={() => setShowContratacionModal(true)}
+              className="button-primary"
+              style={{ fontSize: '0.9rem' }}
+            >
+              👔 Solicitar Contratación
             </button>
           </div>
         </div>
@@ -612,6 +650,134 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             </div>
           )}
         </div>
+
+        {/* Contrataciones */}
+        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+            👔 Contrataciones {contrataciones.length > 0 && `(${contrataciones.length})`}
+          </h3>
+
+          {contrataciones.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {contrataciones.map((contratacion) => {
+                const estadoContratacion = getCustomFieldValue(contratacion, 'Estado de contratación');
+                const attachments = contratacionesAttachments.get(contratacion.gid) || [];
+                const nombreContratacion = contratacion.name.replace('CONTRATACION - ', '');
+
+                return (
+                  <div 
+                    key={contratacion.gid}
+                    style={{
+                      padding: '1rem',
+                      backgroundColor: '#fff',
+                      borderRadius: '6px',
+                      border: '1px solid #dee2e6'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
+                          {nombreContratacion}
+                        </h4>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Estado:</span>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              backgroundColor: 
+                                estadoContratacion === 'Completada' ? '#e8f5e9' :
+                                estadoContratacion === 'En Proceso' ? '#fff3e0' :
+                                estadoContratacion === 'Pendiente' ? '#fce4ec' :
+                                '#f5f5f5',
+                              color: 
+                                estadoContratacion === 'Completada' ? '#2e7d32' :
+                                estadoContratacion === 'En Proceso' ? '#f57c00' :
+                                estadoContratacion === 'Pendiente' ? '#c2185b' :
+                                '#666',
+                              border: `1px solid ${
+                                estadoContratacion === 'Completada' ? '#81c784' :
+                                estadoContratacion === 'En Proceso' ? '#ffb74d' :
+                                estadoContratacion === 'Pendiente' ? '#f48fb1' :
+                                '#ddd'
+                              }`,
+                            }}
+                          >
+                            {estadoContratacion || 'Sin estado'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {attachments.length > 0 ? (
+                      <div>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#666', fontWeight: 500 }}>
+                          📎 Archivos adjuntos ({attachments.length})
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {attachments.map((attachment) => (
+                            <a
+                              key={attachment.gid}
+                              href={attachment.view_url || attachment.download_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                fontSize: '0.75rem',
+                                padding: '0.4rem 0.75rem',
+                                textDecoration: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                backgroundColor: '#fff',
+                                border: '1px solid #2196F3',
+                                color: '#2196F3',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title={attachment.name}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#2196F3';
+                                e.currentTarget.style.color = '#fff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#fff';
+                                e.currentTarget.style.color = '#2196F3';
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                              <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {attachment.name}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#999', fontStyle: 'italic' }}>
+                          Sin archivos adjuntos. Agregue documentos en Asana.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+                <strong>ℹ️ Info:</strong> No hay contrataciones registradas para esta actividad. Use el botón "Solicitar Contratación" para crear una nueva.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {showMaterialModal && (
@@ -651,6 +817,18 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onSuccess={() => {
             setShowVerificationModal(false);
             // Recargar la página o actualizar las subtareas para mostrar la nueva subtarea
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {showContratacionModal && (
+        <ContratacionModal
+          task={task}
+          onClose={() => setShowContratacionModal(false)}
+          onSuccess={() => {
+            setShowContratacionModal(false);
+            // Recargar la página para mostrar la nueva contratación
             window.location.reload();
           }}
         />
