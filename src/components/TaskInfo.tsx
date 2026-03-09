@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { AsanaTask } from '../types/asana.types';
+import React, { useState, useEffect } from 'react';
+import { AsanaTask, AsanaAttachment } from '../types/asana.types';
+import { asanaService } from '../services/asana.service';
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
+import VerificationSourcesModal from './VerificationSourcesModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -14,6 +16,37 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+
+  // Buscar la subtarea "FUENTES DE VERIFICACION"
+  const verificationSubtask = subtasks.find(
+    subtask => subtask.name.startsWith('FUENTES DE VERIFICACION')
+  );
+
+  // Cargar attachments de la subtarea de verificación
+  useEffect(() => {
+    const loadVerificationAttachments = async () => {
+      if (verificationSubtask) {
+        setLoadingAttachments(true);
+        try {
+          const attachments = await asanaService.getTaskAttachments(verificationSubtask.gid);
+          setVerificationAttachments(attachments);
+        } catch (error) {
+          console.error('Error al cargar attachments:', error);
+          setVerificationAttachments([]);
+        } finally {
+          setLoadingAttachments(false);
+        }
+      } else {
+        setVerificationAttachments([]);
+      }
+    };
+
+    loadVerificationAttachments();
+  }, [verificationSubtask]);
+
 
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -226,6 +259,97 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             <strong>📝 Resultados:</strong> {task.notes}
           </div>
         )}
+
+        {/* Fuentes de Verificación */}
+        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+              📂 Fuentes de Verificación
+            </h3>
+            <button
+              onClick={() => setShowVerificationModal(true)}
+              className="button-primary"
+              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+              disabled={!!verificationSubtask}
+              title={verificationSubtask ? 'La subtarea ya existe' : 'Crear subtarea de fuentes de verificación'}
+            >
+              {verificationSubtask ? '✓ Subtarea Creada' : '+ Crear Subtarea'}
+            </button>
+          </div>
+
+          {verificationSubtask ? (
+            <div>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#666' }}>
+                {loadingAttachments ? (
+                  'Cargando recursos...'
+                ) : verificationAttachments.length > 0 ? (
+                  `${verificationAttachments.length} ${verificationAttachments.length === 1 ? 'recurso adjunto' : 'recursos adjuntos'}`
+                ) : (
+                  'No hay recursos adjuntos. Agregue archivos en Asana.'
+                )}
+              </p>
+              
+              {verificationAttachments.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {verificationAttachments.map((attachment) => (
+                    <a
+                      key={attachment.gid}
+                      href={attachment.view_url || attachment.download_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="button-secondary"
+                      style={{
+                        fontSize: '0.85rem',
+                        padding: '0.5rem 1rem',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backgroundColor: '#fff',
+                        border: '1px solid #2196F3',
+                        color: '#2196F3',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#2196F3';
+                        e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fff';
+                        e.currentTarget.style.color = '#2196F3';
+                      }}
+                      title={attachment.name}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {attachment.name}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {!loadingAttachments && verificationAttachments.length === 0 && (
+                <div style={{ padding: '1rem', backgroundColor: '#fff3e0', borderRadius: '4px', borderLeft: '4px solid #ff9800' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#e65100' }}>
+                    <strong>📌 Instrucción:</strong> Vaya a Asana y adjunte archivos a la subtarea "{verificationSubtask.name}" para que aparezcan aquí.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+                <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {showMaterialModal && (
@@ -254,6 +378,18 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowReturnModal(false)}
           onSuccess={() => {
             setShowReturnModal(false);
+          }}
+        />
+      )}
+
+      {showVerificationModal && (
+        <VerificationSourcesModal
+          task={task}
+          onClose={() => setShowVerificationModal(false)}
+          onSuccess={() => {
+            setShowVerificationModal(false);
+            // Recargar la página o actualizar las subtareas para mostrar la nueva subtarea
+            window.location.reload();
           }}
         />
       )}

@@ -332,7 +332,7 @@ const PlanningPage: React.FC = () => {
         </div>
         
         {/* View Selector */}
-        <div className="planning-view-selector">
+        {/* <div className="planning-view-selector">
           <button
             className={`view-btn ${view === 'month' ? 'active' : ''}`}
             onClick={() => setView('month')}
@@ -366,7 +366,7 @@ const PlanningPage: React.FC = () => {
             </svg>
             Día
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Legend */}
