@@ -62,10 +62,11 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     return '-';
   };
 
-  // Filtrar las subtareas que NO tienen "Tipo de Solicitud"
+  // Filtrar las subtareas que NO tienen "Tipo de Solicitud" y que NO son FUENTES DE VERIFICACION
   const subtasksWithoutRequests = filteredSubtasks.filter(task => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
-    return tipoSolicitud === '-';
+    const isFuentesVerificacion = task.name.startsWith('FUENTES DE VERIFICACION');
+    return tipoSolicitud === '-' && !isFuentesVerificacion;
   });
 
   return (

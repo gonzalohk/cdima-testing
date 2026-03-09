@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AsanaTask, AsanaAttachment } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
+import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
@@ -46,7 +47,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
 
     loadVerificationAttachments();
   }, [verificationSubtask]);
-
 
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -112,37 +112,196 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     return '-';
   };
 
-  // Verificar si existe una subtarea de SOLICITUD DE MATERIAL completada
-  const hasMaterialRequestCompleted = () => {
-    return subtasks.some(subtask => {
-      const isMaterialRequest = subtask.name.startsWith('SOLICITUD DE MATERIAL');
-      if (!isMaterialRequest) return false;
-      
-      // Verificar si está completada usando el campo Estado
-      const estadoField = subtask.custom_fields?.find(f => f.name === 'Estado');
-      const isCompleted = estadoField?.enum_value?.name === 'EJECUTADO';
-      
-      return isCompleted;
-    });
+  // Interfaces para solicitudes
+  interface FundItem {
+    id: number;
+    descripcion: string;
+    importeBolivianos: string;
+  }
+
+  interface MaterialItem {
+    id: number;
+    detalle: string;
+    cantidad: string;
+    unidad: string;
+    observaciones: string;
+  }
+
+  // Extraer la fecha de generación de las notas
+  const extractFechaSolicitud = (notes: string | undefined): string => {
+    if (!notes) return '-';
+    const regex = /Fecha de solicitud:\s*(\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2})/;
+    const match = notes.match(regex);
+    return match && match[1] ? match[1] : '-';
   };
 
-  const isFundsButtonEnabled = hasMaterialRequestCompleted();
+  // Parsear información de solicitud de fondos
+  const parseFundsRequest = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
+    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
+    
+    const fondos: FundItem[] = [];
+    const fondosSection = notes.match(/FONDOS SOLICITADOS:\s*([\s\S]+?)(?=\n\nTOTAL:|\n\n---)/);
+    
+    if (fondosSection) {
+      const fondosText = fondosSection[1];
+      const fondosItems = fondosText.split(/\n\n(?=\d+\.)/);
+      
+      fondosItems.forEach((item, index) => {
+        const descMatch = item.match(/\d+\.\s*(.+)/);
+        const importeMatch = item.match(/Importe:\s*Bs\.\s*([\d.]+)/);
+        
+        if (descMatch) {
+          fondos.push({
+            id: index + 1,
+            descripcion: descMatch[1].trim(),
+            importeBolivianos: importeMatch ? importeMatch[1] : '0'
+          });
+        }
+      });
+    }
+    
+    return { taskName, area, lugar, fechaInicio, fechaFinalizacion, fondos };
+  };
 
-  // Calcular valores agregados de las subtareas
+  // Parsear información de solicitud de material
+  const parseMaterialRequest = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
+    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
+    
+    const materiales: MaterialItem[] = [];
+    const materialesSection = notes.match(/MATERIALES SOLICITADOS:\s*([\s\S]+?)(?=\n\n---)/);
+    
+    if (materialesSection) {
+      const materialesText = materialesSection[1];
+      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);
+      
+      materialesItems.forEach((item, index) => {
+        const detalleMatch = item.match(/\d+\.\s*(.+)/);
+        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
+        const unidadMatch = item.match(/Unidad:\s*(.+)/);
+        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
+        
+        if (detalleMatch) {
+          materiales.push({
+            id: index + 1,
+            detalle: detalleMatch[1].trim(),
+            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
+            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
+            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
+          });
+        }
+      });
+    }
+    
+    return { taskName, area, lugar, fechaInicio, fechaFinalizacion, materiales };
+  };
+
+  // Parsear información de solicitud de devolución
+  const parseMaterialReturn = (task: AsanaTask) => {
+    const notes = task.notes || '';
+    const activityMatch = notes.match(/Actividad:\s*(.+)/);
+    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
+    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
+    const area = areaMatch ? areaMatch[1].trim() : '';
+    const lugarMatch = notes.match(/•\s*Lugar de devolución:\s*(.+)/);
+    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+    
+    const materiales: MaterialItem[] = [];
+    const materialesSection = notes.match(/MATERIALES A DEVOLVER:\s*([\s\S]+?)(?=\n\n---)/);
+    
+    if (materialesSection) {
+      const materialesText = materialesSection[1];
+      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);
+      
+      materialesItems.forEach((item, index) => {
+        const detalleMatch = item.match(/\d+\.\s*(.+)/);
+        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
+        const unidadMatch = item.match(/Unidad:\s*(.+)/);
+        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
+        
+        if (detalleMatch) {
+          materiales.push({
+            id: index + 1,
+            detalle: detalleMatch[1].trim(),
+            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
+            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
+            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
+          });
+        }
+      });
+    }
+    
+    return { taskName, area, lugar, materiales };
+  };
+
+  // Manejar impresión de solicitudes
+  const handlePrintRequest = (taskItem: AsanaTask) => {
+    const tipoSolicitud = getCustomFieldValue(taskItem, 'Tipo de Solicitud');
+    const fechaGeneracion = extractFechaSolicitud(taskItem.notes);
+    
+    if (tipoSolicitud === 'Solicitud de Fondos') {
+      const data = parseFundsRequest(taskItem);
+      exportFundsRequestToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    } else if (tipoSolicitud === 'Solicitud de Material') {
+      const data = parseMaterialRequest(taskItem);
+      exportMaterialRequestToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    } else if (tipoSolicitud === 'Solicitud de Devolucion') {
+      const data = parseMaterialReturn(taskItem);
+      exportMaterialReturnToPDF({
+        ...data,
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+      });
+    }
+  };
+
+  // Filtrar solicitudes de las subtareas
+  const solicitudes = subtasks.filter(taskItem => {
+    const tipoSolicitud = getCustomFieldValue(taskItem, 'Tipo de Solicitud');
+    return tipoSolicitud !== '-';
+  });
+
+  // Calcular valores agregados de las subtareas (excluyendo FUENTES DE VERIFICACION)
   const calculateAggregatedValues = () => {
     let totalMujeres = 0;
     let totalHombres = 0;
     let totalPoblacionMeta = 0;
 
-    subtasks.forEach(subtask => {
-      const mujeres = getCustomFieldValue(subtask, 'Mujeres ');
-      const hombres = getCustomFieldValue(subtask, 'Hombres');
-      const poblacion = getCustomFieldValue(subtask, 'Población Meta');
+    subtasks
+      .filter(subtask => !subtask.name.startsWith('FUENTES DE VERIFICACION'))
+      .forEach(subtask => {
+        const mujeres = getCustomFieldValue(subtask, 'Mujeres ');
+        const hombres = getCustomFieldValue(subtask, 'Hombres');
+        const poblacion = getCustomFieldValue(subtask, 'Población Meta');
 
-      totalMujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
-      totalHombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
-      totalPoblacionMeta += poblacion !== '-' ? parseInt(poblacion) || 0 : 0;
-    });
+        totalMujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
+        totalHombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+        totalPoblacionMeta += poblacion !== '-' ? parseInt(poblacion) || 0 : 0;
+      });
 
     const total = totalMujeres + totalHombres;
 
@@ -173,8 +332,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
               onClick={() => setShowFundsModal(true)}
               className="button-primary"
               style={{ fontSize: '0.9rem' }}
-              disabled={!isFundsButtonEnabled}
-              title={!isFundsButtonEnabled ? 'Debe completar una solicitud de material primero' : ''}
             >
               💰 Solicitud de Fondos
             </button>
@@ -346,6 +503,111 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
             <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
                 <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Solicitudes */}
+        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+            📋 Solicitudes {solicitudes.length > 0 && `(${solicitudes.length})`}
+          </h3>
+
+          {solicitudes.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#e9ecef', borderBottom: '2px solid #dee2e6' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Nombre</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Tipo</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Estado</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {solicitudes.map((solicitud) => {
+                    const tipoSolicitud = getCustomFieldValue(solicitud, 'Tipo de Solicitud');
+                    const fechaGeneracion = extractFechaSolicitud(solicitud.notes);
+                    const esFinalizada = solicitud.completed;
+
+                    return (
+                      <tr key={solicitud.gid} style={{ borderBottom: '1px solid #dee2e6' }}>
+                        <td style={{ padding: '0.75rem', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {solicitud.name}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              backgroundColor: 
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#e3f2fd' : 
+                                tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
+                                '#fff3e0',
+                              color: 
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#1976d2' : 
+                                tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
+                                '#f57c00',
+                              border: `1px solid ${
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#90caf9' : 
+                                tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
+                                '#ffb74d'
+                              }`,
+                            }}
+                          >
+                            {tipoSolicitud === 'Solicitud de Fondos' ? '💰 Fondos' : 
+                             tipoSolicitud === 'Solicitud de Devolucion' ? '🔄 Devolución' : 
+                             '📋 Material'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: '#666' }}>{fechaGeneracion}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              backgroundColor: esFinalizada ? '#e8f5e9' : '#fff3e0',
+                              color: esFinalizada ? '#2e7d32' : '#f57c00',
+                              border: `1px solid ${esFinalizada ? '#81c784' : '#ffb74d'}`,
+                            }}
+                          >
+                            {esFinalizada ? '✓ Finalizada' : '⏸ Pendiente'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <button
+                            onClick={() => handlePrintRequest(solicitud)}
+                            className="button-primary"
+                            style={{
+                              padding: '0.4rem 0.75rem',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            🖨️ Imprimir
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+                <strong>ℹ️ Info:</strong> No hay solicitudes generadas para esta actividad. Use los botones superiores para crear solicitudes de material, fondos o devolución.
               </p>
             </div>
           )}

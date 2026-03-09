@@ -5,7 +5,7 @@ import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
 import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
-import RequestsTable from '../components/RequestsTable';
+// import RequestsTable from '../components/RequestsTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { exportDistributionToPDF } from '../services/pdf.service';
@@ -102,7 +102,7 @@ const ReportPage: React.FC = () => {
 
       {selectedTask && (
         <>
-          <TaskInfo task={selectedTask} subtasksCount={subtasks.length} subtasks={subtasks} />
+          <TaskInfo task={selectedTask} subtasksCount={subtasks.filter(t => !t.name.startsWith('FUENTES DE VERIFICACION')).length} subtasks={subtasks} />
           
           <StatisticsSection statistics={statistics} />
           
@@ -126,7 +126,7 @@ const ReportPage: React.FC = () => {
             projectName={projects.find(p => p.gid === selectedProject)?.name}
           />
           
-          <RequestsTable subtasks={subtasks} />
+          {/* <RequestsTable subtasks={subtasks} /> */}
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
@@ -177,7 +177,7 @@ const ReportPage: React.FC = () => {
             projectName={projects.find(p => p.gid === selectedProject)?.name}
           />
           
-          <RequestsTable subtasks={filteredSubtasks} />
+          {/* <RequestsTable subtasks={filteredSubtasks} /> */}
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}

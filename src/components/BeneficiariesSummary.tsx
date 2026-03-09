@@ -36,11 +36,13 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
     return '-';
   };
 
-  // Clasificar subtareas según tengan o no replicantes
+  // Clasificar subtareas según tengan o no replicantes (excluyendo FUENTES DE VERIFICACION)
   const tasksWithoutReplicantes: AsanaTask[] = [];
   const tasksWithReplicantes: AsanaTask[] = [];
 
-  subtasks.forEach(task => {
+  subtasks
+    .filter(task => !task.name.startsWith('FUENTES DE VERIFICACION'))
+    .forEach(task => {
     const mujeres = getCustomFieldValue(task, 'Mujeres ');
     const hombres = getCustomFieldValue(task, 'Hombres');
     const poblacionMeta = getCustomFieldValue(task, 'Población Meta');

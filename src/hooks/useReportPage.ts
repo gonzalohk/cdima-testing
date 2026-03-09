@@ -198,9 +198,9 @@ export const useReportPage = () => {
   // si hay sección seleccionada -> tareas de esa sección,
   // si no -> todas las tareas del proyecto
   const displayTasks = useMemo(() => {
-    // Si hay actividad seleccionada, mostrar sus subtareas
+    // Si hay actividad seleccionada, mostrar sus subtareas (excluyendo FUENTES DE VERIFICACION)
     if (selectedMainTask && subtasks.length > 0) {
-      return subtasks;
+      return subtasks.filter(task => !task.name.startsWith('FUENTES DE VERIFICACION'));
     }
     
     // Si no hay actividad pero hay sección seleccionada, filtrar por sección
@@ -240,10 +240,12 @@ export const useReportPage = () => {
     const byAssignee: TaskStatistics['byAssignee'] = {};
     const byResponsable: TaskStatistics['byResponsable'] = {};
     
-    // Excluir subtareas que tienen "Tipo de Solicitud" definido (solicitudes de fondos/materiales)
+    // Excluir subtareas que tienen "Tipo de Solicitud" definido (solicitudes de fondos/materiales) 
+    // y también excluir FUENTES DE VERIFICACION
     const tasksForDistribution = displayTasks.filter((task) => {
       const tipoSolicitud = task.custom_fields?.find(f => f.name === 'Tipo de Solicitud');
-      return !tipoSolicitud?.enum_value?.name || tipoSolicitud?.enum_value?.name === '';
+      const isFuentesVerificacion = task.name.startsWith('FUENTES DE VERIFICACION');
+      return (!tipoSolicitud?.enum_value?.name || tipoSolicitud?.enum_value?.name === '') && !isFuentesVerificacion;
     });
     
     tasksForDistribution.forEach((task) => {
