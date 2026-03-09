@@ -236,7 +236,7 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
                   <path d="M9 11l3 3L22 4" />
                   <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
                 </svg>
-                {task.subtasks.length} {task.subtasks.length === 1 ? 'Subtarea' : 'Subtareas'}
+                {task.subtasks.length} {task.subtasks.length === 1 ? 'Sub Carpeta' : 'Sub Carpetas'}
               </span>
               <div className="task-expand-btn">
                 <svg
@@ -349,8 +349,8 @@ const ResourceLibraryPage: React.FC = () => {
       const data = await asanaService.getProjects(workspaceGid);
       setProjects(data);
       
-      // Auto-seleccionar "Area Comunicacion"
-      const comunicacion = data.find(p => p.name.toLowerCase().includes('comunicacion'));
+      // Auto-seleccionar "Comunicación CDIMA"
+      const comunicacion = data.find(p => p.name.toLowerCase().includes('comunicación') || p.name.toLowerCase().includes('comunicacion'));
       if (comunicacion) {
         setSelectedProject(comunicacion.gid);
         await loadResourceLibrary(comunicacion.gid);
@@ -434,7 +434,7 @@ const ResourceLibraryPage: React.FC = () => {
         <div className="card">
           <p>No se encontraron secciones con recursos en el proyecto "{projectName}".</p>
           <p style={{ marginTop: '1rem', color: '#666' }}>
-            Verifica que el proyecto "Area Comunicacion" tenga secciones y tareas con archivos adjuntos.
+            Verifica que el proyecto "Comunicación CDIMA" tenga secciones y tareas con archivos adjuntos.
           </p>
         </div>
       </div>

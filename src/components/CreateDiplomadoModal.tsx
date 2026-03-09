@@ -8,20 +8,28 @@ interface CreateDiplomadoModalProps {
   onSuccess: () => void;
 }
 
+interface PersonaData {
+  nombre: string;
+  genero: string;
+  telefono: string;
+  lugarNacimiento: string;
+  documentoIdentidad: string;
+}
+
 const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
   projectGid,
   onClose,
   onSuccess
 }) => {
   const [nombreDiplomado, setNombreDiplomado] = useState('');
-  const [docentes, setDocentes] = useState<string[]>(['']);
-  const [estudiantes, setEstudiantes] = useState<string[]>(['']);
+  const [docentes, setDocentes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
+  const [estudiantes, setEstudiantes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleAddDocente = () => {
-    setDocentes([...docentes, '']);
+    setDocentes([...docentes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
   };
 
   const handleRemoveDocente = (index: number) => {
@@ -30,14 +38,14 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
     }
   };
 
-  const handleDocenteChange = (index: number, value: string) => {
+  const handleDocenteChange = (index: number, field: keyof PersonaData, value: string) => {
     const newDocentes = [...docentes];
-    newDocentes[index] = value;
+    newDocentes[index][field] = value;
     setDocentes(newDocentes);
   };
 
   const handleAddEstudiante = () => {
-    setEstudiantes([...estudiantes, '']);
+    setEstudiantes([...estudiantes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
   };
 
   const handleRemoveEstudiante = (index: number) => {
@@ -46,9 +54,9 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
     }
   };
 
-  const handleEstudianteChange = (index: number, value: string) => {
+  const handleEstudianteChange = (index: number, field: keyof PersonaData, value: string) => {
     const newEstudiantes = [...estudiantes];
-    newEstudiantes[index] = value;
+    newEstudiantes[index][field] = value;
     setEstudiantes(newEstudiantes);
   };
 
@@ -63,15 +71,26 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         throw new Error('El nombre del diplomado es obligatorio');
       }
 
-      const docentesValidos = docentes.filter(d => d.trim());
-      const estudiantesValidos = estudiantes.filter(e => e.trim());
+      const docentesValidos = docentes.filter(d => d.nombre.trim() && d.genero.trim());
+      const estudiantesValidos = estudiantes.filter(e => e.nombre.trim() && e.genero.trim());
 
       if (docentesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un docente');
+        throw new Error('Debe agregar al menos un docente con nombre y género');
       }
 
       if (estudiantesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un estudiante');
+        throw new Error('Debe agregar al menos un estudiante con nombre y género');
+      }
+
+      // Validar que todos los docentes y estudiantes válidos tengan género
+      const docenteSinGenero = docentesValidos.find(d => !d.genero.trim());
+      if (docenteSinGenero) {
+        throw new Error('El género es obligatorio para todos los docentes');
+      }
+
+      const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
+      if (estudianteSinGenero) {
+        throw new Error('El género es obligatorio para todos los estudiantes');
       }
 
       // 1. Crear la sección (diplomado)
@@ -112,15 +131,29 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
       // 3. Crear subtareas de docentes
       for (const docente of docentesValidos) {
+        const notasDocente = `INFORMACIÓN PRIMARIA:
+Género: ${docente.genero}
+Teléfono: ${docente.telefono || 'No especificado'}
+Lugar de Nacimiento: ${docente.lugarNacimiento || 'No especificado'}
+Documento de Identidad: ${docente.documentoIdentidad || 'No especificado'}`;
+
         await asanaService.createSubtask(tareaDocentes.gid, cdima.gid, {
-          name: docente
+          name: docente.nombre,
+          notes: notasDocente
         });
       }
 
       // 4. Crear subtareas de estudiantes
       for (const estudiante of estudiantesValidos) {
+        const notasEstudiante = `INFORMACIÓN PRIMARIA:
+Género: ${estudiante.genero}
+Teléfono: ${estudiante.telefono || 'No especificado'}
+Lugar de Nacimiento: ${estudiante.lugarNacimiento || 'No especificado'}
+Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}`;
+
         await asanaService.createSubtask(tareaEstudiantes.gid, cdima.gid, {
-          name: estudiante
+          name: estudiante.nombre,
+          notes: notasEstudiante
         });
       }
 
@@ -196,30 +229,106 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   Docentes <span style={{ color: 'red' }}>*</span>
                 </label>
                 {docentes.map((docente, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <input
-                      type="text"
-                      value={docente}
-                      onChange={(e) => handleDocenteChange(index, e.target.value)}
-                      placeholder={`Nombre del docente ${index + 1}`}
-                      style={{ flex: 1, padding: '0.75rem', fontSize: '1rem' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDocente(index)}
-                      disabled={docentes.length === 1}
-                      className="button-secondary"
-                      style={{ padding: '0.75rem', minWidth: '40px' }}
-                    >
-                      🗑️
-                    </button>
+                  <div key={index} style={{ 
+                    padding: '1rem', 
+                    marginBottom: '1rem', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '8px',
+                    backgroundColor: '#fafafa'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#666' }}>
+                        Docente {index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDocente(index)}
+                        disabled={docentes.length === 1}
+                        className="button-secondary"
+                        style={{ marginLeft: 'auto', padding: '0.5rem', minWidth: '35px', fontSize: '0.9rem' }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Nombre <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.nombre}
+                          onChange={(e) => handleDocenteChange(index, 'nombre', e.target.value)}
+                          placeholder="Nombre completo"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Género <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <select
+                          value={docente.genero}
+                          onChange={(e) => handleDocenteChange(index, 'genero', e.target.value)}
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        >
+                          <option value="">Seleccione...</option>
+                          <option value="Masculino">Masculino</option>
+                          <option value="Femenino">Femenino</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Teléfono
+                        </label>
+                        <input
+                          type="tel"
+                          value={docente.telefono}
+                          onChange={(e) => handleDocenteChange(index, 'telefono', e.target.value)}
+                          placeholder="Número de teléfono"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Lugar de Nacimiento
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.lugarNacimiento}
+                          onChange={(e) => handleDocenteChange(index, 'lugarNacimiento', e.target.value)}
+                          placeholder="Ciudad, País"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Documento de Identidad
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.documentoIdentidad}
+                          onChange={(e) => handleDocenteChange(index, 'documentoIdentidad', e.target.value)}
+                          placeholder="CI, DNI, Pasaporte"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button
                   type="button"
                   onClick={handleAddDocente}
                   className="button-secondary"
-                  style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}
+                  style={{ fontSize: '0.9rem' }}
                 >
                   + Agregar Docente
                 </button>
@@ -231,30 +340,106 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   Estudiantes <span style={{ color: 'red' }}>*</span>
                 </label>
                 {estudiantes.map((estudiante, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <input
-                      type="text"
-                      value={estudiante}
-                      onChange={(e) => handleEstudianteChange(index, e.target.value)}
-                      placeholder={`Nombre del estudiante ${index + 1}`}
-                      style={{ flex: 1, padding: '0.75rem', fontSize: '1rem' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveEstudiante(index)}
-                      disabled={estudiantes.length === 1}
-                      className="button-secondary"
-                      style={{ padding: '0.75rem', minWidth: '40px' }}
-                    >
-                      🗑️
-                    </button>
+                  <div key={index} style={{ 
+                    padding: '1rem', 
+                    marginBottom: '1rem', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '8px',
+                    backgroundColor: '#fafafa'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#666' }}>
+                        Estudiante {index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEstudiante(index)}
+                        disabled={estudiantes.length === 1}
+                        className="button-secondary"
+                        style={{ marginLeft: 'auto', padding: '0.5rem', minWidth: '35px', fontSize: '0.9rem' }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Nombre <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.nombre}
+                          onChange={(e) => handleEstudianteChange(index, 'nombre', e.target.value)}
+                          placeholder="Nombre completo"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Género <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <select
+                          value={estudiante.genero}
+                          onChange={(e) => handleEstudianteChange(index, 'genero', e.target.value)}
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        >
+                          <option value="">Seleccione...</option>
+                          <option value="Masculino">Masculino</option>
+                          <option value="Femenino">Femenino</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Teléfono
+                        </label>
+                        <input
+                          type="tel"
+                          value={estudiante.telefono}
+                          onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
+                          placeholder="Número de teléfono"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Lugar de Nacimiento
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.lugarNacimiento}
+                          onChange={(e) => handleEstudianteChange(index, 'lugarNacimiento', e.target.value)}
+                          placeholder="Ciudad, País"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Documento de Identidad
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.documentoIdentidad}
+                          onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
+                          placeholder="CI, DNI, Pasaporte"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button
                   type="button"
                   onClick={handleAddEstudiante}
                   className="button-secondary"
-                  style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}
+                  style={{ fontSize: '0.9rem' }}
                 >
                   + Agregar Estudiante
                 </button>

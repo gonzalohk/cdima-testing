@@ -87,7 +87,15 @@ export const useReportPage = () => {
     
     try {
       const data = await asanaService.getProjects(workspaceGid);
-      setProjects(data);
+      
+      // Excluir proyectos internos de la ONG
+      const proyectosInternos = ['comunicación cdima', 'planificación cdima', 'diplomados cdima'];
+      const proyectosFiltrados = data.filter(project => {
+        const nombreLower = project.name.toLowerCase();
+        return !proyectosInternos.some(interno => nombreLower.includes(interno.toLowerCase()));
+      });
+      
+      setProjects(proyectosFiltrados);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar proyectos');
     } finally {

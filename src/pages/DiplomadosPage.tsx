@@ -4,6 +4,16 @@ import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
+import InfoPrimariaModal from '../components/InfoPrimariaModal';
+
+interface InfoPrimaria {
+  nombre: string;
+  genero: string;
+  telefono: string;
+  lugarNacimiento: string;
+  documentoIdentidad: string;
+  tipo: 'Docente' | 'Estudiante';
+}
 
 const DiplomadosPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +24,7 @@ const DiplomadosPage: React.FC = () => {
   const [selectedDiplomado, setSelectedDiplomado] = useState<AsanaSection | null>(null);
   const [diplomadosProjectGid, setDiplomadosProjectGid] = useState<string>('');
   const [showNotasModal, setShowNotasModal] = useState(false);
+  const [selectedInfo, setSelectedInfo] = useState<InfoPrimaria | null>(null);
   
   // Estados para los detalles del diplomado
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -123,6 +134,36 @@ const DiplomadosPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const parseInfoPrimaria = (task: AsanaTask, tipo: 'Docente' | 'Estudiante'): InfoPrimaria => {
+    const notas = task.notes || '';
+    const info: InfoPrimaria = {
+      nombre: task.name,
+      genero: '',
+      telefono: '',
+      lugarNacimiento: '',
+      documentoIdentidad: '',
+      tipo
+    };
+
+    // Parsear las notas para extraer la información
+    const generoMatch = notas.match(/Género:\s*(.+)/i);
+    const telefonoMatch = notas.match(/Teléfono:\s*(.+)/i);
+    const lugarMatch = notas.match(/Lugar de Nacimiento:\s*(.+)/i);
+    const documentoMatch = notas.match(/Documento de Identidad:\s*(.+)/i);
+
+    if (generoMatch) info.genero = generoMatch[1].trim();
+    if (telefonoMatch) info.telefono = telefonoMatch[1].trim();
+    if (lugarMatch) info.lugarNacimiento = lugarMatch[1].trim();
+    if (documentoMatch) info.documentoIdentidad = documentoMatch[1].trim();
+
+    return info;
+  };
+
+  const handleShowInfo = (task: AsanaTask, tipo: 'Docente' | 'Estudiante') => {
+    const info = parseInfoPrimaria(task, tipo);
+    setSelectedInfo(info);
   };
 
   if (loading) {
@@ -264,64 +305,148 @@ const DiplomadosPage: React.FC = () => {
                   <p>Cargando detalles...</p>
                 </div>
               ) : (
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                  gap: '1.5rem'
-                }}>
-                  {/* Docentes */}
-                  <div>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem',
-                      marginBottom: '1rem',
-                      paddingBottom: '0.5rem',
-                      borderBottom: '2px solid #e0e0e0'
-                    }}>
-                      <span style={{ fontSize: '1.5rem' }}>👨‍🏫</span>
-                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                        Docentes ({docentes.length})
-                      </h3>
+                <>
+                  {/* Primera fila: Docentes y Documentos */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '1.5rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    {/* Docentes */}
+                    <div>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem',
+                        marginBottom: '1rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: '2px solid #e0e0e0'
+                      }}>
+                        <span style={{ fontSize: '1.5rem' }}>👨‍🏫</span>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                          Docentes ({docentes.length})
+                        </h3>
+                      </div>
+                      {docentes.length === 0 ? (
+                        <p style={{ color: '#999', fontStyle: 'italic' }}>No hay docentes registrados</p>
+                      ) : (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {docentes.map((docente) => (
+                            <li 
+                              key={docente.gid}
+                              style={{
+                                padding: '0.75rem',
+                                marginBottom: '0.5rem',
+                                backgroundColor: '#f8f9fa',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid #2196F3',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}
+                            >
+                              <span style={{ 
+                                color: docente.completed ? '#4caf50' : '#999',
+                                fontSize: '1rem'
+                              }}>
+                                {docente.completed ? '✓' : '○'}
+                              </span>
+                              <span style={{ 
+                                flex: 1,
+                                textDecoration: docente.completed ? 'line-through' : 'none',
+                                color: docente.completed ? '#666' : '#333'
+                              }}>
+                                {docente.name}
+                              </span>
+                              <button
+                                onClick={() => handleShowInfo(docente, 'Docente')}
+                                style={{
+                                  background: 'none',
+                                  border: '1px solid #ddd',
+                                  borderRadius: '4px',
+                                  padding: '0.25rem 0.5rem',
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  color: '#666',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  transition: 'all 0.2s'
+                                }}
+                                title="Ver información primaria"
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.borderColor = '#2196F3';
+                                  e.currentTarget.style.color = '#2196F3';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.borderColor = '#ddd';
+                                  e.currentTarget.style.color = '#666';
+                                }}
+                              >
+                                <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 500 }}>Info</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    {docentes.length === 0 ? (
-                      <p style={{ color: '#999', fontStyle: 'italic' }}>No hay docentes registrados</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {docentes.map((docente) => (
-                          <li 
-                            key={docente.gid}
-                            style={{
-                              padding: '0.75rem',
-                              marginBottom: '0.5rem',
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #2196F3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            <span style={{ 
-                              color: docente.completed ? '#4caf50' : '#999',
-                              fontSize: '1rem'
-                            }}>
-                              {docente.completed ? '✓' : '○'}
-                            </span>
-                            <span style={{ 
-                              flex: 1,
-                              textDecoration: docente.completed ? 'line-through' : 'none',
-                              color: docente.completed ? '#666' : '#333'
-                            }}>
-                              {docente.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+
+                    {/* Documentos */}
+                    <div>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem',
+                        marginBottom: '1rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: '2px solid #e0e0e0'
+                      }}>
+                        <span style={{ fontSize: '1.5rem' }}>📄</span>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                          Documentos ({documentos.length})
+                        </h3>
+                      </div>
+                      {documentos.length === 0 ? (
+                        <p style={{ color: '#999', fontStyle: 'italic' }}>No hay documentos registrados</p>
+                      ) : (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {documentos.map((documento) => (
+                            <li 
+                              key={documento.gid}
+                              style={{
+                                padding: '0.75rem',
+                                marginBottom: '0.5rem',
+                                backgroundColor: '#f8f9fa',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid #2196F3',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}
+                            >
+                              <span style={{ 
+                                color: documento.completed ? '#4caf50' : '#999',
+                                fontSize: '1rem'
+                              }}>
+                                {documento.completed ? '✓' : '○'}
+                              </span>
+                              <span style={{ 
+                                flex: 1,
+                                textDecoration: documento.completed ? 'line-through' : 'none',
+                                color: documento.completed ? '#666' : '#333'
+                              }}>
+                                {documento.name}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Estudiantes */}
+                  {/* Segunda fila: Estudiantes (ocupa todo el ancho) */}
                   <div>
                     <div style={{ 
                       display: 'flex', 
@@ -339,13 +464,19 @@ const DiplomadosPage: React.FC = () => {
                     {estudiantes.length === 0 ? (
                       <p style={{ color: '#999', fontStyle: 'italic' }}>No hay estudiantes registrados</p>
                     ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      <ul style={{ 
+                        listStyle: 'none', 
+                        padding: 0, 
+                        margin: 0,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                        gap: '0.5rem'
+                      }}>
                         {estudiantes.map((estudiante) => (
                           <li 
                             key={estudiante.gid}
                             style={{
                               padding: '0.75rem',
-                              marginBottom: '0.5rem',
                               backgroundColor: '#f8f9fa',
                               borderRadius: '6px',
                               borderLeft: '3px solid #2196F3',
@@ -367,64 +498,40 @@ const DiplomadosPage: React.FC = () => {
                             }}>
                               {estudiante.name}
                             </span>
+                            <button
+                              onClick={() => handleShowInfo(estudiante, 'Estudiante')}
+                              style={{
+                                background: 'none',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                padding: '0.25rem 0.5rem',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                color: '#666',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                transition: 'all 0.2s'
+                              }}
+                              title="Ver información primaria"
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = '#2196F3';
+                                e.currentTarget.style.color = '#2196F3';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = '#ddd';
+                                e.currentTarget.style.color = '#666';
+                              }}
+                            >
+                              <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 500 }}>Info</span>
+                            </button>
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
-
-                  {/* Documentos */}
-                  <div>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem',
-                      marginBottom: '1rem',
-                      paddingBottom: '0.5rem',
-                      borderBottom: '2px solid #e0e0e0'
-                    }}>
-                      <span style={{ fontSize: '1.5rem' }}>📄</span>
-                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                        Documentos ({documentos.length})
-                      </h3>
-                    </div>
-                    {documentos.length === 0 ? (
-                      <p style={{ color: '#999', fontStyle: 'italic' }}>No hay documentos registrados</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {documentos.map((documento) => (
-                          <li 
-                            key={documento.gid}
-                            style={{
-                              padding: '0.75rem',
-                              marginBottom: '0.5rem',
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #2196F3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            <span style={{ 
-                              color: documento.completed ? '#4caf50' : '#999',
-                              fontSize: '1rem'
-                            }}>
-                              {documento.completed ? '✓' : '○'}
-                            </span>
-                            <span style={{ 
-                              flex: 1,
-                              textDecoration: documento.completed ? 'line-through' : 'none',
-                              color: documento.completed ? '#666' : '#333'
-                            }}>
-                              {documento.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
+                </>
               )}
 
               <div style={{ 
@@ -761,6 +868,19 @@ const DiplomadosPage: React.FC = () => {
           projectGid={diplomadosProjectGid}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleCreateSuccess}
+        />
+      )}
+
+      {/* Modal de Información Primaria */}
+      {selectedInfo && (
+        <InfoPrimariaModal
+          nombre={selectedInfo.nombre}
+          genero={selectedInfo.genero}
+          telefono={selectedInfo.telefono}
+          lugarNacimiento={selectedInfo.lugarNacimiento}
+          documentoIdentidad={selectedInfo.documentoIdentidad}
+          tipo={selectedInfo.tipo}
+          onClose={() => setSelectedInfo(null)}
         />
       )}
     </div>
