@@ -200,6 +200,111 @@ class AsanaService {
 
     return { sections, tasksBySection };
   }
+
+  // ===== Métodos para Diplomados =====
+  
+  /**
+   * Crear una nueva sección en un proyecto
+   */
+  async createSection(projectGid: string, sectionName: string): Promise<AsanaSection> {
+    return this.fetchAsana<AsanaSection>('/sections', {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          name: sectionName,
+          project: projectGid
+        }
+      })
+    });
+  }
+
+  /**
+   * Crear una nueva tarea en un proyecto y sección específica
+   */
+  async createTask(data: {
+    name: string;
+    projectGid: string;
+    workspaceGid: string;
+    sectionGid?: string;
+    notes?: string;
+  }): Promise<AsanaTask> {
+    const taskData: any = {
+      name: data.name,
+      projects: [data.projectGid],
+      workspace: data.workspaceGid,
+    };
+
+    if (data.notes) {
+      taskData.notes = data.notes;
+    }
+
+    const task = await this.fetchAsana<AsanaTask>('/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ data: taskData })
+    });
+
+    // Si se especifica sección, mover la tarea a esa sección
+    if (data.sectionGid) {
+      await this.addTaskToSection(task.gid, data.sectionGid);
+    }
+
+    return task;
+  }
+
+  /**
+   * Mover una tarea a una sección específica
+   */
+  async addTaskToSection(taskGid: string, sectionGid: string): Promise<void> {
+    await this.fetchAsana<void>(`/sections/${sectionGid}/addTask`, {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          task: taskGid
+        }
+      })
+    });
+  }
+
+  /**
+   * Obtener tareas de una sección específica
+   */
+  async getSectionTasks(sectionGid: string): Promise<AsanaTask[]> {
+    return this.fetchAsana<AsanaTask[]>(
+      `/sections/${sectionGid}/tasks?opt_fields=name,notes,completed,due_on,num_subtasks,created_at`
+    );
+  }
+
+  /**
+   * Eliminar una sección
+   */
+  async deleteSection(sectionGid: string): Promise<void> {
+    await this.fetchAsana<void>(`/sections/${sectionGid}`, {
+      method: 'DELETE'
+    });
+  }
+
+  /**
+   * Actualizar nombre de una sección
+   */
+  async updateSection(sectionGid: string, newName: string): Promise<AsanaSection> {
+    return this.fetchAsana<AsanaSection>(`/sections/${sectionGid}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        data: {
+          name: newName
+        }
+      })
+    });
+  }
+
+  /**
+   * Eliminar una tarea
+   */
+  async deleteTask(taskGid: string): Promise<void> {
+    await this.fetchAsana<void>(`/tasks/${taskGid}`, {
+      method: 'DELETE'
+    });
+  }
 }
 
 export const asanaService = new AsanaService();

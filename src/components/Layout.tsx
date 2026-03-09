@@ -49,6 +49,14 @@ const Layout: React.FC = () => {
               Planificación
             </Link>
           </li>
+          <li>
+            <Link 
+              to="/diplomados" 
+              className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
+            >
+              Diplomados
+            </Link>
+          </li>
         </ul>
       </nav>
       
