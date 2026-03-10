@@ -660,9 +660,23 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           {contrataciones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {contrataciones.map((contratacion) => {
-                const estadoContratacion = getCustomFieldValue(contratacion, 'Estado de contratación');
+                const estadoContratacion = getCustomFieldValue(contratacion, 'Estado de Contratación');
                 const attachments = contratacionesAttachments.get(contratacion.gid) || [];
                 const nombreContratacion = contratacion.name.replace('CONTRATACION - ', '');
+
+                // Definir los pasos del stepper
+                const pasos = [
+                  'Requerimiento de contratación',
+                  'Elaboración de TDRs',
+                  'Lanzamiento de convocatoria',
+                  'Selección del consultor',
+                  'Informe final del consultor'
+                ];
+
+                // Determinar el índice del paso actual (basado en el estado)
+                const pasoActualIndex = estadoContratacion 
+                  ? pasos.findIndex(paso => paso.toLowerCase() === estadoContratacion.toLowerCase())
+                  : -1;
 
                 return (
                   <div 
@@ -674,42 +688,132 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                       border: '1px solid #dee2e6'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
-                          {nombreContratacion}
-                        </h4>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Estado:</span>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: '500',
-                              backgroundColor: 
-                                estadoContratacion === 'Completada' ? '#e8f5e9' :
-                                estadoContratacion === 'En Proceso' ? '#fff3e0' :
-                                estadoContratacion === 'Pendiente' ? '#fce4ec' :
-                                '#f5f5f5',
-                              color: 
-                                estadoContratacion === 'Completada' ? '#2e7d32' :
-                                estadoContratacion === 'En Proceso' ? '#f57c00' :
-                                estadoContratacion === 'Pendiente' ? '#c2185b' :
-                                '#666',
-                              border: `1px solid ${
-                                estadoContratacion === 'Completada' ? '#81c784' :
-                                estadoContratacion === 'En Proceso' ? '#ffb74d' :
-                                estadoContratacion === 'Pendiente' ? '#f48fb1' :
-                                '#ddd'
-                              }`,
-                            }}
-                          >
-                            {estadoContratacion || 'Sin estado'}
-                          </span>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
+                        {nombreContratacion}
+                      </h4>
+                      
+                      {/* Progress Stepper */}
+                      <div style={{ position: 'relative', paddingTop: '0.5rem' }}>
+                        {/* Línea de fondo */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '23px',
+                          left: '20px',
+                          right: '20px',
+                          height: '2px',
+                          backgroundColor: '#e0e0e0',
+                          zIndex: 0
+                        }} />
+                        
+                        {/* Línea de progreso */}
+                        {pasoActualIndex >= 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '23px',
+                            left: '20px',
+                            width: `${(pasoActualIndex / (pasos.length - 1)) * 100}%`,
+                            height: '2px',
+                            backgroundColor: '#4caf50',
+                            zIndex: 1,
+                            transition: 'width 0.3s ease'
+                          }} />
+                        )}
+                        
+                        {/* Pasos */}
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          position: 'relative',
+                          zIndex: 2
+                        }}>
+                          {pasos.map((paso, index) => {
+                            const isCompleted = pasoActualIndex >= 0 && index < pasoActualIndex;
+                            const isCurrent = index === pasoActualIndex;
+
+                            return (
+                              <div 
+                                key={index}
+                                style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  alignItems: 'center',
+                                  flex: 1,
+                                  maxWidth: '120px'
+                                }}
+                              >
+                                {/* Círculo del paso */}
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 
+                                    isCompleted ? '#4caf50' :
+                                    isCurrent ? '#2196F3' :
+                                    '#e0e0e0',
+                                  border: `2px solid ${
+                                    isCompleted ? '#4caf50' :
+                                    isCurrent ? '#2196F3' :
+                                    '#e0e0e0'
+                                  }`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: isCompleted || isCurrent ? '#fff' : '#999',
+                                  fontWeight: '600',
+                                  fontSize: '0.75rem',
+                                  transition: 'all 0.3s ease',
+                                  boxShadow: isCurrent ? '0 2px 8px rgba(33, 150, 243, 0.3)' : 'none'
+                                }}>
+                                  {isCompleted ? '✓' : index + 1}
+                                </div>
+                                
+                                {/* Texto del paso */}
+                                <div style={{
+                                  marginTop: '0.5rem',
+                                  fontSize: '0.65rem',
+                                  textAlign: 'center',
+                                  color: isCurrent ? '#2196F3' : isCompleted ? '#4caf50' : '#999',
+                                  fontWeight: isCurrent ? '600' : '400',
+                                  lineHeight: '1.2',
+                                  maxWidth: '100px'
+                                }}>
+                                  {paso}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
+                      
+                      {/* Mensaje de estado actual */}
+                      {pasoActualIndex >= 0 && (
+                        <div style={{
+                          marginTop: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: '#e3f2fd',
+                          borderRadius: '4px',
+                          borderLeft: '3px solid #2196F3'
+                        }}>
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#1565c0' }}>
+                            <strong>Estado actual:</strong> {pasos[pasoActualIndex]}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pasoActualIndex < 0 && estadoContratacion && (
+                        <div style={{
+                          marginTop: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: '#fff3e0',
+                          borderRadius: '4px',
+                          borderLeft: '3px solid #ff9800'
+                        }}>
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#e65100' }}>
+                            <strong>Estado:</strong> {estadoContratacion} (no reconocido en el flujo)
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {attachments.length > 0 ? (
