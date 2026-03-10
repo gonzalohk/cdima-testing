@@ -19,7 +19,7 @@ const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title
         <h2 style={{ margin: 0 }}>{title}</h2>
         {onExport && (
           <button onClick={onExport} className="btn-export">
-            📄 Exportar Reporte
+            📄 Exportar
           </button>
         )}
       </div>

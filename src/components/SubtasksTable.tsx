@@ -75,9 +75,9 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
         <h2 style={{ margin: 0 }}>Sub Actividades ({subtasksWithoutRequests.length})</h2>
         <button
           onClick={onExportPDF}
-          className="button-primary"
+          className="btn-export"
         >
-          📄 Exportar a PDF
+          📄 Exportar
         </button>
       </div>
 

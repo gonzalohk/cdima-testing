@@ -23,6 +23,11 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [contratacionesAttachments, setContratacionesAttachments] = useState<Map<string, AsanaAttachment[]>>(new Map());
+  
+  // Estados para expandir/colapsar secciones (por defecto colapsadas)
+  const [showFuentesVerificacion, setShowFuentesVerificacion] = useState(false);
+  const [showSolicitudes, setShowSolicitudes] = useState(false);
+  const [showContrataciones, setShowContrataciones] = useState(false);
 
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
@@ -457,22 +462,35 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
 
         {/* Fuentes de Verificación */}
         <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+          <div 
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: showFuentesVerificacion ? '1rem' : 0,
+              cursor: 'pointer'
+            }}
+            onClick={() => setShowFuentesVerificacion(!showFuentesVerificacion)}
+          >
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showFuentesVerificacion ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
               📂 Fuentes de Verificación
             </h3>
             <button
-              onClick={() => setShowVerificationModal(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowVerificationModal(true);
+              }}
               className="button-primary"
               style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
               disabled={!!verificationSubtask}
-              title={verificationSubtask ? 'La subtarea ya existe' : 'Crear subtarea de fuentes de verificación'}
+              title={verificationSubtask ? 'La subtactividad ya existe' : 'Crear subtactividad de fuentes de verificación'}
             >
-              {verificationSubtask ? '✓ Subtarea Creada' : '+ Crear Subtarea'}
+              {verificationSubtask ? '✓ Subtactividad Creada' : '+ Crear Subactividad'}
             </button>
           </div>
 
-          {verificationSubtask ? (
+          {showFuentesVerificacion && (verificationSubtask ? (
             <div>
               <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#666' }}>
                 {loadingAttachments ? (
@@ -543,16 +561,29 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                 <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
               </p>
             </div>
-          )}
+          ))}
         </div>
 
         {/* Solicitudes */}
         <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+          <h3 
+            style={{ 
+              margin: showSolicitudes ? '0 0 1rem' : 0, 
+              fontSize: '1rem', 
+              fontWeight: 600, 
+              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer'
+            }}
+            onClick={() => setShowSolicitudes(!showSolicitudes)}
+          >
+            <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showSolicitudes ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
             📋 Solicitudes {solicitudes.length > 0 && `(${solicitudes.length})`}
           </h3>
 
-          {solicitudes.length > 0 ? (
+          {showSolicitudes && (solicitudes.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
@@ -648,16 +679,29 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                 <strong>ℹ️ Info:</strong> No hay solicitudes generadas para esta actividad. Use los botones superiores para crear solicitudes de material, fondos o devolución.
               </p>
             </div>
-          )}
+          ))}
         </div>
 
         {/* Contrataciones */}
         <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+          <h3 
+            style={{ 
+              margin: showContrataciones ? '0 0 1rem' : 0, 
+              fontSize: '1rem', 
+              fontWeight: 600, 
+              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer'
+            }}
+            onClick={() => setShowContrataciones(!showContrataciones)}
+          >
+            <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showContrataciones ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
             👔 Contrataciones {contrataciones.length > 0 && `(${contrataciones.length})`}
           </h3>
 
-          {contrataciones.length > 0 ? (
+          {showContrataciones && (contrataciones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {contrataciones.map((contratacion) => {
                 const estadoContratacion = getCustomFieldValue(contratacion, 'Estado de Contratación');
@@ -880,7 +924,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                 <strong>ℹ️ Info:</strong> No hay contrataciones registradas para esta actividad. Use el botón "Solicitar Contratación" para crear una nueva.
               </p>
             </div>
-          )}
+          ))}
         </div>
       </div>
 

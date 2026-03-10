@@ -113,9 +113,9 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
         <h2 style={{ margin: 0 }}>Resumen de Beneficiarios</h2>
         <button
           onClick={handleExportPDF}
-          className="button-primary"
+          className="btn-export"
         >
-          📄 Exportar Reporte
+          📄 Exportar
         </button>
       </div>
       
