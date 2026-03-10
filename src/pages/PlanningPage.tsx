@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, momentLocalizer, View, Event as BigCalendarEvent } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, View, Event as BigCalendarEvent } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
@@ -12,9 +14,21 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getTaskColor } from '../utils/colors';
 
-// Configurar moment en español
+// Configurar moment en español (para formateo de fechas)
 moment.locale('es');
-const localizer = momentLocalizer(moment);
+
+// Configurar localizer de date-fns para el calendario
+const locales = {
+  'es': es,
+};
+
+const localizer = dateFnsLocalizer({
+  format: (date: Date, formatStr: string) => format(date, formatStr, { locale: es }),
+  parse: (dateStr: string, formatStr: string) => parse(dateStr, formatStr, new Date(), { locale: es }),
+  startOfWeek: (date: Date) => startOfWeek(date, { locale: es, weekStartsOn: 1 }),
+  getDay: (date: Date) => getDay(date),
+  locales,
+});
 
 interface CalendarEvent extends BigCalendarEvent {
   id: string;
@@ -343,11 +357,11 @@ const PlanningPage: React.FC = () => {
 
   // Formatos de fecha personalizados
   const formats = {
-    dayHeaderFormat: (date: Date) => moment(date).format('dddd D'),
+    dayHeaderFormat: (date: Date) => format(date, 'EEEE d', { locale: es }),
     dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-      `${moment(start).format('D MMM')} - ${moment(end).format('D MMM YYYY')}`,
-    monthHeaderFormat: (date: Date) => moment(date).format('MMMM YYYY'),
-    weekdayFormat: (date: Date) => moment(date).format('ddd'),
+      `${format(start, 'd MMM', { locale: es })} - ${format(end, 'd MMM yyyy', { locale: es })}`,
+    monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy', { locale: es }),
+    weekdayFormat: (date: Date) => format(date, 'EEE', { locale: es }),
   };
 
   if (loading) {
