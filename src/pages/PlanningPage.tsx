@@ -85,9 +85,9 @@ const PlanningPage: React.FC = () => {
   const [view, setView] = useState<View>('week');
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [exporting, setExporting] = useState(false);
   const [areaFilter, setAreaFilter] = useState<string>('todas');
   const [exportingTables, setExportingTables] = useState(false);
+  const [exportingCalendar, setExportingCalendar] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -289,16 +289,28 @@ const PlanningPage: React.FC = () => {
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Planificación';
 
-  // Función para exportar a PDF
-  const exportToPDF = async () => {
-    setExporting(true);
+  // Función para exportar vista de calendario a PDF
+  const exportCalendarViewToPDF = async () => {
+    setExportingCalendar(true);
     try {
-      // Configuración de márgenes según estándar de otros reportes
+      // Márgenes para diseño ejecutivo
       const margins = {
-        top: 25,
-        bottom: 25,
-        left: 30,
-        right: 25
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20
+      };
+
+      // Colores del diseño ejecutivo
+      const colors = {
+        navyBlue: [70, 100, 140],
+        forestGreen: [46, 125, 50],
+        charcoalGray: [110, 110, 110],
+        steelBlue: [69, 123, 157],
+        lightGray: [117, 117, 117],
+        ultraLightGray: [249, 249, 249],
+        white: [255, 255, 255],
+        dateHeader: [220, 230, 240]  // Azul claro para fechas
       };
 
       const pdf = new jsPDF({
@@ -308,154 +320,172 @@ const PlanningPage: React.FC = () => {
       });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // Título principal - H1: 20pt (Negrita)
-      pdf.setFontSize(20);
+      // ============ ENCABEZADO ============
+      
+      // Logo CDIMA (lado izquierdo)
+      try {
+        const logoWidth = 28;
+        pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
+      } catch (error) {
+        console.error('Error al cargar logo:', error);
+        pdf.setFontSize(24);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+        pdf.text('CDIMA', margins.left, margins.top + 8);
+      }
+      
+      // Título Principal (lado derecho) - Incluye período
+      const periodoHeader = format(date, 'MMMM yyyy', { locale: es }).toUpperCase();
+      pdf.setFontSize(15);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Calendario de Planificación - CDIMA', pageWidth / 2, margins.top, { align: 'center' });
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text(`CALENDARIO MENSUAL DE ACTIVIDADES - ${periodoHeader}`, pageWidth - margins.right, margins.top + 5, { align: 'right' });
       
-      // Información del proyecto - Cuerpo: 10pt
-      pdf.setFontSize(10);
+      // Metadatos (alineados a la derecha)
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Proyecto: ${projectName}`, margins.left, margins.top + 10);
-      pdf.text(`Período: ${format(date, 'MMMM yyyy', { locale: es })}`, margins.left, margins.top + 15);
-      pdf.text(`Fecha de generación: ${format(new Date(), 'dd/MM/yyyy', { locale: es })}`, margins.left, margins.top + 20);
+      pdf.setTextColor(45, 45, 45);
+      
+      let metaY = margins.top + 12;
+      pdf.text(`PROYECTO: ${projectName}`, pageWidth - margins.right, metaY, { align: 'right' });
+      
+      metaY += 5;
+      const periodoText = format(date, 'MMMM yyyy', { locale: es });
+      pdf.text(`PERÍODO: ${periodoText.charAt(0).toUpperCase() + periodoText.slice(1)}`, pageWidth - margins.right, metaY, { align: 'right' });
+      
+      metaY += 5;
+      const fechaGeneracion = `${format(new Date(), 'dd', { locale: es })} de ${format(new Date(), 'MMMM', { locale: es })} de ${format(new Date(), 'yyyy', { locale: es })}`;
+      pdf.text(`FECHA DE GENERACIÓN: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
       
       // Línea separadora
-      pdf.setLineWidth(0.5);
-      pdf.line(margins.left, margins.top + 23, pageWidth - margins.right, margins.top + 23);
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.3);
+      pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
 
-      // Calcular rango del mes
+      let startY = metaY + 16;
+
+      // ============ CREAR TABLA DE ACTIVIDADES POR DÍA ============
       const startOfMonth = moment(date).startOf('month');
       const endOfMonth = moment(date).endOf('month');
       
-      // Ajustar al lunes de la primera semana
-      const firstDay = moment(startOfMonth).isoWeekday(1);
-      const lastDay = moment(endOfMonth).isoWeekday(7);
-      
-      // Crear estructura de la tabla - una fila por actividad
-      const headers = [['Día', 'Fecha', 'Actividad', 'Estado']];
-      const body: any[][] = [];
-      
-      // Iterar por cada día del rango
-      const current = moment(firstDay);
-      
-      while (current.isSameOrBefore(lastDay)) {
-        const isCurrentMonth = current.month() === moment(date).month();
-        
-        if (isCurrentMonth) {
-          // Encontrar tareas para este día
-          const dayTasks = events.filter(event => {
-            const eventDay = moment(event.start);
-            return eventDay.isSame(current, 'day');
-          });
+      // Preparar datos para la tabla
+      const tableData: any[] = [];
+      const current = moment(startOfMonth);
+
+      while (current.isSameOrBefore(endOfMonth)) {
+        // Obtener tareas para este día
+        const dayTasks = events.filter(event => {
+          const eventDay = moment(event.start);
+          return eventDay.isSame(current, 'day');
+        });
+
+        if (dayTasks.length > 0) {
+          // Header de fecha
+          const dayName = format(current.toDate(), 'EEEE', { locale: es });
+          const dateString = `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${current.date()} de ${format(current.toDate(), 'MMMM', { locale: es })}`;
           
-          if (dayTasks.length > 0) {
-            // Crear una fila por cada actividad
-            dayTasks.forEach((task, index) => {
-              const dayName = format(current.toDate(), 'EEEE', { locale: es });
-              const dayNumber = current.date();
-              
-              // Obtener estado desde custom field
-              const taskData = tasks.find(t => t.gid === task.id);
-              const estado = taskData ? getCustomFieldValue(taskData, 'Estado') : '-';
-              const status = estado === 'Ejecutado' ? 'Ejecutado' : estado === 'En Proceso' ? 'En Proceso' : '-';
-              
-              const rowStyles: any = {};
-              if (estado === 'Ejecutado') {
-                rowStyles.fillColor = [232, 245, 233];
-              } else if (estado === 'En Proceso') {
-                rowStyles.fillColor = [255, 243, 224];
-              } else {
-                rowStyles.fillColor = [250, 250, 250];
+          // Agregar fila de fecha como sub-header
+          tableData.push([
+            {
+              content: dateString.toUpperCase(),
+              colSpan: 1,
+              styles: {
+                fillColor: colors.dateHeader,
+                textColor: [45, 45, 45],
+                fontStyle: 'bold',
+                fontSize: 9,
+                cellPadding: 5
               }
-              
-              // Si es la primera actividad del día, mostrar el día y fecha
-              // Si no, dejar celdas vacías para agrupar visualmente
-              if (index === 0) {
-                body.push([
-                  { content: dayName.charAt(0).toUpperCase() + dayName.slice(1), styles: rowStyles },
-                  { content: dayNumber.toString(), styles: rowStyles },
-                  { content: task.title, styles: rowStyles },
-                  { content: status, styles: rowStyles }
-                ]);
-              } else {
-                body.push([
-                  { content: '', styles: rowStyles },
-                  { content: '', styles: rowStyles },
-                  { content: task.title, styles: rowStyles },
-                  { content: status, styles: rowStyles }
-                ]);
+            }
+          ]);
+
+          // Agregar cada tarea en su propia fila
+          dayTasks.forEach(task => {
+            tableData.push([
+              {
+                content: task.title,
+                styles: {
+                  fillColor: colors.white,
+                  textColor: [45, 45, 45],
+                  fontSize: 8.5,
+                  cellPadding: 4
+                }
               }
-            });
-          } else {
-            // Día sin actividades
-            const dayName = format(current.toDate(), 'EEEE', { locale: es });
-            const dayNumber = current.date();
-            
-            body.push([
-              { content: dayName.charAt(0).toUpperCase() + dayName.slice(1), styles: { fillColor: [250, 250, 250] } },
-              { content: dayNumber.toString(), styles: { fillColor: [250, 250, 250] } },
-              { content: 'Sin actividades', styles: { fillColor: [250, 250, 250], textColor: [150, 150, 150], fontStyle: 'italic' } },
-              { content: '-', styles: { fillColor: [250, 250, 250], textColor: [150, 150, 150] } }
             ]);
-          }
+          });
         }
         
         current.add(1, 'day');
       }
-      
+
+      // Si no hay actividades en el mes
+      if (tableData.length === 0) {
+        tableData.push([
+          {
+            content: 'No hay actividades programadas en este período',
+            styles: {
+              fillColor: colors.white,
+              textColor: [150, 150, 150],
+              fontStyle: 'italic',
+              fontSize: 9,
+              cellPadding: 10,
+              halign: 'center'
+            }
+          }
+        ]);
+      }
+
       // Generar tabla con autoTable
       autoTable(pdf, {
-        head: headers,
-        body: body,
-        startY: margins.top + 28,
+        body: tableData,
+        startY: startY,
         margin: { left: margins.left, right: margins.right },
-        theme: 'grid',
+        theme: 'plain',
         styles: {
-          fontSize: 9,
-          cellPadding: 4,
           overflow: 'linebreak',
           cellWidth: 'wrap',
           valign: 'middle',
-          lineColor: [200, 200, 200],
+          lineColor: [230, 230, 230],
           lineWidth: 0.1,
         },
-        headStyles: {
-          fillColor: [70, 130, 180],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          halign: 'center',
-          fontSize: 10,
-        },
+        tableWidth: 'auto',
         columnStyles: {
-          0: { cellWidth: 30, halign: 'left' },    // Día
-          1: { cellWidth: 20, halign: 'center' },  // Fecha
-          2: { cellWidth: 'auto' },                 // Actividad (ancho automático)
-          3: { cellWidth: 30, halign: 'center' },  // Estado
+          0: { cellWidth: pageWidth - margins.left - margins.right }
         },
       });
-      
-      // Agregar estadísticas al final
-      const finalY = (pdf as any).lastAutoTable.finalY + 10;
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Resumen del Período:', margins.left, finalY);
-      
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Total de tareas: ${currentMonthTasks.length}`, margins.left, finalY + 5);
-      pdf.text(`Completadas: ${statistics.completed}`, margins.left + 50, finalY + 5);
-      pdf.text(`En Proceso: ${statistics.pending}`, margins.left + 95, finalY + 5);
-      pdf.text(`Progreso: ${statistics.completionPercentage.toFixed(1)}%`, margins.left + 135, finalY + 5);
 
-      // Guardar PDF
-      const fileName = `Calendario_${projectName.replace(/\s+/g, '_')}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
-      pdf.save(fileName);
+      // ============ RESUMEN DEL PERÍODO ============
+      const finalY = (pdf as any).lastAutoTable.finalY + 12;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('RESUMEN DEL PERÍODO', margins.left, finalY);
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(45, 45, 45);
+      pdf.text(`Total de tareas: ${currentMonthTasks.length}`, margins.left, finalY + 7);
+      pdf.text(`Completadas: ${statistics.completed}`, margins.left + 55, finalY + 7);
+      pdf.text(`En Proceso: ${statistics.pending}`, margins.left + 105, finalY + 7);
+      pdf.text(`Progreso: ${statistics.completionPercentage.toFixed(1)}%`, margins.left + 150, finalY + 7);
+
+      // ============ PIE DE PÁGINA ============
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      const footerText = `CDIMA - Vista Calendario ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
+      pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
+
+      // Abrir PDF en nueva pestaña
+      pdf.output('dataurlnewwindow');
     } catch (error) {
-      console.error('Error al exportar PDF:', error);
+      console.error('Error al exportar calendario:', error);
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
     } finally {
-      setExporting(false);
+      setExportingCalendar(false);
     }
   };
 
@@ -496,8 +526,8 @@ const PlanningPage: React.FC = () => {
       // Logo CDIMA (lado izquierdo) - Imagen
       try {
         const logoWidth = 28; // Ancho del logo en mm
-        const logoHeight = 24; // Alto del logo en mm
-        pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, logoHeight);
+        // No especificamos altura para mantener proporciones originales
+        pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
       } catch (error) {
         console.error('Error al cargar logo:', error);
         // Fallback a texto si falla la carga de la imagen
@@ -695,10 +725,8 @@ const PlanningPage: React.FC = () => {
       const footerText = `CDIMA - Avance ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
       pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
-      // Guardar PDF
-      const areaText = areaFilter !== 'todas' ? `_${areaFilter.replace(/\s+/g, '_')}` : '';
-      const fileName = `Reporte_Ejecutivo_CDIMA${areaText}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
-      pdf.save(fileName);
+      // Abrir PDF en nueva pestaña
+      pdf.output('dataurlnewwindow');
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
@@ -782,43 +810,6 @@ const PlanningPage: React.FC = () => {
             </p>
           </div>
         </div>
-        
-        {/* View Selector */}
-        {/* <div className="planning-view-selector">
-          <button
-            className={`view-btn ${view === 'month' ? 'active' : ''}`}
-            onClick={() => setView('month')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Mes
-          </button>
-          <button
-            className={`view-btn ${view === 'week' ? 'active' : ''}`}
-            onClick={() => setView('week')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Semana
-          </button>
-          <button
-            className={`view-btn ${view === 'day' ? 'active' : ''}`}
-            onClick={() => setView('day')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-            </svg>
-            Día
-          </button>
-        </div> */}
       </div>
 
       {/* Legend */}
@@ -843,12 +834,12 @@ const PlanningPage: React.FC = () => {
         {/* Export Button */}
         <button
           className="btn-export"
-          onClick={exportToPDF}
-          disabled={exporting || events.length === 0}
-          title="Exportar a PDF"
+          onClick={exportCalendarViewToPDF}
+          disabled={exportingCalendar || events.length === 0}
+          title="Exportar vista de calendario a PDF"
           style={{ marginBottom: '1rem' }}
         >
-          {exporting ? 'Exportando...' : '📄 Exportar'}
+          {exportingCalendar ? 'Exportando...' : '📅 Exportar Calendario'}
         </button>
         
         <Calendar
@@ -868,7 +859,7 @@ const PlanningPage: React.FC = () => {
           selectable
           step={60}
           showMultiDayTimes
-          defaultView="week"
+          defaultView="month"
           views={['month', 'week', 'day']}
           dayLayoutAlgorithm="no-overlap"
         />
@@ -944,7 +935,7 @@ const PlanningPage: React.FC = () => {
 
           {/* Tareas Ejecutadas */}
           <div className="card">
-            <h2>✓ Tareas Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>Tareas Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
             
             {executedTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -959,7 +950,7 @@ const PlanningPage: React.FC = () => {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables de actividad</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
                     </tr>
@@ -1005,7 +996,7 @@ const PlanningPage: React.FC = () => {
                             backgroundColor: '#e8f5e9',
                             color: '#2e7d32'
                           }}>
-                            ✓ Ejecutado
+                            Ejecutado
                           </span>
                         </td>
                       </tr>
@@ -1018,7 +1009,7 @@ const PlanningPage: React.FC = () => {
 
           {/* Tareas Pendientes */}
           <div className="card">
-            <h2>○ Tareas En Proceso - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>Tareas En Proceso - {moment(date).format('MMMM YYYY')}</h2>
             
             {pendingTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -1033,7 +1024,7 @@ const PlanningPage: React.FC = () => {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables de actividad</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
                     </tr>
@@ -1079,7 +1070,7 @@ const PlanningPage: React.FC = () => {
                             backgroundColor: '#fff3e0',
                             color: '#e65100'
                           }}>
-                            ○ En Proceso
+                            En Proceso
                           </span>
                         </td>
                       </tr>
