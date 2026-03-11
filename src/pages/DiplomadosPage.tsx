@@ -385,6 +385,202 @@ const DiplomadosPage: React.FC = () => {
     pdf.output('dataurlnewwindow');
   };
 
+  const generarReporteCentralizadorNotas = () => {
+    if (!selectedDiplomado || estudiantes.length === 0) return;
+
+    // Colores del proyecto (mismo esquema que PlanningPage)
+    const colors = {
+      navyBlue: [70, 100, 140],
+      lightGray: [117, 117, 117],
+      ultraLightGray: [249, 249, 249],
+      white: [255, 255, 255],
+      forestGreen: [46, 125, 50],
+      errorRed: [231, 76, 60]
+    };
+
+    const margins = {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20
+    };
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    
+    // ============ ENCABEZADO ============
+    
+    // Logo CDIMA (lado izquierdo)
+    try {
+      const logoWidth = 28;
+      pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
+    } catch (error) {
+      console.error('Error al cargar logo:', error);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('CDIMA', margins.left, margins.top + 8);
+    }
+    
+    // Título Principal (lado derecho)
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('CENTRALIZADOR DE NOTAS', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+    
+    // Metadatos
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(45, 45, 45);
+    
+    let metaY = margins.top + 14;
+    pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+    
+    metaY += 5;
+    const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+    pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+    
+    // Línea separadora
+    pdf.setDrawColor(220, 220, 220);
+    pdf.setLineWidth(0.3);
+    pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
+
+    let startY = metaY + 14;
+
+    // ============ TABLA DE NOTAS ============
+    // Calcular datos de estudiantes
+    const getCustomFieldValue = (task: AsanaTask, fieldName: string): number => {
+      if (!task.custom_fields) return 0;
+      const field = task.custom_fields.find(f => f.name === fieldName);
+      if (!field) return 0;
+      if (field.number_value !== undefined && field.number_value !== null) {
+        return field.number_value;
+      }
+      if (field.text_value) {
+        const parsed = parseFloat(field.text_value);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      if (field.display_value) {
+        const parsed = parseFloat(field.display_value);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    };
+
+    const notasEstudiantes = estudiantes.map(estudiante => {
+      const modulo1 = getCustomFieldValue(estudiante, 'Módulo 1');
+      const modulo2 = getCustomFieldValue(estudiante, 'Módulo 2');
+      const modulo3 = getCustomFieldValue(estudiante, 'Módulo 3');
+      const modulo4 = getCustomFieldValue(estudiante, 'Módulo 4');
+      const modulo5 = getCustomFieldValue(estudiante, 'Módulo 5');
+      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+      
+      return {
+        nombre: estudiante.name,
+        modulo1,
+        modulo2,
+        modulo3,
+        modulo4,
+        modulo5,
+        total: parseFloat(total.toFixed(2))
+      };
+    });
+
+    const calcularPromedioModulo = (moduloKey: string): number => {
+      if (notasEstudiantes.length === 0) return 0;
+      const suma = notasEstudiantes.reduce((acc: number, est: any) => acc + est[moduloKey], 0);
+      return parseFloat((suma / notasEstudiantes.length).toFixed(2));
+    };
+
+    // Preparar datos para la tabla
+    const tableBody = notasEstudiantes.map(est => [
+      est.nombre,
+      est.modulo1.toFixed(2),
+      est.modulo2.toFixed(2),
+      est.modulo3.toFixed(2),
+      est.modulo4.toFixed(2),
+      est.modulo5.toFixed(2),
+      est.total.toFixed(2)
+    ]);
+
+    // Agregar fila de promedios
+    tableBody.push([
+      'PROMEDIO GENERAL',
+      calcularPromedioModulo('modulo1').toFixed(2),
+      calcularPromedioModulo('modulo2').toFixed(2),
+      calcularPromedioModulo('modulo3').toFixed(2),
+      calcularPromedioModulo('modulo4').toFixed(2),
+      calcularPromedioModulo('modulo5').toFixed(2),
+      calcularPromedioModulo('total').toFixed(2)
+    ]);
+
+    autoTable(pdf, {
+      head: [['Estudiante', 'Modulo 1', 'Modulo 2', 'Modulo 3', 'Modulo 4', 'Modulo 5', 'Promedio']],
+      body: tableBody,
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'striped',
+      headStyles: {
+        fillColor: colors.navyBlue,
+        textColor: colors.white,
+        fontStyle: 'bold',
+        fontSize: 9,
+        halign: 'center',
+        cellPadding: 5
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        valign: 'middle',
+        textColor: [45, 45, 45],
+        lineColor: [230, 230, 230],
+        lineWidth: 0.1
+      },
+      bodyStyles: {
+        fillColor: colors.white
+      },
+      alternateRowStyles: {
+        fillColor: colors.ultraLightGray
+      },
+      columnStyles: {
+        0: { cellWidth: 45, halign: 'left' },
+        1: { cellWidth: 18, halign: 'center' },
+        2: { cellWidth: 18, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 18, halign: 'center' },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 25, halign: 'center', fontStyle: 'bold' }
+      }
+    });
+
+    // ============ NOTA INFORMATIVA ============
+    const finalY = (pdf as any).lastAutoTable.finalY + 8;
+    if (finalY < pageHeight - 35) {
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      pdf.text('Nota: Las calificaciones >= 51 se consideran aprobadas y < 51 reprobadas.', margins.left, finalY);
+      pdf.text(`Total de estudiantes: ${estudiantes.length}`, margins.left, finalY + 4);
+    }
+
+    // ============ PIE DE PÁGINA ============
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+    const footerText = `Promedio General del Diplomado: ${calcularPromedioModulo('total').toFixed(2)}`;
+    pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
+
+    // Abrir en nuevo tab
+    pdf.output('dataurlnewwindow');
+  };
+
   if (loading) {
     return <LoadingOverlay message="Cargando diplomados..." />;
   }
@@ -707,6 +903,19 @@ const DiplomadosPage: React.FC = () => {
                 {selectedDiplomado.name}
               </p>
             </div>
+            <button
+              onClick={generarReporteCentralizadorNotas}
+              className="button-secondary"
+              style={{ 
+                fontSize: '0.9rem', 
+                padding: '0.75rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📄 Exportar Notas
+            </button>
           </div>
 
           <div style={{ padding: '1.5rem' }}>
