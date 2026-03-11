@@ -305,6 +305,16 @@ class AsanaService {
       method: 'DELETE'
     });
   }
+
+  /**
+   * Actualizar una tarea (nombre, notas, etc.)
+   */
+  async updateTask(taskGid: string, data: { name?: string; notes?: string }): Promise<AsanaTask> {
+    return this.fetchAsana<AsanaTask>(`/tasks/${taskGid}`, {
+      method: 'PUT',
+      body: JSON.stringify({ data })
+    });
+  }
 }
 
 export const asanaService = new AsanaService();

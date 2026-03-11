@@ -21,6 +21,13 @@ interface InfoPrimaria {
   tipo: 'Docente' | 'Estudiante';
 }
 
+interface AsistenciaEstudiante {
+  gid: string;
+  nombre: string;
+  asistio: boolean;
+  observaciones: string;
+}
+
 const DiplomadosPage: React.FC = () => {
   const navigate = useNavigate();
   const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
@@ -30,7 +37,18 @@ const DiplomadosPage: React.FC = () => {
   const [selectedDiplomado, setSelectedDiplomado] = useState<AsanaSection | null>(null);
   const [diplomadosProjectGid, setDiplomadosProjectGid] = useState<string>('');
   const [showNotasModal, setShowNotasModal] = useState(false);
+  const [showAsistenciaPanel, setShowAsistenciaPanel] = useState(false);
   const [selectedInfo, setSelectedInfo] = useState<InfoPrimaria | null>(null);
+  
+  // Estados para asistencia
+  const [showAsistenciaModal, setShowAsistenciaModal] = useState(false);
+  const [asistencias, setAsistencias] = useState<AsistenciaEstudiante[]>([]);
+  const [loadingAsistencia, setLoadingAsistencia] = useState(false);
+  const [fechaAsistencia, setFechaAsistencia] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Estados para modales individuales
+  const [estudianteSeleccionadoNotas, setEstudianteSeleccionadoNotas] = useState<AsanaTask | null>(null);
+  const [estudianteSeleccionadoAsistencia, setEstudianteSeleccionadoAsistencia] = useState<AsanaTask | null>(null);
   
   // Estados para los detalles del diplomado
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -173,6 +191,168 @@ const DiplomadosPage: React.FC = () => {
   const handleShowInfo = (task: AsanaTask, tipo: 'Docente' | 'Estudiante') => {
     const info = parseInfoPrimaria(task, tipo);
     setSelectedInfo(info);
+  };
+
+  // === Funciones para Asistencia ===
+  
+  const handleAbrirAsistencia = () => {
+    // Reiniciar la fecha a hoy cuando se abre el modal
+    setFechaAsistencia(format(new Date(), 'yyyy-MM-dd'));
+    
+    // Inicializar asistencias con los estudiantes actuales
+    const asistenciasIniciales: AsistenciaEstudiante[] = estudiantes.map(estudiante => ({
+      gid: estudiante.gid,
+      nombre: estudiante.name,
+      asistio: false,
+      observaciones: ''
+    }));
+    setAsistencias(asistenciasIniciales);
+    setShowAsistenciaModal(true);
+  };
+
+  const handleCambiarAsistencia = (gid: string, campo: 'asistio' | 'observaciones', valor: boolean | string) => {
+    setAsistencias(prev => prev.map(asist => 
+      asist.gid === gid 
+        ? { ...asist, [campo]: valor }
+        : asist
+    ));
+  };
+
+  const handleGuardarAsistencias = async () => {
+    setLoadingAsistencia(true);
+    try {
+      // Formatear la fecha seleccionada
+      const fechaSeleccionada = format(new Date(fechaAsistencia), "dd/MM/yyyy", { locale: es });
+      
+      console.log('📅 Guardando asistencias para la fecha:', fechaSeleccionada);
+      
+      for (const asistencia of asistencias) {
+        // Obtener las notas actuales del estudiante
+        const estudiante = estudiantes.find(e => e.gid === asistencia.gid);
+        if (!estudiante) {
+          console.warn(`⚠️ No se encontró el estudiante con gid: ${asistencia.gid}`);
+          continue;
+        }
+
+        console.log(`\n👤 Procesando: ${asistencia.nombre}`);
+        const notasActuales = estudiante.notes || '';
+        console.log('📝 Notas actuales:', notasActuales.substring(0, 100) + '...');
+        
+        // Crear el registro de asistencia del día
+        const nuevoRegistro = `${fechaSeleccionada} - Asistió: ${asistencia.asistio ? 'Sí' : 'No'} - Observaciones: ${asistencia.observaciones || 'Ninguna'}`;
+        console.log('🆕 Nuevo registro:', nuevoRegistro);
+        
+        let nuevasNotas = notasActuales;
+        
+        if (notasActuales.includes('=== REGISTRO DE ASISTENCIA ===')) {
+          // Ya existe el bloque de asistencia
+          const [parteAntes, parteDespues] = notasActuales.split('=== REGISTRO DE ASISTENCIA ===');
+          const registrosExistentes = parteDespues.split('\n').filter(linea => linea.trim());
+          
+          console.log(`📋 Registros existentes: ${registrosExistentes.length}`);
+          
+          // Buscar si ya existe un registro para esta fecha
+          const indiceExistente = registrosExistentes.findIndex(registro => 
+            registro.startsWith(fechaSeleccionada)
+          );
+          
+          if (indiceExistente !== -1) {
+            console.log(`♻️ Reemplazando registro existente en índice ${indiceExistente}`);
+            registrosExistentes[indiceExistente] = nuevoRegistro;
+          } else {
+            console.log('➕ Agregando nuevo registro al principio');
+            registrosExistentes.unshift(nuevoRegistro);
+          }
+          
+          // Reconstruir las notas
+          nuevasNotas = `${parteAntes}=== REGISTRO DE ASISTENCIA ===\n${registrosExistentes.join('\n')}`;
+        } else {
+          console.log('🆕 Creando nuevo bloque de asistencia');
+          nuevasNotas = `${notasActuales}\n\n=== REGISTRO DE ASISTENCIA ===\n${nuevoRegistro}`;
+        }
+
+        console.log('💾 Guardando en Asana...');
+        console.log('📄 Nuevas notas (preview):', nuevasNotas.substring(0, 200) + '...');
+        
+        // Actualizar la tarea con las nuevas notas
+        const resultado = await asanaService.updateTask(asistencia.gid, { notes: nuevasNotas });
+        console.log('✅ Guardado exitoso para:', asistencia.nombre);
+        console.log('📋 Respuesta de Asana:', resultado.gid);
+      }
+
+      console.log('\n🎉 Todas las asistencias guardadas. Recargando datos...');
+      
+      // Recargar los detalles del diplomado para ver los cambios
+      if (selectedDiplomado) {
+        await handleViewDetails(selectedDiplomado);
+      }
+      
+      alert('✅ Asistencias guardadas correctamente');
+      setShowAsistenciaModal(false);
+    } catch (err) {
+      console.error('❌ Error al guardar asistencias:', err);
+      if (err instanceof Error) {
+        alert(`❌ Error al guardar las asistencias: ${err.message}`);
+      } else {
+        alert('❌ Error al guardar las asistencias');
+      }
+    } finally {
+      setLoadingAsistencia(false);
+    }
+  };
+
+  // === Función para extraer registros de asistencia ===
+  
+  const extraerAsistenciasEstudiantes = () => {
+    interface AsistenciaEstudianteData {
+      nombre: string;
+      registros: { [fecha: string]: { asistio: boolean; observaciones: string } };
+    }
+
+    const asistenciasPorEstudiante: AsistenciaEstudianteData[] = [];
+    const todasLasFechas = new Set<string>();
+
+    estudiantes.forEach(estudiante => {
+      const notas = estudiante.notes || '';
+      const registros: { [fecha: string]: { asistio: boolean; observaciones: string } } = {};
+
+      if (notas.includes('=== REGISTRO DE ASISTENCIA ===')) {
+        const [, parteDespues] = notas.split('=== REGISTRO DE ASISTENCIA ===');
+        const lineas = parteDespues.split('\n').filter(linea => linea.trim());
+
+        lineas.forEach(linea => {
+          // Formato: "11/03/2026 - Asistió: Sí - Observaciones: Ninguna"
+          const matchFecha = linea.match(/^(\d{2}\/\d{2}\/\d{4})/);
+          const matchAsistio = linea.match(/Asistió:\s*(Sí|No)/i);
+          const matchObservaciones = linea.match(/Observaciones:\s*(.+)$/i);
+
+          if (matchFecha) {
+            const fecha = matchFecha[1];
+            const asistio = matchAsistio ? matchAsistio[1].toLowerCase() === 'sí' : false;
+            const observaciones = matchObservaciones ? matchObservaciones[1].trim() : '';
+
+            registros[fecha] = { asistio, observaciones };
+            todasLasFechas.add(fecha);
+          }
+        });
+      }
+
+      asistenciasPorEstudiante.push({
+        nombre: estudiante.name,
+        registros
+      });
+    });
+
+    // Ordenar fechas (más recientes primero)
+    const fechasOrdenadas = Array.from(todasLasFechas).sort((a, b) => {
+      const [diaA, mesA, añoA] = a.split('/').map(Number);
+      const [diaB, mesB, añoB] = b.split('/').map(Number);
+      const fechaA = new Date(añoA, mesA - 1, diaA);
+      const fechaB = new Date(añoB, mesB - 1, diaB);
+      return fechaB.getTime() - fechaA.getTime();
+    });
+
+    return { asistenciasPorEstudiante, fechasOrdenadas };
   };
 
   const generarReporteDiplomado = () => {
@@ -721,9 +901,24 @@ const DiplomadosPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {/* Botón Ver Listado */}
+                  {/* Botones Ver Listado y Asistencia */}
                   {(estudiantes.length > 0 || docentes.length > 0) && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
+                      {estudiantes.length > 0 && (
+                        <button
+                          onClick={handleAbrirAsistencia}
+                          className="button-secondary"
+                          style={{ 
+                            fontSize: '0.9rem', 
+                            padding: '0.75rem 1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          ✓ Asistencia
+                        </button>
+                      )}
                       <button
                         onClick={generarReporteDiplomado}
                         className="button-secondary"
@@ -783,6 +978,8 @@ const DiplomadosPage: React.FC = () => {
                         <thead>
                           <tr>
                             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '100px' }}>Notas</th>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '110px' }}>Asistencia</th>
                             <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
                           </tr>
                         </thead>
@@ -790,6 +987,24 @@ const DiplomadosPage: React.FC = () => {
                           {estudiantes.map((estudiante) => (
                             <tr key={estudiante.gid}>
                               <td style={{ padding: '0.5rem' }}>{estudiante.name}</td>
+                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
+                                <button
+                                  onClick={() => setEstudianteSeleccionadoNotas(estudiante)}
+                                  className="button-secondary"
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                >
+                                  📊 Ver Notas
+                                </button>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
+                                <button
+                                  onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)}
+                                  className="button-secondary"
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                >
+                                  ✓ Ver Asistencia
+                                </button>
+                              </td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => handleShowInfo(estudiante, 'Estudiante')}
@@ -862,9 +1077,22 @@ const DiplomadosPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Botón Centralizador de Notas - Esquina inferior derecha */}
+              {/* Botones Centralizador de Notas y Asistencia */}
               {estudiantes.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button
+                    onClick={() => setShowAsistenciaPanel(!showAsistenciaPanel)}
+                    className="button-primary"
+                    style={{ 
+                      fontSize: '0.9rem', 
+                      padding: '0.75rem 1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    ✓ {showAsistenciaPanel ? 'Ocultar' : 'Mostrar'} Asistencia
+                  </button>
                   <button
                     onClick={() => setShowNotasModal(!showNotasModal)}
                     className="button-primary"
@@ -1156,6 +1384,508 @@ const DiplomadosPage: React.FC = () => {
         </div>
       )}
 
+      {/* Panel de Asistencia */}
+      {showAsistenciaPanel && selectedDiplomado && estudiantes.length > 0 && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div style={{ 
+            padding: '1.5rem',
+            borderBottom: '2px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#f8f9fa'
+          }}>
+            <div>
+              <h2 style={{ margin: 0, marginBottom: '0.25rem', fontSize: '1.5rem' }}>
+                ✓ Registro de Asistencia
+              </h2>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
+                {selectedDiplomado.name}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ padding: '1.5rem' }}>
+            {(() => {
+              const { asistenciasPorEstudiante, fechasOrdenadas } = extraerAsistenciasEstudiantes();
+
+              if (fechasOrdenadas.length === 0) {
+                return (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '2rem',
+                    color: '#999',
+                    fontStyle: 'italic'
+                  }}>
+                    <p>No hay registros de asistencia todavía.</p>
+                    <p style={{ fontSize: '0.9rem' }}>
+                      Utiliza el botón "✓ Asistencia" para registrar la asistencia de los estudiantes.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ 
+                    width: '100%', 
+                    borderCollapse: 'collapse',
+                    fontSize: '0.9rem'
+                  }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#e8f5e9', color: '#2e7d32' }}>
+                        <th style={{ 
+                          padding: '1rem', 
+                          textAlign: 'left', 
+                          borderRight: '1px solid #c8e6c9',
+                          minWidth: '200px',
+                          position: 'sticky',
+                          left: 0,
+                          backgroundColor: '#e8f5e9',
+                          zIndex: 2,
+                          fontWeight: 600
+                        }}>
+                          Estudiante
+                        </th>
+                        {fechasOrdenadas.map((fecha, index) => (
+                          <th 
+                            key={index} 
+                            style={{ 
+                              padding: '1rem', 
+                              textAlign: 'center', 
+                              borderRight: '1px solid #c8e6c9',
+                              fontWeight: 600,
+                              minWidth: '120px'
+                            }}
+                          >
+                            {fecha}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {asistenciasPorEstudiante.map((estudiante, estudianteIndex) => (
+                        <tr 
+                          key={estudianteIndex}
+                          style={{ 
+                            backgroundColor: estudianteIndex % 2 === 0 ? '#f8f9fa' : 'white',
+                            borderBottom: '1px solid #dee2e6'
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '0.875rem 1rem', 
+                            fontWeight: 500,
+                            borderRight: '1px solid #dee2e6',
+                            position: 'sticky',
+                            left: 0,
+                            backgroundColor: estudianteIndex % 2 === 0 ? '#f8f9fa' : 'white',
+                            zIndex: 1
+                          }}>
+                            {estudiante.nombre}
+                          </td>
+                          {fechasOrdenadas.map((fecha, fechaIndex) => {
+                            const registro = estudiante.registros[fecha];
+                            const asistio = registro?.asistio;
+                            const observaciones = registro?.observaciones || '';
+                            
+                            return (
+                              <td 
+                                key={fechaIndex}
+                                style={{ 
+                                  padding: '0.875rem 1rem', 
+                                  textAlign: 'center',
+                                  borderRight: '1px solid #dee2e6',
+                                  fontWeight: 600,
+                                  fontSize: '0.95rem',
+                                  color: asistio === true ? '#27AE60' : asistio === false ? '#E74C3C' : '#999',
+                                  backgroundColor: asistio === true ? '#d1fae5' : asistio === false ? '#fee2e2' : undefined
+                                }}
+                                title={observaciones !== 'Ninguna' && observaciones ? `Observaciones: ${observaciones}` : ''}
+                              >
+                                {asistio === true ? 'Sí' : asistio === false ? 'No' : '-'}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            <div style={{ 
+              marginTop: '1.5rem',
+              padding: '1rem', 
+              backgroundColor: '#fff3e0', 
+              borderRadius: '6px',
+              borderLeft: '4px solid #ff9800'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#e65100' }}>
+                <strong>📌 Información:</strong> Los registros de asistencia se obtienen de las notas de cada estudiante. 
+                Pasa el cursor sobre las celdas para ver las observaciones registradas. 
+                Las celdas con "Sí" aparecen en verde (asistió) y las celdas con "No" en rojo (no asistió).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Notas Individual */}
+      {estudianteSeleccionadoNotas && (
+        <div className="modal-overlay" onClick={() => setEstudianteSeleccionadoNotas(null)}>
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '850px', 
+              width: '90%'
+            }}
+          >
+            <div className="modal-header">
+              <h2>📊 Notas del Estudiante</h2>
+              <button className="modal-close" onClick={() => setEstudianteSeleccionadoNotas(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#1565c0', fontSize: '1.2rem' }}>
+                {estudianteSeleccionadoNotas.name}
+              </h3>
+
+              {(() => {
+                const getCustomFieldValue = (task: AsanaTask, fieldName: string): number => {
+                  if (!task.custom_fields) return 0;
+                  const field = task.custom_fields.find(f => f.name === fieldName);
+                  if (!field) return 0;
+                  if (field.number_value !== undefined && field.number_value !== null) {
+                    return field.number_value;
+                  }
+                  if (field.text_value) {
+                    const parsed = parseFloat(field.text_value);
+                    return isNaN(parsed) ? 0 : parsed;
+                  }
+                  if (field.display_value) {
+                    const parsed = parseFloat(field.display_value);
+                    return isNaN(parsed) ? 0 : parsed;
+                  }
+                  return 0;
+                };
+
+                const modulo1 = getCustomFieldValue(estudianteSeleccionadoNotas, 'Módulo 1');
+                const modulo2 = getCustomFieldValue(estudianteSeleccionadoNotas, 'Módulo 2');
+                const modulo3 = getCustomFieldValue(estudianteSeleccionadoNotas, 'Módulo 3');
+                const modulo4 = getCustomFieldValue(estudianteSeleccionadoNotas, 'Módulo 4');
+                const modulo5 = getCustomFieldValue(estudianteSeleccionadoNotas, 'Módulo 5');
+                const promedio = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+
+                return (
+                  <div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem', tableLayout: 'fixed' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#e3f2fd', color: '#1565c0' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #90caf9', width: '40%' }}>
+                            Módulo
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '20%' }}>
+                            Nota
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '40%' }}>
+                            Estado
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { nombre: 'Módulo 1', nota: modulo1 },
+                          { nombre: 'Módulo 2', nota: modulo2 },
+                          { nombre: 'Módulo 3', nota: modulo3 },
+                          { nombre: 'Módulo 4', nota: modulo4 },
+                          { nombre: 'Módulo 5', nota: modulo5 }
+                        ].map((modulo, index) => (
+                          <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
+                            <td style={{ padding: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {modulo.nombre}
+                            </td>
+                            <td style={{ 
+                              padding: '0.75rem', 
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: '1.1rem',
+                              color: modulo.nota >= 51 ? '#27AE60' : '#E74C3C'
+                            }}>
+                              {modulo.nota.toFixed(2)}
+                            </td>
+                            <td style={{ 
+                              padding: '0.75rem', 
+                              textAlign: 'center',
+                              fontWeight: 600
+                            }}>
+                              {modulo.nota >= 51 ? (
+                                <span style={{ color: '#27AE60' }}>✓ Aprobado</span>
+                              ) : (
+                                <span style={{ color: '#E74C3C' }}>✗ Reprobado</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ 
+                          backgroundColor: '#e3f2fd',
+                          fontWeight: 700,
+                          borderTop: '3px solid #90caf9'
+                        }}>
+                          <td style={{ padding: '1rem', fontSize: '1.05rem' }}>
+                            PROMEDIO FINAL
+                          </td>
+                          <td style={{ 
+                            padding: '1rem', 
+                            textAlign: 'center',
+                            fontSize: '1.3rem',
+                            color: promedio >= 51 ? '#27AE60' : '#E74C3C'
+                          }}>
+                            {promedio.toFixed(2)}
+                          </td>
+                          <td style={{ 
+                            padding: '1rem', 
+                            textAlign: 'center',
+                            fontSize: '1.05rem'
+                          }}>
+                            {promedio >= 51 ? (
+                              <span style={{ color: '#27AE60' }}>✓ Aprobado</span>
+                            ) : (
+                              <span style={{ color: '#E74C3C' }}>✗ Reprobado</span>
+                            )}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div style={{ 
+                      padding: '1rem', 
+                      backgroundColor: promedio >= 51 ? '#d1fae5' : '#fee2e2', 
+                      borderRadius: '6px',
+                      borderLeft: `4px solid ${promedio >= 51 ? '#27AE60' : '#E74C3C'}`,
+                      wordWrap: 'break-word'
+                    }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: promedio >= 51 ? '#065f46' : '#991b1b', lineHeight: '1.5' }}>
+                        <strong>📌 Estado:</strong> {promedio >= 51 
+                          ? 'El estudiante ha aprobado el diplomado.' 
+                          : 'El estudiante no alcanzó el mínimo de 51 puntos.'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee' }}>
+              <button
+                onClick={() => setEstudianteSeleccionadoNotas(null)}
+                className="button-primary"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Asistencia Individual */}
+      {estudianteSeleccionadoAsistencia && (
+        <div className="modal-overlay" onClick={() => setEstudianteSeleccionadoAsistencia(null)}>
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '700px', 
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}
+          >
+            <div className="modal-header">
+              <h2>✓ Asistencia del Estudiante</h2>
+              <button className="modal-close" onClick={() => setEstudianteSeleccionadoAsistencia(null)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#2e7d32' }}>
+                {estudianteSeleccionadoAsistencia.name}
+              </h3>
+
+              {(() => {
+                const notas = estudianteSeleccionadoAsistencia.notes || '';
+                const registros: { fecha: string; asistio: boolean; observaciones: string }[] = [];
+
+                if (notas.includes('=== REGISTRO DE ASISTENCIA ===')) {
+                  const [, parteDespues] = notas.split('=== REGISTRO DE ASISTENCIA ===');
+                  const lineas = parteDespues.split('\n').filter(linea => linea.trim());
+
+                  lineas.forEach(linea => {
+                    const matchFecha = linea.match(/^(\d{2}\/\d{2}\/\d{4})/);
+                    const matchAsistio = linea.match(/Asistió:\s*(Sí|No)/i);
+                    const matchObservaciones = linea.match(/Observaciones:\s*(.+)$/i);
+
+                    if (matchFecha) {
+                      registros.push({
+                        fecha: matchFecha[1],
+                        asistio: matchAsistio ? matchAsistio[1].toLowerCase() === 'sí' : false,
+                        observaciones: matchObservaciones ? matchObservaciones[1].trim() : 'Ninguna'
+                      });
+                    }
+                  });
+                }
+
+                if (registros.length === 0) {
+                  return (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '2rem',
+                      color: '#999',
+                      fontStyle: 'italic'
+                    }}>
+                      <p>No hay registros de asistencia para este estudiante.</p>
+                    </div>
+                  );
+                }
+
+                // Calcular estadísticas
+                const totalAsistencias = registros.filter(r => r.asistio).length;
+                const totalFaltas = registros.filter(r => !r.asistio).length;
+                const porcentajeAsistencia = ((totalAsistencias / registros.length) * 100).toFixed(1);
+
+                return (
+                  <div>
+                    {/* Estadísticas */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(3, 1fr)', 
+                      gap: '1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#e3f2fd', 
+                        borderRadius: '6px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
+                          Total Registros
+                        </div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#1565c0' }}>
+                          {registros.length}
+                        </div>
+                      </div>
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#d1fae5', 
+                        borderRadius: '6px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
+                          Asistencias
+                        </div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#27AE60' }}>
+                          {totalAsistencias}
+                        </div>
+                      </div>
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#fee2e2', 
+                        borderRadius: '6px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
+                          Faltas
+                        </div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#E74C3C' }}>
+                          {totalFaltas}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Porcentaje de asistencia */}
+                    <div style={{ 
+                      padding: '1rem', 
+                      backgroundColor: parseFloat(porcentajeAsistencia) >= 80 ? '#d1fae5' : '#fff3e0',
+                      borderRadius: '6px',
+                      borderLeft: `4px solid ${parseFloat(porcentajeAsistencia) >= 80 ? '#27AE60' : '#ff9800'}`,
+                      marginBottom: '1.5rem',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
+                        Porcentaje de Asistencia
+                      </div>
+                      <div style={{ 
+                        fontSize: '2.5rem', 
+                        fontWeight: 700, 
+                        color: parseFloat(porcentajeAsistencia) >= 80 ? '#27AE60' : '#ff9800'
+                      }}>
+                        {porcentajeAsistencia}%
+                      </div>
+                    </div>
+
+                    {/* Tabla de registros */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#e8f5e9', color: '#2e7d32' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #c8e6c9' }}>
+                            Fecha
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #c8e6c9' }}>
+                            Asistió
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #c8e6c9' }}>
+                            Observaciones
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {registros.map((registro, index) => (
+                          <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
+                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>
+                              {registro.fecha}
+                            </td>
+                            <td style={{ 
+                              padding: '0.75rem', 
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: '1rem',
+                              color: registro.asistio ? '#27AE60' : '#E74C3C'
+                            }}>
+                              {registro.asistio ? '✓ Sí' : '✗ No'}
+                            </td>
+                            <td style={{ 
+                              padding: '0.75rem',
+                              color: registro.observaciones === 'Ninguna' ? '#999' : '#333',
+                              fontStyle: registro.observaciones === 'Ninguna' ? 'italic' : 'normal'
+                            }}>
+                              {registro.observaciones}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee' }}>
+              <button
+                onClick={() => setEstudianteSeleccionadoAsistencia(null)}
+                className="button-primary"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Creación */}
       {showCreateModal && (
         <CreateDiplomadoModal
@@ -1177,6 +1907,152 @@ const DiplomadosPage: React.FC = () => {
           tipo={selectedInfo.tipo}
           onClose={() => setSelectedInfo(null)}
         />
+      )}
+
+      {/* Modal de Asistencia */}
+      {showAsistenciaModal && (
+        <div className="modal-overlay">
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '800px', 
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}
+          >
+            <div className="modal-header">
+              <h2>✓ Registro de Asistencia</h2>
+              <button className="modal-close" onClick={() => setShowAsistenciaModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              {/* Selector de Fecha */}
+              <div style={{ 
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '6px',
+                borderLeft: '4px solid #2196f3'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: 'bold', 
+                    color: '#1565c0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    📅 Fecha de Asistencia:
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaAsistencia}
+                    onChange={(e) => setFechaAsistencia(e.target.value)}
+                    style={{
+                      padding: '0.5rem',
+                      fontSize: '0.9rem',
+                      border: '2px solid #2196f3',
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  />
+                </div>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#424242' }}>
+                  Selecciona la fecha para la cual deseas registrar asistencia. Si la fecha ya tiene un registro, se sobreescribirá.
+                </p>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '40%' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '15%' }}>Asistió</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '45%' }}>Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {asistencias.map((asistencia) => (
+                      <tr key={asistencia.gid}>
+                        <td style={{ padding: '0.75rem' }}>
+                          {asistencia.nombre}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '0.75rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={asistencia.asistio}
+                            onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'asistio', e.target.checked)}
+                            style={{ 
+                              width: '20px', 
+                              height: '20px',
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <input
+                            type="text"
+                            value={asistencia.observaciones}
+                            onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'observaciones', e.target.value)}
+                            placeholder="Agregar observación..."
+                            style={{
+                              width: '100%',
+                              padding: '0.5rem',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              fontSize: '0.9rem'
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {asistencias.length === 0 && (
+                <p style={{ 
+                  textAlign: 'center', 
+                  color: '#999', 
+                  padding: '2rem',
+                  fontStyle: 'italic'
+                }}>
+                  No hay estudiantes registrados en este diplomado
+                </p>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee' }}>
+              <button
+                onClick={() => setShowAsistenciaModal(false)}
+                className="button-secondary"
+                disabled={loadingAsistencia}
+                style={{ marginRight: '1rem' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGuardarAsistencias}
+                className="button-primary"
+                disabled={loadingAsistencia || asistencias.length === 0}
+              >
+                {loadingAsistencia ? 'Guardando...' : '💾 Guardar Asistencia'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
