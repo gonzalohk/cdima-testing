@@ -13,6 +13,7 @@ import StatisticsSection from '../components/StatisticsSection';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getTaskColor } from '../utils/colors';
+import logoInicial from '../assets/logoinicial.png';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -462,179 +463,241 @@ const PlanningPage: React.FC = () => {
   const exportTablesToPDF = async () => {
     setExportingTables(true);
     try {
+      // Márgenes para diseño ejecutivo
       const margins = {
-        top: 25,
-        bottom: 25,
-        left: 30,
-        right: 25
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20
+      };
+
+      // Colores del diseño ejecutivo
+      const colors = {
+        navyBlue: [70, 100, 140],     // Azul marino más claro y sobrio
+        forestGreen: [46, 125, 50],   // Verde bosque
+        charcoalGray: [110, 110, 110], // Gris más claro y sobrio
+        steelBlue: [69, 123, 157],    // Azul acero
+        lightGray: [117, 117, 117],   // Gris claro para texto
+        ultraLightGray: [249, 249, 249], // Gris ultra-claro para filas
+        white: [255, 255, 255]
       };
 
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',  // Formato carta vertical
         unit: 'mm',
-        format: 'a4'
+        format: 'letter'  // Formato carta (US Letter)
       });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // Título principal
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Reporte de Tareas - CDIMA', pageWidth / 2, margins.top, { align: 'center' });
+      // ============ ENCABEZADO ============
       
-      // Información del proyecto
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Proyecto: ${projectName}`, margins.left, margins.top + 10);
-      pdf.text(`Período: ${format(date, 'MMMM yyyy', { locale: es })}`, margins.left, margins.top + 15);
-      if (areaFilter !== 'todas') {
-        pdf.text(`Área: ${areaFilter}`, margins.left, margins.top + 20);
-      }
-      pdf.text(`Fecha de generación: ${format(new Date(), 'dd/MM/yyyy', { locale: es })}`, margins.left, margins.top + (areaFilter !== 'todas' ? 25 : 20));
-      
-      // Línea separadora
-      pdf.setLineWidth(0.5);
-      const separatorY = margins.top + (areaFilter !== 'todas' ? 28 : 23);
-      pdf.line(margins.left, separatorY, pageWidth - margins.right, separatorY);
-
-      let startY = separatorY + 5;
-
-      // Tabla de Tareas Ejecutadas
-      if (executedTasks.length > 0) {
-        pdf.setFontSize(12);
+      // Logo CDIMA (lado izquierdo) - Imagen
+      try {
+        const logoWidth = 28; // Ancho del logo en mm
+        const logoHeight = 24; // Alto del logo en mm
+        pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, logoHeight);
+      } catch (error) {
+        console.error('Error al cargar logo:', error);
+        // Fallback a texto si falla la carga de la imagen
+        pdf.setFontSize(24);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('✓ Tareas Ejecutadas', margins.left, startY + 5);
+        pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+        pdf.text('CDIMA', margins.left, margins.top + 8);
+      }
+      
+      // Título Principal (lado derecho)
+      pdf.setFontSize(15);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('REPORTE EJECUTIVO DE AVANCE', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+      
+      // Metadatos (alineados a la derecha)
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(45, 45, 45); // Negro suave
+      
+      let metaY = margins.top + 12;
+      pdf.text(`PROYECTO: ${projectName}`, pageWidth - margins.right, metaY, { align: 'right' });
+      
+      metaY += 5;
+      const periodoText = format(date, 'MMMM yyyy', { locale: es });
+      pdf.text(`PERÍODO DE REPORTE: ${periodoText.charAt(0).toUpperCase() + periodoText.slice(1)}`, pageWidth - margins.right, metaY, { align: 'right' });
+      
+      if (areaFilter !== 'todas') {
+        metaY += 5;
+        pdf.text(`ÁREA: ${areaFilter}`, pageWidth - margins.right, metaY, { align: 'right' });
+      }
+      
+      metaY += 5;
+      const fechaGeneracion = `${format(new Date(), 'dd', { locale: es })} de ${format(new Date(), 'MMMM', { locale: es })} de ${format(new Date(), 'yyyy', { locale: es })}`;
+      pdf.text(`FECHA DE GENERACIÓN: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+      
+      // Línea separadora fina
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.3);
+      pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
+
+      let startY = metaY + 16;
+
+      // ============ SECCIÓN 1: TAREAS EJECUTADAS ============
+      if (executedTasks.length > 0) {
+        // Título de sección
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+        pdf.text('TAREAS EJECUTADAS', margins.left, startY);
         
-        const executedHeaders = [['Tarea', 'Responsables de actividad', 'Fecha', 'Estado']];
+        const executedHeaders = [['TAREA', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
         const executedBody = executedTasks.map(task => {
           const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
           const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
           let fecha = '-';
-          if (inicio && fin) fecha = `${inicio} - ${fin}`;
-          else if (inicio) fecha = inicio;
+          if (inicio && fin) fecha = fin; // Mostrar solo fecha de fin para ejecutadas
           else if (fin) fecha = fin;
+          else if (inicio) fecha = inicio;
 
           return [
             task.name,
             getCustomFieldValue(task, 'Responsables de actividad'),
             fecha,
-            'Ejecutado'
+            'EJECUTADO'
           ];
         });
 
         autoTable(pdf, {
           head: executedHeaders,
           body: executedBody,
-          startY: startY + 8,
+          startY: startY + 4,
           margin: { left: margins.left, right: margins.right },
-          theme: 'grid',
+          theme: 'plain',
           styles: {
             fontSize: 9,
-            cellPadding: 3,
+            cellPadding: 4, // Espaciado amplio
             overflow: 'linebreak',
             cellWidth: 'wrap',
             valign: 'middle',
-            lineColor: [200, 200, 200],
+            textColor: [45, 45, 45],
+            lineColor: [230, 230, 230], // Líneas grises muy finas
             lineWidth: 0.1,
           },
           headStyles: {
-            fillColor: [70, 130, 180],
-            textColor: [255, 255, 255],
+            fillColor: colors.navyBlue, // Azul marino oscuro sólido
+            textColor: colors.white,
             fontStyle: 'bold',
-            halign: 'center',
-            fontSize: 10,
+            halign: 'left',
+            fontSize: 9,
+            cellPadding: 5,
           },
           bodyStyles: {
-            fillColor: [232, 245, 233],
+            fillColor: colors.white,
+          },
+          alternateRowStyles: {
+            fillColor: colors.ultraLightGray, // Cebreado sutil
           },
           columnStyles: {
-            0: { cellWidth: 'auto' },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 30, halign: 'center' },
+            0: { cellWidth: 68, halign: 'left' },
+            1: { cellWidth: 45, halign: 'left' },
+            2: { cellWidth: 35, halign: 'left' },
+            3: { 
+              cellWidth: 30, 
+              halign: 'center',
+              textColor: colors.forestGreen, // Verde bosque
+              fontStyle: 'bold'
+            },
           },
         });
 
-        startY = (pdf as any).lastAutoTable.finalY + 10;
+        startY = (pdf as any).lastAutoTable.finalY + 12;
       }
 
-      // Tabla de Tareas En Proceso
+      // ============ SECCIÓN 2: TAREAS EN PROCESO ============
       if (pendingTasks.length > 0) {
         // Si no hay espacio suficiente, agregar nueva página
-        if (startY > 160) {
+        if (startY > pageHeight - 80) {
           pdf.addPage();
-          startY = margins.top;
+          startY = margins.top + 10;
         }
 
-        pdf.setFontSize(12);
+        // Título de sección
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('○ Tareas En Proceso', margins.left, startY + 5);
+        pdf.setTextColor(colors.charcoalGray[0], colors.charcoalGray[1], colors.charcoalGray[2]);
+        pdf.text('TAREAS EN PROCESO', margins.left, startY);
         
-        const pendingHeaders = [['Tarea', 'Responsables de actividad', 'Fecha', 'Estado']];
+        const pendingHeaders = [['TAREA', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
         const pendingBody = pendingTasks.map(task => {
           const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
           const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
           let fecha = '-';
-          if (inicio && fin) fecha = `${inicio} - ${fin}`;
-          else if (inicio) fecha = inicio;
+          if (inicio) fecha = inicio; // Mostrar solo fecha de inicio para en proceso
           else if (fin) fecha = fin;
 
           return [
             task.name,
             getCustomFieldValue(task, 'Responsables de actividad'),
             fecha,
-            'En Proceso'
+            'EN PROCESO'
           ];
         });
 
         autoTable(pdf, {
           head: pendingHeaders,
           body: pendingBody,
-          startY: startY + 8,
+          startY: startY + 4,
           margin: { left: margins.left, right: margins.right },
-          theme: 'grid',
+          theme: 'plain',
           styles: {
             fontSize: 9,
-            cellPadding: 3,
+            cellPadding: 4,
             overflow: 'linebreak',
             cellWidth: 'wrap',
             valign: 'middle',
-            lineColor: [200, 200, 200],
+            textColor: [45, 45, 45],
+            lineColor: [230, 230, 230],
             lineWidth: 0.1,
           },
           headStyles: {
-            fillColor: [70, 130, 180],
-            textColor: [255, 255, 255],
+            fillColor: colors.charcoalGray, // Gris grafito oscuro sólido
+            textColor: colors.white,
             fontStyle: 'bold',
-            halign: 'center',
-            fontSize: 10,
+            halign: 'left',
+            fontSize: 9,
+            cellPadding: 5,
           },
           bodyStyles: {
-            fillColor: [255, 243, 224],
+            fillColor: colors.white,
+          },
+          alternateRowStyles: {
+            fillColor: colors.ultraLightGray,
           },
           columnStyles: {
-            0: { cellWidth: 'auto' },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 30, halign: 'center' },
+            0: { cellWidth: 68, halign: 'left' },
+            1: { cellWidth: 45, halign: 'left' },
+            2: { cellWidth: 35, halign: 'left' },
+            3: { 
+              cellWidth: 30, 
+              halign: 'center',
+              textColor: colors.steelBlue, // Azul acero
+              fontStyle: 'bold'
+            },
           },
         });
 
         startY = (pdf as any).lastAutoTable.finalY + 10;
       }
 
-      // Resumen
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Resumen:', margins.left, startY);
-      
+      // ============ PIE DE PÁGINA ============
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Total de tareas ejecutadas: ${executedTasks.length}`, margins.left, startY + 5);
-      pdf.text(`Total de tareas en proceso: ${pendingTasks.length}`, margins.left, startY + 10);
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      const footerText = `CDIMA - Avance ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
+      pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
       // Guardar PDF
       const areaText = areaFilter !== 'todas' ? `_${areaFilter.replace(/\s+/g, '_')}` : '';
-      const fileName = `Tareas_${projectName.replace(/\s+/g, '_')}${areaText}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
+      const fileName = `Reporte_Ejecutivo_CDIMA${areaText}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
