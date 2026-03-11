@@ -66,6 +66,8 @@ interface CalendarEvent extends BigCalendarEvent {
     taskGid: string;
     completed: boolean;
     assignee?: string;
+    responsables?: string;
+    estado?: string;
     isSubtask: boolean;
     parentName?: string;
     notes?: string;
@@ -83,6 +85,8 @@ const PlanningPage: React.FC = () => {
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [areaFilter, setAreaFilter] = useState<string>('todas');
+  const [exportingTables, setExportingTables] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -181,6 +185,8 @@ const PlanningPage: React.FC = () => {
         const titleWithResponsibles = responsables !== '-'
           ? `${task.name} (${responsables})`
           : task.name;
+        
+        const estado = getCustomFieldValue(task, 'Estado');
 
         return {
           id: task.gid,
@@ -191,6 +197,8 @@ const PlanningPage: React.FC = () => {
             taskGid: task.gid,
             completed: task.completed,
             assignee: task.assignee?.name,
+            responsables: responsables,
+            estado: estado,
             isSubtask: !!task.parent,
             parentName: task.parent?.name,
             notes: task.notes
@@ -221,7 +229,9 @@ const PlanningPage: React.FC = () => {
   // Estadísticas del mes actual
   const statistics: TaskStatistics = useMemo(() => {
     const total = currentMonthTasks.length;
-    const completed = currentMonthTasks.filter(t => t.completed).length;
+    const completed = currentMonthTasks.filter(t => 
+      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
+    ).length;
     const pending = total - completed;
     const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
 
@@ -235,14 +245,46 @@ const PlanningPage: React.FC = () => {
     };
   }, [currentMonthTasks]);
 
-  // Tareas ejecutadas y pendientes del mes actual
-  const executedTasks = useMemo(() => {
-    return currentMonthTasks.filter(t => t.completed);
+  // Obtener valores únicos del campo Area
+  const uniqueAreas = useMemo(() => {
+    const areas = new Set<string>();
+    currentMonthTasks.forEach(task => {
+      const area = getCustomFieldValue(task, 'Area');
+      if (area && area !== '-') {
+        areas.add(area);
+      }
+    });
+    return Array.from(areas).sort();
   }, [currentMonthTasks]);
 
+  // Tareas ejecutadas y pendientes del mes actual
+  const executedTasks = useMemo(() => {
+    let filtered = currentMonthTasks.filter(t => 
+      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
+    );
+    
+    if (areaFilter !== 'todas') {
+      filtered = filtered.filter(t => 
+        getCustomFieldValue(t, 'Area') === areaFilter
+      );
+    }
+    
+    return filtered;
+  }, [currentMonthTasks, areaFilter]);
+
   const pendingTasks = useMemo(() => {
-    return currentMonthTasks.filter(t => !t.completed);
-  }, [currentMonthTasks]);
+    let filtered = currentMonthTasks.filter(t => 
+      getCustomFieldValue(t, 'Estado') === 'En Proceso'
+    );
+    
+    if (areaFilter !== 'todas') {
+      filtered = filtered.filter(t => 
+        getCustomFieldValue(t, 'Area') === areaFilter
+      );
+    }
+    
+    return filtered;
+  }, [currentMonthTasks, areaFilter]);
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Planificación';
 
@@ -312,13 +354,19 @@ const PlanningPage: React.FC = () => {
             dayTasks.forEach((task, index) => {
               const dayName = format(current.toDate(), 'EEEE', { locale: es });
               const dayNumber = current.date();
-              const status = task.resource.completed ? 'Completada' : 'Pendiente';
+              
+              // Obtener estado desde custom field
+              const taskData = tasks.find(t => t.gid === task.id);
+              const estado = taskData ? getCustomFieldValue(taskData, 'Estado') : '-';
+              const status = estado === 'Ejecutado' ? 'Ejecutado' : estado === 'En Proceso' ? 'En Proceso' : '-';
               
               const rowStyles: any = {};
-              if (task.resource.completed) {
+              if (estado === 'Ejecutado') {
                 rowStyles.fillColor = [232, 245, 233];
-              } else {
+              } else if (estado === 'En Proceso') {
                 rowStyles.fillColor = [255, 243, 224];
+              } else {
+                rowStyles.fillColor = [250, 250, 250];
               }
               
               // Si es la primera actividad del día, mostrar el día y fecha
@@ -396,7 +444,7 @@ const PlanningPage: React.FC = () => {
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Total de tareas: ${currentMonthTasks.length}`, margins.left, finalY + 5);
       pdf.text(`Completadas: ${statistics.completed}`, margins.left + 50, finalY + 5);
-      pdf.text(`Pendientes: ${statistics.pending}`, margins.left + 95, finalY + 5);
+      pdf.text(`En Proceso: ${statistics.pending}`, margins.left + 95, finalY + 5);
       pdf.text(`Progreso: ${statistics.completionPercentage.toFixed(1)}%`, margins.left + 135, finalY + 5);
 
       // Guardar PDF
@@ -410,9 +458,195 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  // Función para exportar tablas de tareas a PDF
+  const exportTablesToPDF = async () => {
+    setExportingTables(true);
+    try {
+      const margins = {
+        top: 25,
+        bottom: 25,
+        left: 30,
+        right: 25
+      };
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      
+      // Título principal
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Reporte de Tareas - CDIMA', pageWidth / 2, margins.top, { align: 'center' });
+      
+      // Información del proyecto
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Proyecto: ${projectName}`, margins.left, margins.top + 10);
+      pdf.text(`Período: ${format(date, 'MMMM yyyy', { locale: es })}`, margins.left, margins.top + 15);
+      if (areaFilter !== 'todas') {
+        pdf.text(`Área: ${areaFilter}`, margins.left, margins.top + 20);
+      }
+      pdf.text(`Fecha de generación: ${format(new Date(), 'dd/MM/yyyy', { locale: es })}`, margins.left, margins.top + (areaFilter !== 'todas' ? 25 : 20));
+      
+      // Línea separadora
+      pdf.setLineWidth(0.5);
+      const separatorY = margins.top + (areaFilter !== 'todas' ? 28 : 23);
+      pdf.line(margins.left, separatorY, pageWidth - margins.right, separatorY);
+
+      let startY = separatorY + 5;
+
+      // Tabla de Tareas Ejecutadas
+      if (executedTasks.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('✓ Tareas Ejecutadas', margins.left, startY + 5);
+        
+        const executedHeaders = [['Tarea', 'Responsables de actividad', 'Fecha', 'Estado']];
+        const executedBody = executedTasks.map(task => {
+          const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+          const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+          let fecha = '-';
+          if (inicio && fin) fecha = `${inicio} - ${fin}`;
+          else if (inicio) fecha = inicio;
+          else if (fin) fecha = fin;
+
+          return [
+            task.name,
+            getCustomFieldValue(task, 'Responsables de actividad'),
+            fecha,
+            'Ejecutado'
+          ];
+        });
+
+        autoTable(pdf, {
+          head: executedHeaders,
+          body: executedBody,
+          startY: startY + 8,
+          margin: { left: margins.left, right: margins.right },
+          theme: 'grid',
+          styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            overflow: 'linebreak',
+            cellWidth: 'wrap',
+            valign: 'middle',
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          headStyles: {
+            fillColor: [70, 130, 180],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center',
+            fontSize: 10,
+          },
+          bodyStyles: {
+            fillColor: [232, 245, 233],
+          },
+          columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 30, halign: 'center' },
+          },
+        });
+
+        startY = (pdf as any).lastAutoTable.finalY + 10;
+      }
+
+      // Tabla de Tareas En Proceso
+      if (pendingTasks.length > 0) {
+        // Si no hay espacio suficiente, agregar nueva página
+        if (startY > 160) {
+          pdf.addPage();
+          startY = margins.top;
+        }
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('○ Tareas En Proceso', margins.left, startY + 5);
+        
+        const pendingHeaders = [['Tarea', 'Responsables de actividad', 'Fecha', 'Estado']];
+        const pendingBody = pendingTasks.map(task => {
+          const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+          const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+          let fecha = '-';
+          if (inicio && fin) fecha = `${inicio} - ${fin}`;
+          else if (inicio) fecha = inicio;
+          else if (fin) fecha = fin;
+
+          return [
+            task.name,
+            getCustomFieldValue(task, 'Responsables de actividad'),
+            fecha,
+            'En Proceso'
+          ];
+        });
+
+        autoTable(pdf, {
+          head: pendingHeaders,
+          body: pendingBody,
+          startY: startY + 8,
+          margin: { left: margins.left, right: margins.right },
+          theme: 'grid',
+          styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            overflow: 'linebreak',
+            cellWidth: 'wrap',
+            valign: 'middle',
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          headStyles: {
+            fillColor: [70, 130, 180],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center',
+            fontSize: 10,
+          },
+          bodyStyles: {
+            fillColor: [255, 243, 224],
+          },
+          columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 30, halign: 'center' },
+          },
+        });
+
+        startY = (pdf as any).lastAutoTable.finalY + 10;
+      }
+
+      // Resumen
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Resumen:', margins.left, startY);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Total de tareas ejecutadas: ${executedTasks.length}`, margins.left, startY + 5);
+      pdf.text(`Total de tareas en proceso: ${pendingTasks.length}`, margins.left, startY + 10);
+
+      // Guardar PDF
+      const areaText = areaFilter !== 'todas' ? `_${areaFilter.replace(/\s+/g, '_')}` : '';
+      const fileName = `Tareas_${projectName.replace(/\s+/g, '_')}${areaText}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+    } finally {
+      setExportingTables(false);
+    }
+  };
+
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
-    const isCompleted = event.resource.completed;
+    const isEjecutado = event.resource.estado === 'Ejecutado';
     
     // Obtener colores únicos basados en el ID de la tarea
     const colors = getTaskColor(event.id);
@@ -423,7 +657,7 @@ const PlanningPage: React.FC = () => {
         borderColor: colors.border,
         borderLeft: `4px solid ${colors.border}`,
         borderRadius: '6px',
-        opacity: isCompleted ? 0.65 : 1,
+        opacity: isEjecutado ? 0.65 : 1,
         color: colors.text,
         fontSize: '0.875rem',
         fontWeight: 500,
@@ -481,7 +715,7 @@ const PlanningPage: React.FC = () => {
           <div className="planning-info">
             <h1 className="planning-title">{projectName}</h1>
             <p className="planning-subtitle">
-              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'tarea programada' : 'tareas programadas'} · {statistics.completed} ejecutadas · {statistics.pending} pendientes
+              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'tarea programada' : 'tareas programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
             </p>
           </div>
         </div>
@@ -532,7 +766,7 @@ const PlanningPage: React.FC = () => {
         </div>
         <div className="legend-item">
           <div className="legend-color" style={{ backgroundColor: '#999', opacity: 0.65 }}></div>
-          <span>Opacidad reducida indica tarea completada</span>
+          <span>Opacidad reducida indica tarea ejecutada</span>
         </div>
         <div className="legend-item">
           <span style={{ fontWeight: 600, color: '#666' }}>
@@ -545,30 +779,13 @@ const PlanningPage: React.FC = () => {
       <div className="planning-calendar-container">
         {/* Export Button */}
         <button
-          className="export-pdf-btn"
+          className="btn-export"
           onClick={exportToPDF}
           disabled={exporting || events.length === 0}
           title="Exportar a PDF"
           style={{ marginBottom: '1rem' }}
         >
-          {exporting ? (
-            <>
-              <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" opacity="0.25"/>
-                <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
-              </svg>
-              Exportando...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Exportar
-            </>
-          )}
+          {exporting ? 'Exportando...' : '📄 Exportar'}
         </button>
         
         <Calendar
@@ -599,11 +816,80 @@ const PlanningPage: React.FC = () => {
         <>
           <StatisticsSection statistics={statistics} />
 
+          {/* Filtro y Exportar - Compartido para ambas tablas */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="area-filter" style={{ fontWeight: 500, color: '#666' }}>
+                Filtrar por área:
+              </label>
+              <select
+                id="area-filter"
+                value={areaFilter}
+                onChange={(e) => setAreaFilter(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  minWidth: '200px'
+                }}
+              >
+                <option value="todas">Todas las áreas</option>
+                {uniqueAreas.map(area => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+              {areaFilter !== 'todas' && (
+                <button
+                  onClick={() => setAreaFilter('todas')}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: '#e0e0e0',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    color: '#666',
+                    fontWeight: 500
+                  }}
+                  title="Limpiar filtro"
+                >
+                  ✕ Limpiar
+                </button>
+              )}
+            </div>
+            <button
+              className="btn-export"
+              onClick={exportTablesToPDF}
+              disabled={exportingTables || (executedTasks.length === 0 && pendingTasks.length === 0)}
+              title="Exportar tablas a PDF"
+            >
+              {exportingTables ? 'Exportando...' : '📄 Exportar'}
+            </button>
+          </div>
+
           {/* Tareas Ejecutadas */}
           <div className="card">
             <h2>✓ Tareas Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            
             {executedTasks.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay tareas ejecutadas en este mes</p>
+              <p style={{ color: '#666', fontStyle: 'italic' }}>
+                {areaFilter !== 'todas' 
+                  ? `No hay tareas ejecutadas en el área "${areaFilter}" en este mes`
+                  : 'No hay tareas ejecutadas en este mes'
+                }
+              </p>
             ) : (
               <div className="planning-tasks-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -656,7 +942,7 @@ const PlanningPage: React.FC = () => {
                             backgroundColor: '#e8f5e9',
                             color: '#2e7d32'
                           }}>
-                            ✓ Completada
+                            ✓ Ejecutado
                           </span>
                         </td>
                       </tr>
@@ -669,9 +955,15 @@ const PlanningPage: React.FC = () => {
 
           {/* Tareas Pendientes */}
           <div className="card">
-            <h2>○ Tareas Pendientes - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>○ Tareas En Proceso - {moment(date).format('MMMM YYYY')}</h2>
+            
             {pendingTasks.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay tareas pendientes en este mes</p>
+              <p style={{ color: '#666', fontStyle: 'italic' }}>
+                {areaFilter !== 'todas' 
+                  ? `No hay tareas en proceso en el área "${areaFilter}" en este mes`
+                  : 'No hay tareas en proceso en este mes'
+                }
+              </p>
             ) : (
               <div className="planning-tasks-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -724,7 +1016,7 @@ const PlanningPage: React.FC = () => {
                             backgroundColor: '#fff3e0',
                             color: '#e65100'
                           }}>
-                            ○ Pendiente
+                            ○ En Proceso
                           </span>
                         </td>
                       </tr>
@@ -769,17 +1061,17 @@ const PlanningPage: React.FC = () => {
                 <span className="field-value">{moment(selectedEvent.end).format('DD/MM/YYYY')}</span>
               </div>
               
-              {selectedEvent.resource.assignee && (
+              {selectedEvent.resource.responsables && selectedEvent.resource.responsables !== '-' && (
                 <div className="task-detail-field">
-                  <span className="field-label">Asignado a:</span>
-                  <span className="field-value">{selectedEvent.resource.assignee}</span>
+                  <span className="field-label">Responsables de actividad:</span>
+                  <span className="field-value">{selectedEvent.resource.responsables}</span>
                 </div>
               )}
               
               <div className="task-detail-field">
                 <span className="field-label">Estado:</span>
-                <span className={`status-badge ${selectedEvent.resource.completed ? 'completed' : 'pending'}`}>
-                  {selectedEvent.resource.completed ? '✓ Completada' : '○ Pendiente'}
+                <span className={`status-badge ${selectedEvent.resource.estado === 'Ejecutado' ? 'completed' : 'pending'}`}>
+                  {selectedEvent.resource.estado === 'Ejecutado' ? '✓ Ejecutado' : selectedEvent.resource.estado === 'En Proceso' ? '○ En Proceso' : '-'}
                 </span>
               </div>
               
