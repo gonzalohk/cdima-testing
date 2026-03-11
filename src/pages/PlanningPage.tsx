@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer, View, Event as BigCalendarEvent } from 'react-big-calendar';
 import moment from 'moment';
@@ -11,8 +11,35 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 import { getTaskColor } from '../utils/colors';
+
+// Función auxiliar para obtener el valor de un campo personalizado
+const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
+  if (!task.custom_fields) return '-';
+  const field = task.custom_fields.find(f => f.name === fieldName);
+  if (!field) return '-';
+  
+  // Si tiene display_value, usarlo directamente
+  if (field.display_value) return field.display_value;
+  
+  // Para multi_enum, concatenar los valores
+  if (field.type === 'multi_enum' && field.multi_enum_values && field.multi_enum_values.length > 0) {
+    return field.multi_enum_values.map(v => v.name).join(', ');
+  }
+  
+  // Para enum, usar el nombre del valor
+  if (field.type === 'enum' && field.enum_value) {
+    return field.enum_value.name;
+  }
+  
+  // Para text
+  if (field.type === 'text' && field.text_value) {
+    return field.text_value;
+  }
+  
+  return '-';
+};
 
 // Configurar moment en español (para formateo de fechas)
 moment.locale('es');
@@ -47,7 +74,6 @@ interface CalendarEvent extends BigCalendarEvent {
 
 const PlanningPage: React.FC = () => {
   const navigate = useNavigate();
-  const calendarRef = useRef<HTMLDivElement>(null);
   const [projects, setProjects] = useState<AsanaProject[]>([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [tasks, setTasks] = useState<AsanaTask[]>([]);
@@ -150,14 +176,15 @@ const PlanningPage: React.FC = () => {
           ? moment(task.due_on).toDate()
           : moment(task.start_on).toDate();
 
-        // Agregar responsable al título si existe
-        const titleWithAssignee = task.assignee?.name 
-          ? `${task.name} (${task.assignee.name})`
+        // Agregar responsables al título si existe
+        const responsables = getCustomFieldValue(task, 'Responsables de actividad');
+        const titleWithResponsibles = responsables !== '-'
+          ? `${task.name} (${responsables})`
           : task.name;
 
         return {
           id: task.gid,
-          title: titleWithAssignee,
+          title: titleWithResponsibles,
           start: startDate,
           end: endDate,
           resource: {
@@ -221,91 +248,159 @@ const PlanningPage: React.FC = () => {
 
   // Función para exportar a PDF
   const exportToPDF = async () => {
-    if (!calendarRef.current) return;
-    
     setExporting(true);
     try {
-      // Capturar el calendario
-      const canvas = await html2canvas(calendarRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
+      // Configuración de márgenes según estándar de otros reportes
+      const margins = {
+        top: 25,
+        bottom: 25,
+        left: 30,
+        right: 25
+      };
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
-        orientation: view === 'day' ? 'portrait' : 'landscape',
+        orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20; // Márgenes de 10mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Agregar título
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(projectName, pdfWidth / 2, 10, { align: 'center' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
       
-      // Agregar subtítulo con vista y rango
+      // Título principal - H1: 20pt (Negrita)
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Calendario de Planificación - CDIMA', pageWidth / 2, margins.top, { align: 'center' });
+      
+      // Información del proyecto - Cuerpo: 10pt
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const viewText = view === 'month' ? 'Vista Mensual' : view === 'week' ? 'Vista Semanal' : 'Vista Diaria';
-      const dateText = view === 'month' 
-        ? moment(date).format('MMMM YYYY')
-        : view === 'week'
-        ? `Semana del ${moment(date).startOf('week').format('D MMM')} - ${moment(date).endOf('week').format('D MMM YYYY')}`
-        : moment(date).format('D [de] MMMM YYYY');
-      pdf.text(`${viewText} - ${dateText}`, pdfWidth / 2, 16, { align: 'center' });
+      pdf.text(`Proyecto: ${projectName}`, margins.left, margins.top + 10);
+      pdf.text(`Período: ${format(date, 'MMMM yyyy', { locale: es })}`, margins.left, margins.top + 15);
+      pdf.text(`Fecha de generación: ${format(new Date(), 'dd/MM/yyyy', { locale: es })}`, margins.left, margins.top + 20);
+      
+      // Línea separadora
+      pdf.setLineWidth(0.5);
+      pdf.line(margins.left, margins.top + 23, pageWidth - margins.right, margins.top + 23);
 
-      // Agregar imagen del calendario
-      let yPosition = 22;
-      if (imgHeight > pdfHeight - yPosition - 10) {
-        // Si la imagen es muy alta, dividirla en páginas
-        const pageHeight = pdfHeight - yPosition - 10;
-        let srcY = 0;
+      // Calcular rango del mes
+      const startOfMonth = moment(date).startOf('month');
+      const endOfMonth = moment(date).endOf('month');
+      
+      // Ajustar al lunes de la primera semana
+      const firstDay = moment(startOfMonth).isoWeekday(1);
+      const lastDay = moment(endOfMonth).isoWeekday(7);
+      
+      // Crear estructura de la tabla - una fila por actividad
+      const headers = [['Día', 'Fecha', 'Actividad', 'Estado']];
+      const body: any[][] = [];
+      
+      // Iterar por cada día del rango
+      const current = moment(firstDay);
+      
+      while (current.isSameOrBefore(lastDay)) {
+        const isCurrentMonth = current.month() === moment(date).month();
         
-        while (srcY < canvas.height) {
-          const srcHeight = Math.min(
-            (canvas.width * pageHeight) / imgWidth,
-            canvas.height - srcY
-          );
+        if (isCurrentMonth) {
+          // Encontrar tareas para este día
+          const dayTasks = events.filter(event => {
+            const eventDay = moment(event.start);
+            return eventDay.isSame(current, 'day');
+          });
           
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = srcHeight;
-          const ctx = pageCanvas.getContext('2d');
-          
-          if (ctx) {
-            ctx.drawImage(
-              canvas,
-              0,
-              srcY,
-              canvas.width,
-              srcHeight,
-              0,
-              0,
-              canvas.width,
-              srcHeight
-            );
+          if (dayTasks.length > 0) {
+            // Crear una fila por cada actividad
+            dayTasks.forEach((task, index) => {
+              const dayName = format(current.toDate(), 'EEEE', { locale: es });
+              const dayNumber = current.date();
+              const status = task.resource.completed ? 'Completada' : 'Pendiente';
+              
+              const rowStyles: any = {};
+              if (task.resource.completed) {
+                rowStyles.fillColor = [232, 245, 233];
+              } else {
+                rowStyles.fillColor = [255, 243, 224];
+              }
+              
+              // Si es la primera actividad del día, mostrar el día y fecha
+              // Si no, dejar celdas vacías para agrupar visualmente
+              if (index === 0) {
+                body.push([
+                  { content: dayName.charAt(0).toUpperCase() + dayName.slice(1), styles: rowStyles },
+                  { content: dayNumber.toString(), styles: rowStyles },
+                  { content: task.title, styles: rowStyles },
+                  { content: status, styles: rowStyles }
+                ]);
+              } else {
+                body.push([
+                  { content: '', styles: rowStyles },
+                  { content: '', styles: rowStyles },
+                  { content: task.title, styles: rowStyles },
+                  { content: status, styles: rowStyles }
+                ]);
+              }
+            });
+          } else {
+            // Día sin actividades
+            const dayName = format(current.toDate(), 'EEEE', { locale: es });
+            const dayNumber = current.date();
             
-            const pageImgData = pageCanvas.toDataURL('image/png');
-            if (srcY > 0) pdf.addPage();
-            pdf.addImage(pageImgData, 'PNG', 10, yPosition, imgWidth, pageHeight);
+            body.push([
+              { content: dayName.charAt(0).toUpperCase() + dayName.slice(1), styles: { fillColor: [250, 250, 250] } },
+              { content: dayNumber.toString(), styles: { fillColor: [250, 250, 250] } },
+              { content: 'Sin actividades', styles: { fillColor: [250, 250, 250], textColor: [150, 150, 150], fontStyle: 'italic' } },
+              { content: '-', styles: { fillColor: [250, 250, 250], textColor: [150, 150, 150] } }
+            ]);
           }
-          
-          srcY += srcHeight;
         }
-      } else {
-        // Si cabe en una página
-        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth, imgHeight);
+        
+        current.add(1, 'day');
       }
+      
+      // Generar tabla con autoTable
+      autoTable(pdf, {
+        head: headers,
+        body: body,
+        startY: margins.top + 28,
+        margin: { left: margins.left, right: margins.right },
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          overflow: 'linebreak',
+          cellWidth: 'wrap',
+          valign: 'middle',
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        headStyles: {
+          fillColor: [70, 130, 180],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { cellWidth: 30, halign: 'left' },    // Día
+          1: { cellWidth: 20, halign: 'center' },  // Fecha
+          2: { cellWidth: 'auto' },                 // Actividad (ancho automático)
+          3: { cellWidth: 30, halign: 'center' },  // Estado
+        },
+      });
+      
+      // Agregar estadísticas al final
+      const finalY = (pdf as any).lastAutoTable.finalY + 10;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Resumen del Período:', margins.left, finalY);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Total de tareas: ${currentMonthTasks.length}`, margins.left, finalY + 5);
+      pdf.text(`Completadas: ${statistics.completed}`, margins.left + 50, finalY + 5);
+      pdf.text(`Pendientes: ${statistics.pending}`, margins.left + 95, finalY + 5);
+      pdf.text(`Progreso: ${statistics.completionPercentage.toFixed(1)}%`, margins.left + 135, finalY + 5);
 
       // Guardar PDF
-      const fileName = `${projectName}_${viewText}_${moment(date).format('YYYY-MM-DD')}.pdf`;
+      const fileName = `Calendario_${projectName.replace(/\s+/g, '_')}_${format(date, 'yyyy-MM', { locale: es })}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
@@ -441,13 +536,13 @@ const PlanningPage: React.FC = () => {
         </div>
         <div className="legend-item">
           <span style={{ fontWeight: 600, color: '#666' }}>
-            📌 Los nombres entre paréntesis indican el responsable
+            📌 Los nombres entre paréntesis indican responsables de actividad
           </span>
         </div>
       </div>
 
       {/* Calendar */}
-      <div className="planning-calendar-container" ref={calendarRef}>
+      <div className="planning-calendar-container">
         {/* Export Button */}
         <button
           className="export-pdf-btn"
@@ -515,9 +610,8 @@ const PlanningPage: React.FC = () => {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsable</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Inicio</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fin</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables de actividad</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
                     </tr>
                   </thead>
@@ -541,13 +635,17 @@ const PlanningPage: React.FC = () => {
                           </div>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.assignee?.name || 'Sin asignar'}
+                          {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : '-'}
+                          {(() => {
+                            const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+                            const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+                            if (inicio && fin) return `${inicio} - ${fin}`;
+                            if (inicio) return inicio;
+                            if (fin) return fin;
+                            return '-';
+                          })()}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
@@ -580,9 +678,8 @@ const PlanningPage: React.FC = () => {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsable</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Inicio</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fin</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables de actividad</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
                     </tr>
                   </thead>
@@ -606,13 +703,17 @@ const PlanningPage: React.FC = () => {
                           </div>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.assignee?.name || 'Sin asignar'}
+                          {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : '-'}
+                          {(() => {
+                            const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+                            const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+                            if (inicio && fin) return `${inicio} - ${fin}`;
+                            if (inicio) return inicio;
+                            if (fin) return fin;
+                            return '-';
+                          })()}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
