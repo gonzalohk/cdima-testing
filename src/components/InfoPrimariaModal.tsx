@@ -6,6 +6,7 @@ interface InfoPrimariaModalProps {
   telefono: string;
   lugarNacimiento: string;
   documentoIdentidad: string;
+  identidadCultural: string;
   tipo: 'Docente' | 'Estudiante';
   onClose: () => void;
 }
@@ -16,6 +17,7 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
   telefono,
   lugarNacimiento,
   documentoIdentidad,
+  identidadCultural,
   tipo,
   onClose
 }) => {
@@ -150,6 +152,30 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
                 borderRadius: '4px'
               }}>
                 {documentoIdentidad || 'No especificado'}
+              </p>
+            </div>
+
+            <div>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '0.75rem', 
+                fontWeight: 600, 
+                color: '#666', 
+                textTransform: 'uppercase',
+                marginBottom: '0.25rem',
+                letterSpacing: '0.5px'
+              }}>
+                Identidad Cultural
+              </label>
+              <p style={{ 
+                margin: 0, 
+                fontSize: '0.95rem', 
+                color: '#333',
+                padding: '0.5rem',
+                backgroundColor: '#f9f9f9',
+                borderRadius: '4px'
+              }}>
+                {identidadCultural || 'No especificado'}
               </p>
             </div>
           </div>

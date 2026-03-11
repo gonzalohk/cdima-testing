@@ -14,6 +14,7 @@ interface PersonaData {
   telefono: string;
   lugarNacimiento: string;
   documentoIdentidad: string;
+  identidadCultural: string;
 }
 
 const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
@@ -22,14 +23,14 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
   onSuccess
 }) => {
   const [nombreDiplomado, setNombreDiplomado] = useState('');
-  const [docentes, setDocentes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
-  const [estudiantes, setEstudiantes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
+  const [docentes, setDocentes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+  const [estudiantes, setEstudiantes] = useState<PersonaData[]>([{ nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleAddDocente = () => {
-    setDocentes([...docentes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
+    setDocentes([...docentes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveDocente = (index: number) => {
@@ -45,7 +46,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
   };
 
   const handleAddEstudiante = () => {
-    setEstudiantes([...estudiantes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '' }]);
+    setEstudiantes([...estudiantes, { nombre: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveEstudiante = (index: number) => {
@@ -135,7 +136,8 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 Género: ${docente.genero}
 Teléfono: ${docente.telefono || 'No especificado'}
 Lugar de Nacimiento: ${docente.lugarNacimiento || 'No especificado'}
-Documento de Identidad: ${docente.documentoIdentidad || 'No especificado'}`;
+Documento de Identidad: ${docente.documentoIdentidad || 'No especificado'}
+Identidad Cultural: ${docente.identidadCultural || 'No especificado'}`;
 
         await asanaService.createSubtask(tareaDocentes.gid, cdima.gid, {
           name: docente.nombre,
@@ -149,7 +151,8 @@ Documento de Identidad: ${docente.documentoIdentidad || 'No especificado'}`;
 Género: ${estudiante.genero}
 Teléfono: ${estudiante.telefono || 'No especificado'}
 Lugar de Nacimiento: ${estudiante.lugarNacimiento || 'No especificado'}
-Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}`;
+Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}
+Identidad Cultural: ${estudiante.identidadCultural || 'No especificado'}`;
 
         await asanaService.createSubtask(tareaEstudiantes.gid, cdima.gid, {
           name: estudiante.nombre,
@@ -189,7 +192,7 @@ Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}`;
           onClose={() => setNotification(null)}
         />
       )}
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay">
         <div 
           className="modal-content" 
           onClick={(e) => e.stopPropagation()} 
@@ -321,6 +324,19 @@ Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}`;
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
+                      
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Identidad Cultural
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.identidadCultural}
+                          onChange={(e) => handleDocenteChange(index, 'identidadCultural', e.target.value)}
+                          placeholder="Ej: Quechua, Aymara, Guaraní, Mestizo, etc."
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -429,6 +445,19 @@ Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}`;
                           value={estudiante.documentoIdentidad}
                           onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
                           placeholder="CI, DNI, Pasaporte"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Identidad Cultural
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.identidadCultural}
+                          onChange={(e) => handleEstudianteChange(index, 'identidadCultural', e.target.value)}
+                          placeholder="Ej: Quechua, Aymara, Guaraní, Mestizo, etc."
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>

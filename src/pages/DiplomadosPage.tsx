@@ -5,6 +5,11 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logoInicial from '../assets/logoinicial.png';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface InfoPrimaria {
   nombre: string;
@@ -12,6 +17,7 @@ interface InfoPrimaria {
   telefono: string;
   lugarNacimiento: string;
   documentoIdentidad: string;
+  identidadCultural: string;
   tipo: 'Docente' | 'Estudiante';
 }
 
@@ -120,7 +126,7 @@ const DiplomadosPage: React.FC = () => {
     }
   };
 
-  const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
+  /* const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
     if (!window.confirm(`¿Está seguro de eliminar el diplomado "${diplomadoName}"?`)) {
       return;
     }
@@ -134,7 +140,7 @@ const DiplomadosPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }; */
 
   const parseInfoPrimaria = (task: AsanaTask, tipo: 'Docente' | 'Estudiante'): InfoPrimaria => {
     const notas = task.notes || '';
@@ -144,6 +150,7 @@ const DiplomadosPage: React.FC = () => {
       telefono: '',
       lugarNacimiento: '',
       documentoIdentidad: '',
+      identidadCultural: '',
       tipo
     };
 
@@ -152,11 +159,13 @@ const DiplomadosPage: React.FC = () => {
     const telefonoMatch = notas.match(/Teléfono:\s*(.+)/i);
     const lugarMatch = notas.match(/Lugar de Nacimiento:\s*(.+)/i);
     const documentoMatch = notas.match(/Documento de Identidad:\s*(.+)/i);
+    const identidadMatch = notas.match(/Identidad Cultural:\s*(.+)/i);
 
     if (generoMatch) info.genero = generoMatch[1].trim();
     if (telefonoMatch) info.telefono = telefonoMatch[1].trim();
     if (lugarMatch) info.lugarNacimiento = lugarMatch[1].trim();
     if (documentoMatch) info.documentoIdentidad = documentoMatch[1].trim();
+    if (identidadMatch) info.identidadCultural = identidadMatch[1].trim();
 
     return info;
   };
@@ -164,6 +173,216 @@ const DiplomadosPage: React.FC = () => {
   const handleShowInfo = (task: AsanaTask, tipo: 'Docente' | 'Estudiante') => {
     const info = parseInfoPrimaria(task, tipo);
     setSelectedInfo(info);
+  };
+
+  const generarReporteDiplomado = () => {
+    if (!selectedDiplomado) return;
+
+    // Colores del proyecto (mismo esquema que PlanningPage)
+    const colors = {
+      navyBlue: [70, 100, 140],
+      lightGray: [117, 117, 117],
+      ultraLightGray: [249, 249, 249],
+      white: [255, 255, 255]
+    };
+
+    const margins = {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20
+    };
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    
+    // ============ ENCABEZADO ============
+    
+    // Logo CDIMA (lado izquierdo)
+    try {
+      const logoWidth = 28;
+      pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
+    } catch (error) {
+      console.error('Error al cargar logo:', error);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('CDIMA', margins.left, margins.top + 8);
+    }
+    
+    // Título Principal (lado derecho)
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('REPORTE DE DIPLOMADO', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+    
+    // Metadatos
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(45, 45, 45);
+    
+    let metaY = margins.top + 14;
+    pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+    
+    metaY += 5;
+    const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+    pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+    
+    // Línea separadora
+    pdf.setDrawColor(220, 220, 220);
+    pdf.setLineWidth(0.3);
+    pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
+
+    let startY = metaY + 14;
+
+    // ============ TABLA DE DOCENTES ============
+    if (docentes.length > 0) {
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('DOCENTES', margins.left, startY);
+      
+      startY += 8;
+
+      const docentesData = docentes.map(docente => {
+        const info = parseInfoPrimaria(docente, 'Docente');
+        return [
+          info.nombre,
+          info.genero || 'N/A',
+          info.telefono || 'N/A',
+          info.lugarNacimiento || 'N/A',
+          info.documentoIdentidad || 'N/A',
+          info.identidadCultural || 'N/A'
+        ];
+      });
+
+      autoTable(pdf, {
+        head: [['Nombre', 'Genero', 'Telefono', 'Lugar de Nacimiento', 'Doc. Identidad', 'Identidad Cultural']],
+        body: docentesData,
+        startY: startY,
+        margin: { left: margins.left, right: margins.right },
+        theme: 'striped',
+        headStyles: {
+          fillColor: colors.navyBlue,
+          textColor: colors.white,
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          cellPadding: 5
+        },
+        styles: {
+          fontSize: 8,
+          cellPadding: 4,
+          overflow: 'linebreak',
+          valign: 'middle',
+          textColor: [45, 45, 45],
+          lineColor: [230, 230, 230],
+          lineWidth: 0.1
+        },
+        bodyStyles: {
+          fillColor: colors.white
+        },
+        alternateRowStyles: {
+          fillColor: colors.ultraLightGray
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 20, halign: 'center' },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 30 }
+        }
+      });
+
+      startY = (pdf as any).lastAutoTable.finalY + 12;
+    }
+
+    // ============ TABLA DE ESTUDIANTES ============
+    if (estudiantes.length > 0) {
+      // Verificar si necesitamos una nueva página
+      if (startY > pageHeight - 80) {
+        pdf.addPage();
+        startY = margins.top + 10;
+      }
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('ESTUDIANTES', margins.left, startY);
+      
+      startY += 8;
+
+      const estudiantesData = estudiantes.map(estudiante => {
+        const info = parseInfoPrimaria(estudiante, 'Estudiante');
+        return [
+          info.nombre,
+          info.genero || 'N/A',
+          info.telefono || 'N/A',
+          info.lugarNacimiento || 'N/A',
+          info.documentoIdentidad || 'N/A',
+          info.identidadCultural || 'N/A'
+        ];
+      });
+
+      autoTable(pdf, {
+        head: [['Nombre', 'Genero', 'Telefono', 'Lugar de Nacimiento', 'Doc. Identidad', 'Identidad Cultural']],
+        body: estudiantesData,
+        startY: startY,
+        margin: { left: margins.left, right: margins.right },
+        theme: 'striped',
+        headStyles: {
+          fillColor: colors.navyBlue,
+          textColor: colors.white,
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          cellPadding: 5
+        },
+        styles: {
+          fontSize: 8,
+          cellPadding: 4,
+          overflow: 'linebreak',
+          valign: 'middle',
+          textColor: [45, 45, 45],
+          lineColor: [230, 230, 230],
+          lineWidth: 0.1
+        },
+        bodyStyles: {
+          fillColor: colors.white
+        },
+        alternateRowStyles: {
+          fillColor: colors.ultraLightGray
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 20, halign: 'center' },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 30 }
+        }
+      });
+    }
+
+    // ============ PIE DE PÁGINA ============
+    const finalY = (pdf as any).lastAutoTable?.finalY || startY;
+    if (finalY < pageHeight - 30) {
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      const footerText = `Total Docentes: ${docentes.length} | Total Estudiantes: ${estudiantes.length}`;
+      pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
+    }
+
+    // Abrir en nuevo tab
+    pdf.output('dataurlnewwindow');
   };
 
   if (loading) {
@@ -241,7 +460,7 @@ const DiplomadosPage: React.FC = () => {
                           >
                             👁️ Ver Detalles
                           </button>
-                          <button
+                          {/* <button
                             onClick={() => handleDeleteDiplomado(diplomado.gid, diplomado.name)}
                             className="button-secondary"
                             style={{ 
@@ -253,7 +472,7 @@ const DiplomadosPage: React.FC = () => {
                             }}
                           >
                             🗑️ Eliminar
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
@@ -306,229 +525,129 @@ const DiplomadosPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {/* Primera fila: Docentes y Documentos */}
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '1.5rem',
-                    marginBottom: '1.5rem'
-                  }}>
-                    {/* Docentes */}
-                    <div>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem',
-                        marginBottom: '1rem',
-                        paddingBottom: '0.5rem',
-                        borderBottom: '2px solid #e0e0e0'
-                      }}>
-                        <span style={{ fontSize: '1.5rem' }}>👨‍🏫</span>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                          Docentes ({docentes.length})
-                        </h3>
-                      </div>
-                      {docentes.length === 0 ? (
-                        <p style={{ color: '#999', fontStyle: 'italic' }}>No hay docentes registrados</p>
-                      ) : (
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {docentes.map((docente) => (
-                            <li 
-                              key={docente.gid}
-                              style={{
-                                padding: '0.75rem',
-                                marginBottom: '0.5rem',
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '6px',
-                                borderLeft: '3px solid #2196F3',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                              }}
-                            >
-                              <span style={{ 
-                                color: docente.completed ? '#4caf50' : '#999',
-                                fontSize: '1rem'
-                              }}>
-                                {docente.completed ? '✓' : '○'}
-                              </span>
-                              <span style={{ 
-                                flex: 1,
-                                textDecoration: docente.completed ? 'line-through' : 'none',
-                                color: docente.completed ? '#666' : '#333'
-                              }}>
-                                {docente.name}
-                              </span>
-                              <button
-                                onClick={() => handleShowInfo(docente, 'Docente')}
-                                style={{
-                                  background: 'none',
-                                  border: '1px solid #ddd',
-                                  borderRadius: '4px',
-                                  padding: '0.25rem 0.5rem',
-                                  fontSize: '0.75rem',
-                                  cursor: 'pointer',
-                                  color: '#666',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  transition: 'all 0.2s'
-                                }}
-                                title="Ver información primaria"
-                                onMouseOver={(e) => {
-                                  e.currentTarget.style.borderColor = '#2196F3';
-                                  e.currentTarget.style.color = '#2196F3';
-                                }}
-                                onMouseOut={(e) => {
-                                  e.currentTarget.style.borderColor = '#ddd';
-                                  e.currentTarget.style.color = '#666';
-                                }}
-                              >
-                                <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 500 }}>Info</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                  {/* Botón Ver Listado */}
+                  {(estudiantes.length > 0 || docentes.length > 0) && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                      <button
+                        onClick={generarReporteDiplomado}
+                        className="button-secondary"
+                        style={{ 
+                          fontSize: '0.9rem', 
+                          padding: '0.75rem 1.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        📄 Ver Listado
+                      </button>
                     </div>
+                  )}
 
-                    {/* Documentos */}
-                    <div>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem',
-                        marginBottom: '1rem',
-                        paddingBottom: '0.5rem',
-                        borderBottom: '2px solid #e0e0e0'
-                      }}>
-                        <span style={{ fontSize: '1.5rem' }}>📄</span>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                          Documentos ({documentos.length})
-                        </h3>
-                      </div>
-                      {documentos.length === 0 ? (
-                        <p style={{ color: '#999', fontStyle: 'italic' }}>No hay documentos registrados</p>
-                      ) : (
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {documentos.map((documento) => (
-                            <li 
-                              key={documento.gid}
-                              style={{
-                                padding: '0.75rem',
-                                marginBottom: '0.5rem',
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '6px',
-                                borderLeft: '3px solid #2196F3',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                              }}
-                            >
-                              <span style={{ 
-                                color: documento.completed ? '#4caf50' : '#999',
-                                fontSize: '1rem'
-                              }}>
-                                {documento.completed ? '✓' : '○'}
-                              </span>
-                              <span style={{ 
-                                flex: 1,
-                                textDecoration: documento.completed ? 'line-through' : 'none',
-                                color: documento.completed ? '#666' : '#333'
-                              }}>
-                                {documento.name}
-                              </span>
-                            </li>
+                  {/* Docentes */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '0.5rem' }}>👨‍🏫 Docentes ({docentes.length})</h3>
+                    {docentes.length === 0 ? (
+                      <p style={{ color: '#999' }}>No hay docentes registrados</p>
+                    ) : (
+                      <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {docentes.map((docente) => (
+                            <tr key={docente.gid}>
+                              <td style={{ padding: '0.5rem' }}>{docente.name}</td>
+                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
+                                <button
+                                  onClick={() => handleShowInfo(docente, 'Docente')}
+                                  className="button-secondary"
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                >
+                                  ℹ️ Info
+                                </button>
+                              </td>
+                            </tr>
                           ))}
-                        </ul>
-                      )}
-                    </div>
+                        </tbody>
+                      </table>
+                    )}
                   </div>
 
-                  {/* Segunda fila: Estudiantes (ocupa todo el ancho) */}
-                  <div>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem',
-                      marginBottom: '1rem',
-                      paddingBottom: '0.5rem',
-                      borderBottom: '2px solid #e0e0e0'
-                    }}>
-                      <span style={{ fontSize: '1.5rem' }}>👨‍🎓</span>
-                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                        Estudiantes ({estudiantes.length})
-                      </h3>
-                    </div>
+                  {/* Estudiantes */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '0.5rem' }}>👨‍🎓 Estudiantes ({estudiantes.length})</h3>
                     {estudiantes.length === 0 ? (
-                      <p style={{ color: '#999', fontStyle: 'italic' }}>No hay estudiantes registrados</p>
+                      <p style={{ color: '#999' }}>No hay estudiantes registrados</p>
                     ) : (
-                      <ul style={{ 
-                        listStyle: 'none', 
-                        padding: 0, 
-                        margin: 0,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                        gap: '0.5rem'
-                      }}>
-                        {estudiantes.map((estudiante) => (
-                          <li 
-                            key={estudiante.gid}
-                            style={{
-                              padding: '0.75rem',
+                      <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {estudiantes.map((estudiante) => (
+                            <tr key={estudiante.gid}>
+                              <td style={{ padding: '0.5rem' }}>{estudiante.name}</td>
+                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
+                                <button
+                                  onClick={() => handleShowInfo(estudiante, 'Estudiante')}
+                                  className="button-secondary"
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                >
+                                  ℹ️ Info
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* Documentos */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '1rem' }}>📄 Documentos ({documentos.length})</h3>
+                    {documentos.length === 0 ? (
+                      <p style={{ color: '#999' }}>No hay documentos registrados</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {documentos.map((documento) => (
+                          <div 
+                            key={documento.gid} 
+                            style={{ 
+                              width: '100%',
+                              padding: '1rem 1.25rem', 
                               backgroundColor: '#f8f9fa',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #2196F3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
+                              borderRadius: '8px',
+                              borderLeft: '4px solid #2196F3',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                              transition: 'transform 0.2s, box-shadow 0.2s',
+                              cursor: 'default'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateX(4px)';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateX(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
                             }}
                           >
-                            <span style={{ 
-                              color: estudiante.completed ? '#4caf50' : '#999',
-                              fontSize: '1rem'
-                            }}>
-                              {estudiante.completed ? '✓' : '○'}
-                            </span>
-                            <span style={{ 
-                              flex: 1,
-                              textDecoration: estudiante.completed ? 'line-through' : 'none',
-                              color: estudiante.completed ? '#666' : '#333'
-                            }}>
-                              {estudiante.name}
-                            </span>
-                            <button
-                              onClick={() => handleShowInfo(estudiante, 'Estudiante')}
-                              style={{
-                                background: 'none',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.75rem',
-                                cursor: 'pointer',
-                                color: '#666',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                                transition: 'all 0.2s'
-                              }}
-                              title="Ver información primaria"
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.borderColor = '#2196F3';
-                                e.currentTarget.style.color = '#2196F3';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.borderColor = '#ddd';
-                                e.currentTarget.style.color = '#666';
-                              }}
-                            >
-                              <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 500 }}>Info</span>
-                            </button>
-                          </li>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📄</span>
+                              <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#333', flex: 1 }}>
+                                {documento.name}
+                              </span>
+                            </div>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     )}
                   </div>
                 </>
@@ -627,12 +746,6 @@ const DiplomadosPage: React.FC = () => {
                     <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
                       Módulo 5
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
-                      Módulo 6
-                    </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
-                      Módulo 7
-                    </th>
                     <th style={{ 
                       padding: '1rem', 
                       textAlign: 'center', 
@@ -670,9 +783,7 @@ const DiplomadosPage: React.FC = () => {
                       const modulo3 = getCustomFieldValue(estudiante, 'Módulo 3');
                       const modulo4 = getCustomFieldValue(estudiante, 'Módulo 4');
                       const modulo5 = getCustomFieldValue(estudiante, 'Módulo 5');
-                      const modulo6 = getCustomFieldValue(estudiante, 'Módulo 6');
-                      const modulo7 = getCustomFieldValue(estudiante, 'Módulo 7');
-                      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
+                      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
                       
                       return {
                         nombre: estudiante.name,
@@ -681,8 +792,6 @@ const DiplomadosPage: React.FC = () => {
                         modulo3,
                         modulo4,
                         modulo5,
-                        modulo6,
-                        modulo7,
                         total: parseFloat(total.toFixed(2))
                       };
                     });
@@ -762,24 +871,6 @@ const DiplomadosPage: React.FC = () => {
                             <td style={{ 
                               padding: '0.875rem 1rem', 
                               textAlign: 'center',
-                              borderRight: '1px solid #dee2e6',
-                              fontWeight: 500,
-                              color: estudiante.modulo6 >= 51 ? '#27AE60' : '#E74C3C'
-                            }}>
-                              {estudiante.modulo6.toFixed(2)}
-                            </td>
-                            <td style={{ 
-                              padding: '0.875rem 1rem', 
-                              textAlign: 'center',
-                              borderRight: '1px solid #dee2e6',
-                              fontWeight: 500,
-                              color: estudiante.modulo7 >= 51 ? '#27AE60' : '#E74C3C'
-                            }}>
-                              {estudiante.modulo7.toFixed(2)}
-                            </td>
-                            <td style={{ 
-                              padding: '0.875rem 1rem', 
-                              textAlign: 'center',
                               fontWeight: 700,
                               fontSize: '1rem',
                               backgroundColor: estudiante.total >= 51 ? '#d1fae5' : '#fee2e2',
@@ -821,12 +912,6 @@ const DiplomadosPage: React.FC = () => {
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
                             {calcularPromedioModulo('modulo5').toFixed(2)}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo6').toFixed(2)}
-                          </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo7').toFixed(2)}
-                          </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
@@ -853,8 +938,8 @@ const DiplomadosPage: React.FC = () => {
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#2e7d32' }}>
                 <strong>📌 Información:</strong> Las calificaciones se obtienen de los campos personalizados 
-                "Módulo 1" a "Módulo 7" de cada estudiante. El promedio se calcula automáticamente 
-                sumando las 7 notas y dividiendo entre 7. Las notas ≥ 51 se muestran en verde (aprobado) 
+                "Módulo 1" a "Módulo 5" de cada estudiante. El promedio se calcula automáticamente 
+                sumando las 5 notas y dividiendo entre 5. Las notas ≥ 51 se muestran en verde (aprobado) 
                 y las notas &lt; 51 en rojo (reprobado).
               </p>
             </div>
@@ -879,6 +964,7 @@ const DiplomadosPage: React.FC = () => {
           telefono={selectedInfo.telefono}
           lugarNacimiento={selectedInfo.lugarNacimiento}
           documentoIdentidad={selectedInfo.documentoIdentidad}
+          identidadCultural={selectedInfo.identidadCultural}
           tipo={selectedInfo.tipo}
           onClose={() => setSelectedInfo(null)}
         />
