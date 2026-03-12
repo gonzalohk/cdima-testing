@@ -307,9 +307,16 @@ class AsanaService {
   }
 
   /**
-   * Actualizar una tarea (nombre, notas, etc.)
+   * Actualizar una tarea (nombre, notas, custom fields, etc.)
    */
-  async updateTask(taskGid: string, data: { name?: string; notes?: string }): Promise<AsanaTask> {
+  async updateTask(
+    taskGid: string, 
+    data: { 
+      name?: string; 
+      notes?: string;
+      custom_fields?: { [fieldGid: string]: string | number | null };
+    }
+  ): Promise<AsanaTask> {
     return this.fetchAsana<AsanaTask>(`/tasks/${taskGid}`, {
       method: 'PUT',
       body: JSON.stringify({ data })

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
+import { serializeEstudianteData } from '../utils/asana-helpers';
+import { validateData, EstudianteDataSchema, DocenteDataSchema } from '../schemas/diplomado.schemas';
 
 interface CreateDiplomadoModalProps {
   projectGid: string;
@@ -132,12 +134,26 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
       // 3. Crear subtareas de docentes
       for (const docente of docentesValidos) {
-        const notasDocente = `INFORMACIÓN PRIMARIA:
-Género: ${docente.genero}
-Teléfono: ${docente.telefono || 'No especificado'}
-Lugar de Nacimiento: ${docente.lugarNacimiento || 'No especificado'}
-Documento de Identidad: ${docente.documentoIdentidad || 'No especificado'}
-Identidad Cultural: ${docente.identidadCultural || 'No especificado'}`;
+        // Validar datos del docente
+        const validationResult = validateData(DocenteDataSchema, {
+          genero: docente.genero,
+          telefono: docente.telefono,
+          especialidad: '',
+          experiencia: ''
+        });
+
+        if (!validationResult.success) {
+          console.warn(`Validación falló para docente ${docente.nombre}:`, validationResult.error);
+        }
+
+        // Usar el nuevo formato JSON estructurado
+        const notasDocente = serializeEstudianteData({
+          genero: docente.genero,
+          telefono: docente.telefono || '',
+          lugarNacimiento: docente.lugarNacimiento || '',
+          documentoIdentidad: docente.documentoIdentidad || '',
+          identidadCultural: docente.identidadCultural || ''
+        });
 
         await asanaService.createSubtask(tareaDocentes.gid, cdima.gid, {
           name: docente.nombre,
@@ -147,12 +163,27 @@ Identidad Cultural: ${docente.identidadCultural || 'No especificado'}`;
 
       // 4. Crear subtareas de estudiantes
       for (const estudiante of estudiantesValidos) {
-        const notasEstudiante = `INFORMACIÓN PRIMARIA:
-Género: ${estudiante.genero}
-Teléfono: ${estudiante.telefono || 'No especificado'}
-Lugar de Nacimiento: ${estudiante.lugarNacimiento || 'No especificado'}
-Documento de Identidad: ${estudiante.documentoIdentidad || 'No especificado'}
-Identidad Cultural: ${estudiante.identidadCultural || 'No especificado'}`;
+        // Validar datos del estudiante
+        const validationResult = validateData(EstudianteDataSchema, {
+          genero: estudiante.genero,
+          telefono: estudiante.telefono,
+          lugarNacimiento: estudiante.lugarNacimiento,
+          documentoIdentidad: estudiante.documentoIdentidad,
+          identidadCultural: estudiante.identidadCultural
+        });
+
+        if (!validationResult.success) {
+          console.warn(`Validación falló para estudiante ${estudiante.nombre}:`, validationResult.error);
+        }
+
+        // Usar el nuevo formato JSON estructurado
+        const notasEstudiante = serializeEstudianteData({
+          genero: estudiante.genero,
+          telefono: estudiante.telefono || '',
+          lugarNacimiento: estudiante.lugarNacimiento || '',
+          documentoIdentidad: estudiante.documentoIdentidad || '',
+          identidadCultural: estudiante.identidadCultural || ''
+        });
 
         await asanaService.createSubtask(tareaEstudiantes.gid, cdima.gid, {
           name: estudiante.nombre,
