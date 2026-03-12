@@ -33,31 +33,124 @@ interface Section {
   tasks: Task[];
 }
 
-// Mapeador de tipos de sección a colores
-const getSectionTypeColor = (sectionName: string): { tipo: string; color: string } => {
+// Funciones helper para Google Drive
+const getGoogleDriveFileId = (url: string): string | null => {
+  const patterns = [
+    /\/d\/([a-zA-Z0-9_-]+)/, // https://drive.google.com/file/d/ID/view
+    /id=([a-zA-Z0-9_-]+)/,   // https://drive.google.com/open?id=ID
+    /\/folders\/([a-zA-Z0-9_-]+)/ // https://drive.google.com/drive/folders/ID
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+  
+  return null;
+};
+
+const getGoogleDrivePreviewUrl = (url: string): string | null => {
+  const fileId = getGoogleDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+};
+
+// Función para obtener thumbnail de Google Drive (disponible para uso futuro)
+/* 
+const getGoogleDriveThumbnail = (url: string): string | null => {
+  const fileId = getGoogleDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400-h300`;
+};
+*/
+
+// Detectar tipo de archivo
+const detectFileType = (url: string, label: string): string => {
+  const urlLower = url.toLowerCase();
+  const labelLower = label.toLowerCase();
+  
+  if (urlLower.includes('/folders/')) return 'folder';
+  if (urlLower.includes('.pdf') || labelLower.includes('.pdf')) return 'pdf';
+  if (urlLower.match(/\.(doc|docx)/) || labelLower.match(/\.(doc|docx)/)) return 'doc';
+  if (urlLower.match(/\.(xls|xlsx)/) || labelLower.match(/\.(xls|xlsx)/) || urlLower.includes('spreadsheet')) return 'sheet';
+  if (urlLower.match(/\.(ppt|pptx)/) || labelLower.match(/\.(ppt|pptx)/) || urlLower.includes('presentation')) return 'slide';
+  if (urlLower.match(/\.(jpg|jpeg|png|gif|svg|webp)/) || labelLower.match(/\.(jpg|jpeg|png|gif|svg|webp)/)) return 'image';
+  if (urlLower.match(/\.(mp4|mov|avi|webm)/) || labelLower.match(/\.(mp4|mov|avi|webm)/)) return 'video';
+  if (urlLower.includes('document')) return 'doc';
+  
+  return 'other';
+};
+
+// Iconos por tipo de archivo
+const getFileTypeIcon = (fileType: string): string => {
+  const icons: { [key: string]: string } = {
+    folder: '📁',
+    pdf: '📄',
+    doc: '📝',
+    sheet: '📊',
+    slide: '📽️',
+    image: '🖼️',
+    video: '🎥',
+    other: '📎'
+  };
+  return icons[fileType] || icons.other;
+};
+
+// Mapeador de tipos de sección a colores con gradientes
+const getSectionTypeColor = (sectionName: string): { tipo: string; color: string; gradient: string } => {
   const nameLower = sectionName.toLowerCase();
   
   if (nameLower.includes('campaña') || nameLower.includes('comunicacional')) {
-    return { tipo: 'Campaña Comuni.', color: '#C084FC' };
+    return { 
+      tipo: 'Campaña Comuni.', 
+      color: '#C084FC',
+      gradient: 'linear-gradient(135deg, #C084FC 0%, #9333EA 100%)'
+    };
   }
   if (nameLower.includes('testimonio')) {
-    return { tipo: 'Testimonios', color: '#6EE7B7' };
+    return { 
+      tipo: 'Testimonios', 
+      color: '#6EE7B7',
+      gradient: 'linear-gradient(135deg, #6EE7B7 0%, #10B981 100%)'
+    };
   }
   if (nameLower.includes('diseño') || nameLower.includes('material')) {
-    return { tipo: 'Diseño de Materi.', color: '#FCD34D' };
+    return { 
+      tipo: 'Diseño de Materi.', 
+      color: '#FCD34D',
+      gradient: 'linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)'
+    };
   }
   if (nameLower.includes('módulo') || nameLower.includes('estudio')) {
-    return { tipo: 'Módulos de Estu.', color: '#FCA5A5' };
+    return { 
+      tipo: 'Módulos de Estu.', 
+      color: '#FCA5A5',
+      gradient: 'linear-gradient(135deg, #FCA5A5 0%, #EF4444 100%)'
+    };
   }
   if (nameLower.includes('archivo') || nameLower.includes('fotográfi')) {
-    return { tipo: 'Archivo Fotográfi.', color: '#93C5FD' };
+    return { 
+      tipo: 'Archivo Fotográfi.', 
+      color: '#93C5FD',
+      gradient: 'linear-gradient(135deg, #93C5FD 0%, #3B82F6 100%)'
+    };
   }
   if (nameLower.includes('informe')) {
-    return { tipo: 'Informes', color: '#FDA4AF' };
+    return { 
+      tipo: 'Informes', 
+      color: '#FDA4AF',
+      gradient: 'linear-gradient(135deg, #FDA4AF 0%, #F43F5E 100%)'
+    };
   }
   
   // Tipo por defecto
-  return { tipo: 'Recursos', color: '#A8E6CF' };
+  return { 
+    tipo: 'Recursos', 
+    color: '#A8E6CF',
+    gradient: 'linear-gradient(135deg, #A8E6CF 0%, #34D399 100%)'
+  };
 };
 
 // Convertir attachments de Asana a Links
@@ -105,52 +198,191 @@ const convertAsanaTaskToTask = (asanaTask: AsanaTask): Task => {
   };
 };
 
-// Componente para enlaces de Google Drive
+// Componente para enlaces de Google Drive mejorado
 const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
+  const fileIcon = getFileTypeIcon(fileType);
+  const previewUrl = link.viewUrl ? getGoogleDrivePreviewUrl(link.viewUrl) : null;
+  // const thumbnail = link.viewUrl ? getGoogleDriveThumbnail(link.viewUrl) : null;
+  const isGoogleDrive = (link.viewUrl || '').includes('drive.google.com');
+
   return (
-    <div className="drive-link-container">
-      <div className="drive-link-info">
-        <svg className="drive-link-file-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span className="drive-link-label">{link.label}</span>
+    <>
+      <div className="drive-link-container" style={{
+        background: 'white',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        padding: '0.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.75rem',
+        transition: 'all 0.2s ease',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+      }}>
+        <div className="drive-link-info" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flex: 1,
+          minWidth: 0
+        }}>
+          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{fileIcon}</span>
+          <span className="drive-link-label" style={{
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            color: '#374151',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>{link.label}</span>
+        </div>
+        <div className="drive-link-actions" style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+          {previewUrl && isGoogleDrive && (
+            <button
+              onClick={() => setShowPreview(true)}
+              className="drive-link-btn"
+              title="Vista previa"
+              style={{
+                padding: '0.375rem 0.75rem',
+                backgroundColor: `${accentColor}15`,
+                color: accentColor,
+                border: `1px solid ${accentColor}30`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>👁️</span>
+              <span>Preview</span>
+            </button>
+          )}
+          {link.viewUrl && (
+            <a
+              href={link.viewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="drive-link-btn"
+              title="Abrir"
+              style={{
+                padding: '0.375rem 0.75rem',
+                backgroundColor: accentColor,
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              <span>Abrir</span>
+            </a>
+          )}
+        </div>
       </div>
-      <div className="drive-link-actions">
-        {link.viewUrl && (
-          <a
-            href={link.viewUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="drive-link-btn drive-link-view"
-            title="Ver en Drive"
-            style={{ '--accent-color': accentColor } as React.CSSProperties}
+
+      {/* Modal de Preview */}
+      {showPreview && previewUrl && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+            animation: 'fadeIn 0.2s ease'
+          }}
+          onClick={() => setShowPreview(false)}
+        >
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: '1200px',
+              height: '85vh',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <span>Ver</span>
-          </a>
-        )}
-        {link.downloadUrl && (
-          <a
-            href={link.downloadUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="drive-link-btn drive-link-download"
-            title="Descargar"
-            style={{ '--accent-color': accentColor } as React.CSSProperties}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span>Descargar</span>
-          </a>
-        )}
-      </div>
-    </div>
+            {/* Header del modal */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f9fafb'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: '1.25rem' }}>{fileIcon}</span>
+                <span style={{ 
+                  fontWeight: 600, 
+                  fontSize: '0.95rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>{link.label}</span>
+              </div>
+              <button
+                onClick={() => setShowPreview(false)}
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.5rem',
+                  color: '#6b7280',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            {/* Iframe del preview */}
+            <iframe
+              src={previewUrl}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                border: 'none',
+                flex: 1
+              }}
+              title={link.label}
+              allow="autoplay"
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -412,6 +644,13 @@ const ResourceLibraryPage: React.FC = () => {
   const totalLinks = currentSection ? currentSection.tasks.reduce((acc, t) =>
     acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0) : 0;
 
+  // Calcular estadísticas generales
+  const totalRecursos = sections.reduce((acc, section) => 
+    acc + section.tasks.reduce((a, t) => 
+      a + t.links.length + t.subtasks.reduce((b, st) => b + st.links.length, 0), 0), 0);
+  
+  const totalTareas = sections.reduce((acc, section) => acc + section.tasks.length, 0);
+
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
 
   if (loading) {
@@ -469,6 +708,63 @@ const ResourceLibraryPage: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className="rl-search-input"
           />
+        </div>
+      </div>
+
+      {/* Estadísticas */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem',
+        margin: '1.5rem 0',
+        padding: '0 1rem'
+      }}>
+        <div style={{
+          padding: '1.25rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderLeft: '4px solid #3B82F6',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3B82F6', marginBottom: '0.25rem' }}>
+            {totalRecursos}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 500 }}>
+            Total de Recursos
+          </div>
+        </div>
+
+        <div style={{
+          padding: '1.25rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderLeft: '4px solid #10B981',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10B981', marginBottom: '0.25rem' }}>
+            {sections.length}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 500 }}>
+            Categorías
+          </div>
+        </div>
+
+        <div style={{
+          padding: '1.25rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderLeft: '4px solid #F59E0B',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B', marginBottom: '0.25rem' }}>
+            {totalTareas}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 500 }}>
+            Carpetas de Recursos
+          </div>
         </div>
       </div>
 

@@ -2129,10 +2129,12 @@ const DiplomadosPage: React.FC = () => {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              maxWidth: '900px', 
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              maxWidth: '1100px', 
+              width: '95%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
           >
             <div className="modal-header">
@@ -2142,7 +2144,7 @@ const DiplomadosPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="modal-body" style={{ padding: '1.5rem' }}>
+            <div className="modal-body" style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
               {/* Selector de Módulo */}
               <div style={{ 
                 marginBottom: '1.5rem',
@@ -2194,12 +2196,12 @@ const DiplomadosPage: React.FC = () => {
                 </p>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#e8f5e9' }}>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '50%', color: '#2e7d32' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '50%', color: '#2e7d32' }}>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '60%', color: '#2e7d32', minWidth: '200px' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '40%', color: '#2e7d32', minWidth: '150px' }}>
                         Nota para {moduloSeleccionado} (0-100)
                       </th>
                     </tr>
@@ -2218,7 +2220,10 @@ const DiplomadosPage: React.FC = () => {
                           <td style={{ 
                             padding: '0.75rem', 
                             fontWeight: 500,
-                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent'
+                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            maxWidth: '400px'
                           }}>
                             {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
                             {nota.nombre}
@@ -2358,10 +2363,12 @@ const DiplomadosPage: React.FC = () => {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              maxWidth: '800px', 
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              maxWidth: '1100px', 
+              width: '95%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
           >
             <div className="modal-header">
@@ -2371,7 +2378,7 @@ const DiplomadosPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="modal-body" style={{ padding: '1.5rem' }}>
+            <div className="modal-body" style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
               {/* Selector de Fecha */}
               <div style={{ 
                 marginBottom: '1.5rem',
@@ -2416,13 +2423,13 @@ const DiplomadosPage: React.FC = () => {
                 </p>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '40%' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '15%' }}>Asistió</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '45%' }}>Observaciones</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '35%', minWidth: '180px' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '15%', minWidth: '100px' }}>Asistió</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '50%', minWidth: '200px' }}>Observaciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2437,7 +2444,10 @@ const DiplomadosPage: React.FC = () => {
                         >
                           <td style={{ 
                             padding: '0.75rem',
-                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent'
+                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            maxWidth: '300px'
                           }}>
                             {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
                             {asistencia.nombre}

@@ -1248,7 +1248,7 @@ select.form-input {
 /* Tasks Grid Layout */
 .rl-tasks-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.25rem;
 }
 
@@ -1578,7 +1578,7 @@ select.form-input {
 /* Responsive Design */
 @media (max-width: 1200px) {
   .rl-tasks-list {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: 1fr;
   }
 }
 
