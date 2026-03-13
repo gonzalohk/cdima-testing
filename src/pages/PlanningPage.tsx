@@ -411,7 +411,7 @@ const PlanningPage: React.FC = () => {
             
             tableData.push([
               {
-                content: isOverdue ? `⚠️ ${task.title}` : task.title,
+                content: isOverdue ? `[ATRASADA] ${task.title}` : task.title,
                 styles: {
                   fillColor: isOverdue ? [255, 235, 238] : colors.white,
                   textColor: isOverdue ? [183, 28, 28] : [45, 45, 45],
@@ -687,7 +687,7 @@ const PlanningPage: React.FC = () => {
           const isOverdue = dueDate && dueDate < today;
 
           return [
-            isOverdue ? `⚠️ ${task.name}` : task.name,
+            task.name,
             getCustomFieldValue(task, 'Responsables de actividad'),
             fecha,
             isOverdue ? 'ATRASADA' : 'EN PROCESO'
