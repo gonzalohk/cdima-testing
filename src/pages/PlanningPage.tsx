@@ -403,14 +403,21 @@ const PlanningPage: React.FC = () => {
 
           // Agregar cada tarea en su propia fila
           dayTasks.forEach(task => {
+            // Verificar si la tarea está atrasada
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const isEjecutado = task.resource.estado === 'Ejecutado';
+            const isOverdue = !isEjecutado && task.end < today;
+            
             tableData.push([
               {
-                content: task.title,
+                content: isOverdue ? `⚠️ ${task.title}` : task.title,
                 styles: {
-                  fillColor: colors.white,
-                  textColor: [45, 45, 45],
+                  fillColor: isOverdue ? [255, 235, 238] : colors.white,
+                  textColor: isOverdue ? [183, 28, 28] : [45, 45, 45],
                   fontSize: 8.5,
-                  cellPadding: 4
+                  cellPadding: 4,
+                  fontStyle: isOverdue ? 'bold' : 'normal'
                 }
               }
             ]);
@@ -479,8 +486,11 @@ const PlanningPage: React.FC = () => {
       const footerText = `CDIMA - Vista Calendario ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
       pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
-      // Abrir PDF en nueva pestaña
-      pdf.output('dataurlnewwindow');
+      // Generar nombre descriptivo y descargar PDF
+      const fechaFormato = format(date, 'yyyy-MM', { locale: es });
+      const nombreProyecto = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+      const filename = `Calendario_${nombreProyecto}_${fechaFormato}.pdf`;
+      pdf.save(filename);
     } catch (error) {
       console.error('Error al exportar calendario:', error);
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
@@ -663,12 +673,24 @@ const PlanningPage: React.FC = () => {
           let fecha = '-';
           if (inicio) fecha = inicio; // Mostrar solo fecha de inicio para en proceso
           else if (fin) fecha = fin;
+          
+          // Verificar si está atrasada
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
+          let dueDate: Date | null = null;
+          if (task.due_on) {
+            const [year, month, day] = task.due_on.split('-').map(Number);
+            dueDate = new Date(year, month - 1, day);
+            dueDate.setHours(0, 0, 0, 0);
+          }
+          const isOverdue = dueDate && dueDate < today;
 
           return [
-            task.name,
+            isOverdue ? `⚠️ ${task.name}` : task.name,
             getCustomFieldValue(task, 'Responsables de actividad'),
             fecha,
-            'EN PROCESO'
+            isOverdue ? 'ATRASADA' : 'EN PROCESO'
           ];
         });
 
@@ -709,7 +731,6 @@ const PlanningPage: React.FC = () => {
             3: { 
               cellWidth: 30, 
               halign: 'center',
-              textColor: colors.steelBlue, // Azul acero
               fontStyle: 'bold'
             },
           },
@@ -725,8 +746,11 @@ const PlanningPage: React.FC = () => {
       const footerText = `CDIMA - Avance ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
       pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
-      // Abrir PDF en nueva pestaña
-      pdf.output('dataurlnewwindow');
+      // Generar nombre descriptivo y descargar PDF
+      const fechaFormato = format(date, 'yyyy-MM', { locale: es });
+      const nombreProyecto = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+      const filename = `Avance_Tareas_${nombreProyecto}_${fechaFormato}.pdf`;
+      pdf.save(filename);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
@@ -738,9 +762,16 @@ const PlanningPage: React.FC = () => {
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isEjecutado = event.resource.estado === 'Ejecutado';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Resetear a medianoche para comparación justa
+    
+    // Verificar si está atrasada (no ejecutada y fecha de fin ya pasó)
+    const isOverdue = !isEjecutado && event.end < today;
     
     // Obtener colores únicos basados en el ID de la tarea
-    const colors = getTaskColor(event.id);
+    const colors = isOverdue 
+      ? { bg: '#ffebee', border: '#c62828', text: '#b71c1c' } // Rojo para atrasadas
+      : getTaskColor(event.id);
 
     return {
       style: {
@@ -751,9 +782,9 @@ const PlanningPage: React.FC = () => {
         opacity: isEjecutado ? 0.65 : 1,
         color: colors.text,
         fontSize: '0.875rem',
-        fontWeight: 500,
+        fontWeight: isOverdue ? 600 : 500, // Más negrita si está atrasada
         padding: '4px 8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        boxShadow: isOverdue ? '0 2px 6px rgba(198, 40, 40, 0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
       }
     };
   };
@@ -817,6 +848,10 @@ const PlanningPage: React.FC = () => {
         <div className="legend-item">
           <div className="legend-color" style={{ background: 'linear-gradient(135deg, #FFE5E5, #E5F4E5, #E5E5FF, #FFF4E5)' }}></div>
           <span>Cada color representa una tarea diferente</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-color" style={{ backgroundColor: '#ffebee', border: '2px solid #c62828' }}></div>
+          <span>Tareas atrasadas (no ejecutadas y fecha vencida)</span>
         </div>
         <div className="legend-item">
           <div className="legend-color" style={{ backgroundColor: '#999', opacity: 0.65 }}></div>
@@ -1030,51 +1065,70 @@ const PlanningPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingTasks.map((task, index) => (
-                      <tr 
-                        key={task.gid}
-                        style={{ 
-                          borderBottom: index < pendingTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                          backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
-                        }}
-                      >
-                        <td style={{ padding: '0.75rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 500, color: '#333' }}>{task.name}</div>
-                            {task.parent && (
-                              <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
-                                Subtarea de: {task.parent.name}
+                    {pendingTasks.map((task, index) => {
+                      // Verificar si la tarea está atrasada
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
+                      let dueDate: Date | null = null;
+                      if (task.due_on) {
+                        const [year, month, day] = task.due_on.split('-').map(Number);
+                        dueDate = new Date(year, month - 1, day);
+                        dueDate.setHours(0, 0, 0, 0);
+                      }
+                      const isOverdue = dueDate && dueDate < today;
+                      
+                      return (
+                        <tr 
+                          key={task.gid}
+                          style={{ 
+                            borderBottom: index < pendingTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                            backgroundColor: isOverdue ? '#ffebee' : (index % 2 === 0 ? '#fafafa' : 'white')
+                          }}
+                        >
+                          <td style={{ padding: '0.75rem' }}>
+                            <div>
+                              <div style={{ 
+                                fontWeight: isOverdue ? 600 : 500, 
+                                color: isOverdue ? '#c62828' : '#333' 
+                              }}>
+                                {isOverdue && '⚠️ '}{task.name}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {getCustomFieldValue(task, 'Responsables de actividad')}
-                        </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
-                          {(() => {
-                            const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
-                            const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
-                            if (inicio && fin) return `${inicio} - ${fin}`;
-                            if (inicio) return inicio;
-                            if (fin) return fin;
-                            return '-';
-                          })()}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 500,
-                            backgroundColor: '#fff3e0',
-                            color: '#e65100'
-                          }}>
-                            En Proceso
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                              {task.parent && (
+                                <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
+                                  Subtarea de: {task.parent.name}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.75rem', color: isOverdue ? '#b71c1c' : '#666' }}>
+                            {getCustomFieldValue(task, 'Responsables de actividad')}
+                          </td>
+                          <td style={{ padding: '0.75rem', color: isOverdue ? '#b71c1c' : '#666' }}>
+                            {(() => {
+                              const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+                              const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+                              if (inicio && fin) return `${inicio} - ${fin}`;
+                              if (inicio) return inicio;
+                              if (fin) return fin;
+                              return '-';
+                            })()}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <span style={{
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 500,
+                              backgroundColor: isOverdue ? '#d32f2f' : '#fff3e0',
+                              color: isOverdue ? 'white' : '#e65100'
+                            }}>
+                              {isOverdue ? 'Atrasada' : 'En Proceso'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

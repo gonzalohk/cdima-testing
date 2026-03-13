@@ -53,6 +53,8 @@ const DiplomadosPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [diplomadoToEdit, setDiplomadoToEdit] = useState<any>(null);
   const [selectedDiplomado, setSelectedDiplomado] = useState<AsanaSection | null>(null);
   const [diplomadosProjectGid, setDiplomadosProjectGid] = useState<string>('');
   const [showNotasModal, setShowNotasModal] = useState(false);
@@ -63,6 +65,7 @@ const DiplomadosPage: React.FC = () => {
   const [showAsistenciaModal, setShowAsistenciaModal] = useState(false);
   const [asistencias, setAsistencias] = useState<AsistenciaEstudiante[]>([]);
   const [loadingAsistencia, setLoadingAsistencia] = useState(false);
+  // Fecha en zona horaria de Bolivia (UTC-4)
   const [fechaAsistencia, setFechaAsistencia] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [asistenciasConError, setAsistenciasConError] = useState<Set<string>>(new Set());
   
@@ -129,7 +132,81 @@ const DiplomadosPage: React.FC = () => {
 
   const handleCreateSuccess = () => {
     setShowCreateModal(false);
+    setEditMode(false);
+    setDiplomadoToEdit(null);
     loadDiplomados();
+    // Si hay un diplomado seleccionado, recargar sus detalles
+    if (selectedDiplomado) {
+      handleViewDetails(selectedDiplomado);
+    }
+  };
+
+  const handleEditDiplomado = async () => {
+    if (!selectedDiplomado) return;
+
+    setLoadingDetails(true);
+    try {
+      // Obtener tareas de la sección
+      const sectionTasks = await asanaService.getSectionTasks(selectedDiplomado.gid);
+
+      // Buscar las tareas principales
+      const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
+      const tareaEstudiantes = sectionTasks.find(t => t.name === 'Estudiantes');
+
+      if (!tareaDocentes || !tareaEstudiantes) {
+        throw new Error('No se encontraron las tareas de Docentes o Estudiantes');
+      }
+
+      // Obtener subtareas
+      const subtasksDocentes = await asanaService.getSubtasks(tareaDocentes.gid);
+      const subtasksEstudiantes = await asanaService.getSubtasks(tareaEstudiantes.gid);
+
+      // Parsear datos de docentes
+      const docentesData = subtasksDocentes.map(subtask => {
+        const data = parseEstudianteData(subtask.notes);
+        return {
+          nombre: subtask.name,
+          genero: data.genero,
+          telefono: data.telefono || '',
+          lugarNacimiento: data.lugarNacimiento || '',
+          documentoIdentidad: data.documentoIdentidad || '',
+          identidadCultural: data.identidadCultural || '',
+          subtaskGid: subtask.gid
+        };
+      });
+
+      // Parsear datos de estudiantes
+      const estudiantesData = subtasksEstudiantes.map(subtask => {
+        const data = parseEstudianteData(subtask.notes);
+        return {
+          nombre: subtask.name,
+          genero: data.genero,
+          telefono: data.telefono || '',
+          lugarNacimiento: data.lugarNacimiento || '',
+          documentoIdentidad: data.documentoIdentidad || '',
+          identidadCultural: data.identidadCultural || '',
+          subtaskGid: subtask.gid
+        };
+      });
+
+      // Preparar datos para el modal
+      setDiplomadoToEdit({
+        gid: selectedDiplomado.gid,
+        nombre: selectedDiplomado.name,
+        docentes: docentesData,
+        estudiantes: estudiantesData,
+        docentesTaskGid: tareaDocentes.gid,
+        estudiantesTaskGid: tareaEstudiantes.gid
+      });
+
+      setEditMode(true);
+      setShowCreateModal(true);
+    } catch (err) {
+      console.error('Error loading diplomado for edit:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar diplomado para editar');
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const handleViewDetails = async (diplomado: AsanaSection) => {
@@ -151,12 +228,12 @@ const DiplomadosPage: React.FC = () => {
       // Obtener subtareas de cada tarea
       if (tareaDocentes) {
         const subtasks = await asanaService.getSubtasks(tareaDocentes.gid);
-        setDocentes(subtasks);
+        setDocentes(sortByApellidos(subtasks));
       }
 
       if (tareaEstudiantes) {
         const subtasks = await asanaService.getSubtasks(tareaEstudiantes.gid);
-        setEstudiantes(subtasks);
+        setEstudiantes(sortByApellidos(subtasks));
       }
 
       if (tareaDocumentos) {
@@ -169,6 +246,49 @@ const DiplomadosPage: React.FC = () => {
     } finally {
       setLoadingDetails(false);
     }
+  };
+
+  // Función para ordenar personas por Apellido Paterno + Apellido Materno + Nombre
+  const sortByApellidos = (tasks: AsanaTask[]): AsanaTask[] => {
+    return [...tasks].sort((a, b) => {
+      // Extraer apellidos del nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
+      const parseNombre = (nombreCompleto: string) => {
+        const partes = nombreCompleto.split(',').map(p => p.trim());
+        return {
+          nombre: partes[0] || '',
+          apellidoPaterno: partes[1] || '',
+          apellidoMaterno: partes[2] || ''
+        };
+      };
+      
+      const personaA = parseNombre(a.name);
+      const personaB = parseNombre(b.name);
+      
+      // Ordenar primero por apellido paterno
+      if (personaA.apellidoPaterno !== personaB.apellidoPaterno) {
+        return personaA.apellidoPaterno.localeCompare(personaB.apellidoPaterno, 'es');
+      }
+      
+      // Si son iguales, ordenar por apellido materno
+      if (personaA.apellidoMaterno !== personaB.apellidoMaterno) {
+        return personaA.apellidoMaterno.localeCompare(personaB.apellidoMaterno, 'es');
+      }
+      
+      // Si ambos apellidos son iguales, ordenar por nombre
+      return personaA.nombre.localeCompare(personaB.nombre, 'es');
+    });
+  };
+
+  // Función helper para formatear nombres en formato "Apellido Paterno Apellido Materno Nombre" sin comas
+  const formatearNombreCompleto = (nombreCompleto: string): string => {
+    // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
+    const partes = nombreCompleto.split(',').map(p => p.trim());
+    const nombre = partes[0] || '';
+    const apellidoPaterno = partes[1] || '';
+    const apellidoMaterno = partes[2] || '';
+    
+    // Retornar en formato: Apellido Paterno Apellido Materno Nombre (SIN COMAS)
+    return `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
   };
 
   /* const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
@@ -192,7 +312,7 @@ const DiplomadosPage: React.FC = () => {
     const data = parseEstudianteData(task.notes);
     
     return {
-      nombre: task.name,
+      nombre: formatearNombreCompleto(task.name),
       genero: data.genero,
       telefono: data.telefono || '',
       lugarNacimiento: data.lugarNacimiento || '',
@@ -210,13 +330,13 @@ const DiplomadosPage: React.FC = () => {
   // === Funciones para Asistencia ===
   
   const handleAbrirAsistencia = () => {
-    // Reiniciar la fecha a hoy cuando se abre el modal
+    // Reiniciar la fecha a hoy en zona horaria de Bolivia cuando se abre el modal
     setFechaAsistencia(format(new Date(), 'yyyy-MM-dd'));
     
     // Inicializar asistencias con los estudiantes actuales
     const asistenciasIniciales: AsistenciaEstudiante[] = estudiantes.map(estudiante => ({
       gid: estudiante.gid,
-      nombre: estudiante.name,
+      nombre: formatearNombreCompleto(estudiante.name),
       asistio: false,
       observaciones: ''
     }));
@@ -249,7 +369,11 @@ const DiplomadosPage: React.FC = () => {
       }
 
       // Formatear la fecha seleccionada
-      const fechaSeleccionada = format(new Date(fechaAsistencia), "dd/MM/yyyy", { locale: es });
+      // IMPORTANTE: Parsear en zona horaria local para evitar problemas con UTC
+      // que pueden causar que domingo/lunes se conviertan al día anterior
+      const [year, month, day] = fechaAsistencia.split('-').map(Number);
+      const fechaLocal = new Date(year, month - 1, day); // month es 0-indexed en Date
+      const fechaSeleccionada = format(fechaLocal, "dd/MM/yyyy", { locale: es });
       
       console.log(`📅 Guardando asistencias para la fecha: ${fechaSeleccionada}`);
       
@@ -396,7 +520,7 @@ const DiplomadosPage: React.FC = () => {
       const notaActual = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
       return {
         gid: est.gid,
-        nombre: est.name,
+        nombre: formatearNombreCompleto(est.name),
         nota: notaActual
       };
     });
@@ -414,7 +538,7 @@ const DiplomadosPage: React.FC = () => {
       const notaActual = getCustomFieldValueSafe(est, nuevoModulo, 0);
       return {
         gid: est.gid,
-        nombre: est.name,
+        nombre: formatearNombreCompleto(est.name),
         nota: notaActual
       };
     });
@@ -586,18 +710,18 @@ const DiplomadosPage: React.FC = () => {
       });
 
       asistenciasPorEstudiante.push({
-        nombre: estudiante.name,
+        nombre: formatearNombreCompleto(estudiante.name),
         registros
       });
     });
 
-    // Ordenar fechas (más recientes primero)
+    // Ordenar fechas cronológicamente (menor a mayor, más antiguas primero)
     const fechasOrdenadas = Array.from(todasLasFechas).sort((a, b) => {
       const [diaA, mesA, añoA] = a.split('/').map(Number);
       const [diaB, mesB, añoB] = b.split('/').map(Number);
       const fechaA = new Date(añoA, mesA - 1, diaA);
       const fechaB = new Date(añoB, mesB - 1, diaB);
-      return fechaB.getTime() - fechaA.getTime();
+      return fechaA.getTime() - fechaB.getTime();
     });
 
     return { asistenciasPorEstudiante, fechasOrdenadas };
@@ -680,8 +804,16 @@ const DiplomadosPage: React.FC = () => {
 
       const docentesData = docentes.map(docente => {
         const info = parseInfoPrimariaLegacy(docente, 'Docente');
+        
+        // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
+        const partes = docente.name.split(',').map(p => p.trim());
+        const nombre = partes[0] || '';
+        const apellidoPaterno = partes[1] || '';
+        const apellidoMaterno = partes[2] || '';
+        const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
+        
         return [
-          info.nombre,
+          nombreFormateado,
           info.genero || 'N/A',
           info.telefono || 'N/A',
           info.lugarNacimiento || 'N/A',
@@ -749,8 +881,16 @@ const DiplomadosPage: React.FC = () => {
 
       const estudiantesData = estudiantes.map(estudiante => {
         const info = parseInfoPrimariaLegacy(estudiante, 'Estudiante');
+        
+        // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
+        const partes = estudiante.name.split(',').map(p => p.trim());
+        const nombre = partes[0] || '';
+        const apellidoPaterno = partes[1] || '';
+        const apellidoMaterno = partes[2] || '';
+        const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
+        
         return [
-          info.nombre,
+          nombreFormateado,
           info.genero || 'N/A',
           info.telefono || 'N/A',
           info.lugarNacimiento || 'N/A',
@@ -809,8 +949,11 @@ const DiplomadosPage: React.FC = () => {
       pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
     }
 
-    // Abrir en nuevo tab
-    pdf.output('dataurlnewwindow');
+    // Generar nombre descriptivo y descargar
+    const fechaFormato = format(new Date(), 'yyyy-MM-dd');
+    const diplomadoLimpio = selectedDiplomado.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const filename = `Reporte_Diplomado_${diplomadoLimpio}_${fechaFormato}.pdf`;
+    pdf.save(filename);
   };
 
   const generarReporteCentralizadorNotas = () => {
@@ -882,9 +1025,21 @@ const DiplomadosPage: React.FC = () => {
     let startY = metaY + 14;
 
     // ============ TABLA DE NOTAS ============
-    // Calcular datos de estudiantes
-    // Usar el helper robusto importado
+    // Calcular datos de estudiantes con parseo de nombres
     const notasEstudiantes = estudiantes.map(estudiante => {
+      // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
+      const partes = estudiante.name.split(',').map(p => p.trim());
+      const nombre = partes[0] || '';
+      const apellidoPaterno = partes[1] || '';
+      const apellidoMaterno = partes[2] || '';
+      
+      // Formato: Apellido Paterno Apellido Materno Nombre (SIN COMAS)
+      const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
+      
+      // Obtener CI de las notas
+      const data = parseEstudianteData(estudiante.notes);
+      const ci = data.documentoIdentidad || 'N/A';
+      
       const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
       const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
       const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
@@ -893,46 +1048,56 @@ const DiplomadosPage: React.FC = () => {
       const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
       
       return {
-        nombre: estudiante.name,
+        nombreFormateado,
+        ci,
         modulo1,
         modulo2,
         modulo3,
         modulo4,
         modulo5,
-        total: parseFloat(total.toFixed(2))
+        total: Math.round(total)
       };
     });
 
     const calcularPromedioModulo = (moduloKey: string): number => {
       if (notasEstudiantes.length === 0) return 0;
       const suma = notasEstudiantes.reduce((acc: number, est: any) => acc + est[moduloKey], 0);
-      return parseFloat((suma / notasEstudiantes.length).toFixed(2));
+      return Math.round(suma / notasEstudiantes.length);
+    };
+    
+    // Contar aprobados (>= 51)
+    const contarAprobados = (): number => {
+      return notasEstudiantes.filter(est => est.total >= 51).length;
     };
 
-    // Preparar datos para la tabla
-    const tableBody = notasEstudiantes.map(est => [
-      est.nombre,
-      est.modulo1.toFixed(2),
-      est.modulo2.toFixed(2),
-      est.modulo3.toFixed(2),
-      est.modulo4.toFixed(2),
-      est.modulo5.toFixed(2),
-      est.total.toFixed(2)
+    // Preparar datos para la tabla con numeración
+    const tableBody = notasEstudiantes.map((est, index) => [
+      (index + 1).toString(), // No.
+      est.ci, // C.I
+      est.nombreFormateado, // Nombres en formato Apellido Paterno, Apellido Materno, Nombre
+      est.modulo1.toString(),
+      est.modulo2.toString(),
+      est.modulo3.toString(),
+      est.modulo4.toString(),
+      est.modulo5.toString(),
+      est.total.toString()
     ]);
 
     // Agregar fila de promedios
     tableBody.push([
+      '',
+      '',
       'PROMEDIO GENERAL',
-      calcularPromedioModulo('modulo1').toFixed(2),
-      calcularPromedioModulo('modulo2').toFixed(2),
-      calcularPromedioModulo('modulo3').toFixed(2),
-      calcularPromedioModulo('modulo4').toFixed(2),
-      calcularPromedioModulo('modulo5').toFixed(2),
-      calcularPromedioModulo('total').toFixed(2)
+      calcularPromedioModulo('modulo1').toString(),
+      calcularPromedioModulo('modulo2').toString(),
+      calcularPromedioModulo('modulo3').toString(),
+      calcularPromedioModulo('modulo4').toString(),
+      calcularPromedioModulo('modulo5').toString(),
+      calcularPromedioModulo('total').toString()
     ]);
 
     autoTable(pdf, {
-      head: [['Estudiante', 'Modulo 1', 'Modulo 2', 'Modulo 3', 'Modulo 4', 'Modulo 5', 'Promedio']],
+      head: [['No.', 'C.I', 'Nombres', 'M1', 'M2', 'M3', 'M4', 'M5', 'PROM']],
       body: tableBody,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -941,13 +1106,13 @@ const DiplomadosPage: React.FC = () => {
         fillColor: colors.navyBlue,
         textColor: colors.white,
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8,
         halign: 'center',
-        cellPadding: 5
+        cellPadding: { top: 18, right: 2, bottom: 2, left: 2 } // Más espacio arriba para texto vertical
       },
       styles: {
-        fontSize: 8,
-        cellPadding: 4,
+        fontSize: 7,
+        cellPadding: 3,
         overflow: 'linebreak',
         valign: 'middle',
         textColor: [45, 45, 45],
@@ -961,13 +1126,58 @@ const DiplomadosPage: React.FC = () => {
         fillColor: colors.ultraLightGray
       },
       columnStyles: {
-        0: { cellWidth: 45, halign: 'left' },
-        1: { cellWidth: 18, halign: 'center' },
-        2: { cellWidth: 18, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 18, halign: 'center' },
-        6: { cellWidth: 25, halign: 'center', fontStyle: 'bold' }
+        0: { cellWidth: 10, halign: 'center' }, // No.
+        1: { cellWidth: 20, halign: 'center' }, // C.I
+        2: { cellWidth: 50, halign: 'left' },   // Nombres
+        3: { cellWidth: 15, halign: 'center' }, // MODULO 1
+        4: { cellWidth: 15, halign: 'center' }, // MODULO 2
+        5: { cellWidth: 15, halign: 'center' }, // MODULO 3
+        6: { cellWidth: 15, halign: 'center' }, // MODULO 4
+        7: { cellWidth: 15, halign: 'center' }, // MODULO 5
+        8: { cellWidth: 18, halign: 'center', fontStyle: 'bold' } // PROMEDIO
+      },
+      // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
+      didDrawCell: (data: any) => {
+        // Dibujar texto vertical para las cabeceras de módulos y promedio
+        if (data.section === 'head' && data.column.index >= 3 && data.column.index <= 8) {
+          const cellX = data.cell.x;
+          const cellY = data.cell.y;
+          const cellWidth = data.cell.width;
+          const cellHeight = data.cell.height;
+          
+          // Definir el texto completo para cada columna
+          const textos: { [key: number]: string } = {
+            3: 'MODULO 1',
+            4: 'MODULO 2',
+            5: 'MODULO 3',
+            6: 'MODULO 4',
+            7: 'MODULO 5',
+            8: 'PROMEDIO'
+          };
+          
+          const texto = textos[data.column.index];
+          
+          if (texto) {
+            // Limpiar el texto por defecto (ya dibujado)
+            pdf.setFillColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+            pdf.rect(cellX, cellY, cellWidth, cellHeight, 'F');
+            
+            // Configurar estilo del texto
+            pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            
+            // Calcular posición para centrar el texto vertical
+            const textX = cellX + cellWidth / 2 + 2; // Ajuste para centrar
+            const textY = cellY + cellHeight / 2 + (pdf.getStringUnitWidth(texto) * 8 / pdf.internal.scaleFactor / 2);
+            
+            // Dibujar texto rotado 90 grados (vertical)
+            pdf.text(texto, textX, textY, {
+              angle: 90,
+              align: 'center'
+            });
+          }
+        }
       }
     });
 
@@ -979,17 +1189,327 @@ const DiplomadosPage: React.FC = () => {
       pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
       pdf.text('Nota: Las calificaciones >= 51 se consideran aprobadas y < 51 reprobadas.', margins.left, finalY);
       pdf.text(`Total de estudiantes: ${estudiantes.length}`, margins.left, finalY + 4);
+      pdf.text(`Aprobados: ${contarAprobados()} | Reprobados: ${estudiantes.length - contarAprobados()}`, margins.left, finalY + 8);
     }
 
     // ============ PIE DE PÁGINA ============
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'italic');
     pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-    const footerText = `Promedio General del Diplomado: ${calcularPromedioModulo('total').toFixed(2)}`;
+    const footerText = `Promedio General: ${calcularPromedioModulo('total')} | Aprobados: ${contarAprobados()}`;
     pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
 
-    // Abrir en nuevo tab
-    pdf.output('dataurlnewwindow');
+    // Generar nombre descriptivo y descargar
+    const fechaFormato = format(new Date(), 'yyyy-MM-dd');
+    const diplomadoLimpio = selectedDiplomado.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const filename = `Centralizador_Notas_${diplomadoLimpio}_${fechaFormato}.pdf`;
+    pdf.save(filename);
+  };
+
+  const generarReporteEstudiante = (estudiante: AsanaTask) => {
+    // Colores del proyecto
+    const colors = {
+      navyBlue: [70, 100, 140],
+      lightGray: [117, 117, 117],
+      ultraLightGray: [249, 249, 249],
+      white: [255, 255, 255],
+      forestGreen: [46, 125, 50],
+      errorRed: [231, 76, 60]
+    };
+
+    const margins = {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20
+    };
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    
+    // ============ ENCABEZADO ============
+    
+    // Logo CDIMA (lado izquierdo)
+    try {
+      const logoWidth = 28;
+      pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
+    } catch (error) {
+      console.error('Error al cargar logo:', error);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('CDIMA', margins.left, margins.top + 8);
+    }
+    
+    // Título Principal (lado derecho)
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('REPORTE DE ESTUDIANTE', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+    
+    // Metadatos
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(45, 45, 45);
+    
+    let metaY = margins.top + 14;
+    if (selectedDiplomado) {
+      pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+      metaY += 5;
+    }
+    
+    const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+    pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+    
+    // Línea separadora
+    pdf.setDrawColor(220, 220, 220);
+    pdf.setLineWidth(0.3);
+    pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
+
+    let startY = metaY + 14;
+
+    // ============ DATOS DEL ESTUDIANTE ============
+    const nombreFormateado = formatearNombreCompleto(estudiante.name);
+    const data = parseEstudianteData(estudiante.notes);
+    const ci = data.documentoIdentidad || 'N/A';
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('DATOS DEL ESTUDIANTE', margins.left, startY);
+    
+    startY += 8;
+
+    // Tabla de información personal
+    const datosPersonales = [
+      ['Nombre Completo:', nombreFormateado],
+      ['Carnet de Identidad:', ci],
+      ['Género:', data.genero || 'N/A'],
+      ['Teléfono:', data.telefono || 'N/A']
+    ];
+
+    autoTable(pdf, {
+      body: datosPersonales,
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fontSize: 10,
+        cellPadding: 3
+      },
+      columnStyles: {
+        0: { cellWidth: 50, fontStyle: 'bold', textColor: [70, 100, 140] },
+        1: { cellWidth: 120 }
+      }
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 12;
+
+    // ============ NOTAS POR MÓDULO ============
+    const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
+    const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
+    const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
+    const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
+    const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
+    const promedio = Math.round((modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5);
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('CALIFICACIONES POR MÓDULO', margins.left, startY);
+    
+    startY += 8;
+
+    const notasData = [
+      ['Módulo 1', modulo1.toString(), modulo1 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 2', modulo2.toString(), modulo2 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 3', modulo3.toString(), modulo3 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 4', modulo4.toString(), modulo4 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 5', modulo5.toString(), modulo5 >= 51 ? 'Aprobado' : 'Reprobado']
+    ];
+
+    // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
+    autoTable(pdf, {
+      head: [['Módulo', 'Nota', 'Estado']],
+      body: notasData,
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'striped',
+      headStyles: {
+        fillColor: colors.navyBlue,
+        textColor: colors.white,
+        fontStyle: 'bold',
+        fontSize: 10,
+        halign: 'center',
+        cellPadding: 5
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+        halign: 'center',
+        textColor: [45, 45, 45],
+        lineColor: [230, 230, 230],
+        lineWidth: 0.1
+      },
+      bodyStyles: {
+        fillColor: colors.white
+      },
+      alternateRowStyles: {
+        fillColor: colors.ultraLightGray
+      },
+      columnStyles: {
+        0: { cellWidth: 60, halign: 'left' },
+        1: { cellWidth: 40, fontStyle: 'bold' },
+        2: { cellWidth: 60 }
+      },
+      didDrawCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 2) {
+          const estado = data.cell.raw;
+          if (estado === 'Aprobado') {
+            pdf.setTextColor(colors.forestGreen[0], colors.forestGreen[1], colors.forestGreen[2]);
+          } else {
+            pdf.setTextColor(colors.errorRed[0], colors.errorRed[1], colors.errorRed[2]);
+          }
+        }
+      }
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 8;
+
+    // Promedio final
+    autoTable(pdf, {
+      body: [['PROMEDIO FINAL', promedio.toString(), promedio >= 51 ? 'APROBADO' : 'REPROBADO']],
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fontSize: 11,
+        cellPadding: 5,
+        fontStyle: 'bold',
+        halign: 'center',
+        fillColor: colors.ultraLightGray,
+        lineColor: colors.navyBlue,
+        lineWidth: 0.5
+      },
+      columnStyles: {
+        0: { cellWidth: 60, halign: 'left', textColor: colors.navyBlue },
+        1: { cellWidth: 40, fontSize: 13, textColor: promedio >= 51 ? colors.forestGreen : colors.errorRed },
+        2: { cellWidth: 60, textColor: promedio >= 51 ? colors.forestGreen : colors.errorRed }
+      }
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 12;
+
+    // ============ REGISTRO DE ASISTENCIA ============
+    const registrosAsistencia = parseAsistenciaRecords(estudiante.notes || '')
+      .sort((a, b) => {
+        const [diaA, mesA, añoA] = a.fecha.split('/').map(Number);
+        const [diaB, mesB, añoB] = b.fecha.split('/').map(Number);
+        const fechaA = new Date(añoA, mesA - 1, diaA);
+        const fechaB = new Date(añoB, mesB - 1, diaB);
+        return fechaA.getTime() - fechaB.getTime();
+      });
+
+    if (registrosAsistencia.length > 0) {
+      // Verificar si necesitamos una nueva página
+      if (startY > pageHeight - 80) {
+        pdf.addPage();
+        startY = margins.top + 10;
+      }
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+      pdf.text('REGISTRO DE ASISTENCIA', margins.left, startY);
+      
+      startY += 8;
+
+      const asistenciaData = registrosAsistencia.map(registro => [
+        registro.fecha,
+        registro.asistio ? 'Sí' : 'No',
+        registro.observaciones || 'Ninguna'
+      ]);
+
+      // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
+      autoTable(pdf, {
+        head: [['Fecha', 'Asistió', 'Observaciones']],
+        body: asistenciaData,
+        startY: startY,
+        margin: { left: margins.left, right: margins.right },
+        theme: 'striped',
+        headStyles: {
+          fillColor: colors.navyBlue,
+          textColor: colors.white,
+          fontStyle: 'bold',
+          fontSize: 10,
+          halign: 'center',
+          cellPadding: 5
+        },
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          textColor: [45, 45, 45],
+          lineColor: [230, 230, 230],
+          lineWidth: 0.1
+        },
+        bodyStyles: {
+          fillColor: colors.white
+        },
+        alternateRowStyles: {
+          fillColor: colors.ultraLightGray
+        },
+        columnStyles: {
+          0: { cellWidth: 35, halign: 'center' },
+          1: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+          2: { cellWidth: 100, halign: 'left' }
+        },
+        didDrawCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 1) {
+            const asistio = data.cell.raw;
+            if (asistio === 'Sí') {
+              pdf.setTextColor(colors.forestGreen[0], colors.forestGreen[1], colors.forestGreen[2]);
+            } else {
+              pdf.setTextColor(colors.errorRed[0], colors.errorRed[1], colors.errorRed[2]);
+            }
+          }
+        }
+      });
+
+      // Estadísticas de asistencia
+      const totalAsistencias = registrosAsistencia.filter(r => r.asistio).length;
+      const porcentaje = ((totalAsistencias / registrosAsistencia.length) * 100).toFixed(1);
+      
+      startY = (pdf as any).lastAutoTable.finalY + 8;
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      pdf.text(`Total registros: ${registrosAsistencia.length} | Asistencias: ${totalAsistencias} | Porcentaje: ${porcentaje}%`, margins.left, startY);
+    } else {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      pdf.text('No hay registros de asistencia para este estudiante.', margins.left, startY);
+    }
+
+    // ============ PIE DE PÁGINA ============
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+    const footerText = `Reporte generado el ${fechaGeneracion}`;
+    pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
+
+    // Generar nombre descriptivo y descargar
+    const fechaFormato = format(new Date(), 'yyyy-MM-dd');
+    const nombreLimpio = nombreFormateado.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+    const filename = `Reporte_Estudiante_${nombreLimpio}_${fechaFormato}.pdf`;
+    pdf.save(filename);
   };
 
   if (loading) {
@@ -1009,13 +1529,32 @@ const DiplomadosPage: React.FC = () => {
             </p>
           </div>
         </div>
-        <button
-          className="button-primary"
-          onClick={() => setShowCreateModal(true)}
-          style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}
-        >
-          + Crear Diplomado
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            className="button-secondary"
+            onClick={handleEditDiplomado}
+            disabled={!selectedDiplomado}
+            style={{ 
+              fontSize: '1rem', 
+              padding: '0.75rem 1.5rem',
+              opacity: !selectedDiplomado ? 0.5 : 1,
+              cursor: !selectedDiplomado ? 'not-allowed' : 'pointer'
+            }}
+          >
+            ✏️ Editar Diplomado
+          </button>
+          <button
+            className="button-primary"
+            onClick={() => {
+              setEditMode(false);
+              setDiplomadoToEdit(null);
+              setShowCreateModal(true);
+            }}
+            style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}
+          >
+            + Crear Diplomado
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -1197,7 +1736,7 @@ const DiplomadosPage: React.FC = () => {
                         <tbody>
                           {docentes.map((docente) => (
                             <tr key={docente.gid}>
-                              <td style={{ padding: '0.5rem' }}>{docente.name}</td>
+                              <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(docente.name)}</td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => handleShowInfo(docente, 'Docente')}
@@ -1232,7 +1771,7 @@ const DiplomadosPage: React.FC = () => {
                         <tbody>
                           {estudiantes.map((estudiante) => (
                             <tr key={estudiante.gid}>
-                              <td style={{ padding: '0.5rem' }}>{estudiante.name}</td>
+                              <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(estudiante.name)}</td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => setEstudianteSeleccionadoNotas(estudiante)}
@@ -1442,8 +1981,11 @@ const DiplomadosPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {(() => {
-                    // Usar el helper robusto importado
+                    // Calcular datos con formato de nombres correcto
                     const notasEstudiantes = estudiantes.map(estudiante => {
+                      // Formatear nombre sin comas
+                      const nombreFormateado = formatearNombreCompleto(estudiante.name);
+                      
                       const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
                       const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
                       const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
@@ -1452,20 +1994,20 @@ const DiplomadosPage: React.FC = () => {
                       const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
                       
                       return {
-                        nombre: estudiante.name,
+                        nombreFormateado,
                         modulo1,
                         modulo2,
                         modulo3,
                         modulo4,
                         modulo5,
-                        total: parseFloat(total.toFixed(2))
+                        total: Math.round(total)
                       };
                     });
 
                     const calcularPromedioModulo = (moduloKey: string): number => {
                       if (notasEstudiantes.length === 0) return 0;
                       const suma = notasEstudiantes.reduce((acc: number, est: any) => acc + est[moduloKey], 0);
-                      return parseFloat((suma / notasEstudiantes.length).toFixed(2));
+                      return Math.round(suma / notasEstudiantes.length);
                     };
 
                     return (
@@ -1487,7 +2029,7 @@ const DiplomadosPage: React.FC = () => {
                               backgroundColor: index % 2 === 0 ? '#f8f9fa' : 'white',
                               zIndex: 1
                             }}>
-                              {estudiante.nombre}
+                              {estudiante.nombreFormateado}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1496,7 +2038,7 @@ const DiplomadosPage: React.FC = () => {
                               fontWeight: 500,
                               color: estudiante.modulo1 >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {estudiante.modulo1.toFixed(2)}
+                              {estudiante.modulo1}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1505,7 +2047,7 @@ const DiplomadosPage: React.FC = () => {
                               fontWeight: 500,
                               color: estudiante.modulo2 >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {estudiante.modulo2.toFixed(2)}
+                              {estudiante.modulo2}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1514,7 +2056,7 @@ const DiplomadosPage: React.FC = () => {
                               fontWeight: 500,
                               color: estudiante.modulo3 >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {estudiante.modulo3.toFixed(2)}
+                              {estudiante.modulo3}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1523,7 +2065,7 @@ const DiplomadosPage: React.FC = () => {
                               fontWeight: 500,
                               color: estudiante.modulo4 >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {estudiante.modulo4.toFixed(2)}
+                              {estudiante.modulo4}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1532,7 +2074,7 @@ const DiplomadosPage: React.FC = () => {
                               fontWeight: 500,
                               color: estudiante.modulo5 >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {estudiante.modulo5.toFixed(2)}
+                              {estudiante.modulo5}
                             </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
@@ -1542,7 +2084,7 @@ const DiplomadosPage: React.FC = () => {
                               backgroundColor: estudiante.total >= 51 ? '#d1fae5' : '#fee2e2',
                               color: estudiante.total >= 51 ? '#065f46' : '#991b1b'
                             }}>
-                              {estudiante.total.toFixed(2)}
+                              {estudiante.total}
                             </td>
                           </tr>
                         ))}
@@ -1564,19 +2106,19 @@ const DiplomadosPage: React.FC = () => {
                             PROMEDIO GENERAL
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo1').toFixed(2)}
+                            {calcularPromedioModulo('modulo1')}
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo2').toFixed(2)}
+                            {calcularPromedioModulo('modulo2')}
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo3').toFixed(2)}
+                            {calcularPromedioModulo('modulo3')}
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo4').toFixed(2)}
+                            {calcularPromedioModulo('modulo4')}
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
-                            {calcularPromedioModulo('modulo5').toFixed(2)}
+                            {calcularPromedioModulo('modulo5')}
                           </td>
                           <td style={{ 
                             padding: '1rem', 
@@ -1585,7 +2127,7 @@ const DiplomadosPage: React.FC = () => {
                             color: '#0d47a1',
                             fontSize: '1.1rem'
                           }}>
-                            {calcularPromedioModulo('total').toFixed(2)}
+                            {calcularPromedioModulo('total')}
                           </td>
                         </tr>
                       </>
@@ -1768,19 +2310,38 @@ const DiplomadosPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             style={{ 
               maxWidth: '850px', 
-              width: '90%'
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            <div className="modal-header">
-              <h2>📊 Notas del Estudiante</h2>
-              <button className="modal-close" onClick={() => setEstudianteSeleccionadoNotas(null)}>
-                ×
-              </button>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0 }}>📊 Notas del Estudiante</h2>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => generarReporteEstudiante(estudianteSeleccionadoNotas)}
+                  className="button-secondary"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  🖨️ Imprimir
+                </button>
+                <button className="modal-close" onClick={() => setEstudianteSeleccionadoNotas(null)}>
+                  ×
+                </button>
+              </div>
             </div>
 
-            <div className="modal-body" style={{ padding: '1.5rem' }}>
-              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#1565c0', fontSize: '1.2rem' }}>
-                {estudianteSeleccionadoNotas.name}
+            <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1}}>
+              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#1565c0', fontSize: '1.2rem', wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                {formatearNombreCompleto(estudianteSeleccionadoNotas.name)}
               </h3>
 
               {(() => {
@@ -1794,16 +2355,16 @@ const DiplomadosPage: React.FC = () => {
 
                 return (
                   <div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem', tableLayout: 'fixed' }}>
+                    <table style={{ minWidth: '600px',width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#e3f2fd', color: '#1565c0' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #90caf9', width: '40%' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #90caf9', width: '45%' }}>
                             Módulo
                           </th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '20%' }}>
                             Nota
                           </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '40%' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '35%' }}>
                             Estado
                           </th>
                         </tr>
@@ -1817,7 +2378,7 @@ const DiplomadosPage: React.FC = () => {
                           { nombre: 'Módulo 5', nota: modulo5 }
                         ].map((modulo, index) => (
                           <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
-                            <td style={{ padding: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>
                               {modulo.nombre}
                             </td>
                             <td style={{ 
@@ -1827,7 +2388,7 @@ const DiplomadosPage: React.FC = () => {
                               fontSize: '1.1rem',
                               color: modulo.nota >= 51 ? '#27AE60' : '#E74C3C'
                             }}>
-                              {modulo.nota.toFixed(2)}
+                              {modulo.nota}
                             </td>
                             <td style={{ 
                               padding: '0.75rem', 
@@ -1856,7 +2417,7 @@ const DiplomadosPage: React.FC = () => {
                             fontSize: '1.3rem',
                             color: promedio >= 51 ? '#27AE60' : '#E74C3C'
                           }}>
-                            {promedio.toFixed(2)}
+                            {Math.round(promedio)}
                           </td>
                           <td style={{ 
                             padding: '1rem', 
@@ -1925,31 +2486,20 @@ const DiplomadosPage: React.FC = () => {
 
             <div className="modal-body" style={{ padding: '1.5rem' }}>
               <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#2e7d32' }}>
-                {estudianteSeleccionadoAsistencia.name}
+                {formatearNombreCompleto(estudianteSeleccionadoAsistencia.name)}
               </h3>
 
               {(() => {
-                const notas = estudianteSeleccionadoAsistencia.notes || '';
-                const registros: { fecha: string; asistio: boolean; observaciones: string }[] = [];
-
-                if (notas.includes('=== REGISTRO DE ASISTENCIA ===')) {
-                  const [, parteDespues] = notas.split('=== REGISTRO DE ASISTENCIA ===');
-                  const lineas = parteDespues.split('\n').filter(linea => linea.trim());
-
-                  lineas.forEach(linea => {
-                    const matchFecha = linea.match(/^(\d{2}\/\d{2}\/\d{4})/);
-                    const matchAsistio = linea.match(/Asistió:\s*(Sí|No)/i);
-                    const matchObservaciones = linea.match(/Observaciones:\s*(.+)$/i);
-
-                    if (matchFecha) {
-                      registros.push({
-                        fecha: matchFecha[1],
-                        asistio: matchAsistio ? matchAsistio[1].toLowerCase() === 'sí' : false,
-                        observaciones: matchObservaciones ? matchObservaciones[1].trim() : 'Ninguna'
-                      });
-                    }
+                // Usar el helper robusto para parsear asistencias
+                const registros = parseAsistenciaRecords(estudianteSeleccionadoAsistencia.notes || '')
+                  // Ordenar cronológicamente (menor a mayor, más antiguas primero)
+                  .sort((a, b) => {
+                    const [diaA, mesA, añoA] = a.fecha.split('/').map(Number);
+                    const [diaB, mesB, añoB] = b.fecha.split('/').map(Number);
+                    const fechaA = new Date(añoA, mesA - 1, diaA);
+                    const fechaB = new Date(añoB, mesB - 1, diaB);
+                    return fechaA.getTime() - fechaB.getTime();
                   });
-                }
 
                 if (registros.length === 0) {
                   return (
@@ -2098,12 +2648,18 @@ const DiplomadosPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Creación */}
+      {/* Modal de Creación/Edición */}
       {showCreateModal && (
         <CreateDiplomadoModal
           projectGid={diplomadosProjectGid}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditMode(false);
+            setDiplomadoToEdit(null);
+          }}
           onSuccess={handleCreateSuccess}
+          editMode={editMode}
+          diplomadoData={diplomadoToEdit}
         />
       )}
 
@@ -2129,8 +2685,8 @@ const DiplomadosPage: React.FC = () => {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              maxWidth: '1100px', 
-              width: '95%',
+              maxWidth: '1400px', 
+              width: '90%',
               maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
@@ -2197,11 +2753,11 @@ const DiplomadosPage: React.FC = () => {
               </div>
 
               <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#e8f5e9' }}>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '60%', color: '#2e7d32', minWidth: '200px' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '40%', color: '#2e7d32', minWidth: '150px' }}>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '65%', color: '#2e7d32' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '35%', color: '#2e7d32' }}>
                         Nota para {moduloSeleccionado} (0-100)
                       </th>
                     </tr>
@@ -2223,7 +2779,8 @@ const DiplomadosPage: React.FC = () => {
                             borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
-                            maxWidth: '400px'
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
                           }}>
                             {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
                             {nota.nombre}
@@ -2242,6 +2799,7 @@ const DiplomadosPage: React.FC = () => {
                           <td style={{ textAlign: 'center', padding: '0.75rem' }}>
                             <input
                               type="number"
+                              step="1"
                               min="0"
                               max="100"
                               value={nota.nota}

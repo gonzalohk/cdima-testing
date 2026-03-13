@@ -604,7 +604,9 @@ export const exportToPDF = (
     if (estado === 'EJECUTADO') return false;
     
     if (task.due_on) {
-      const dueDate = new Date(task.due_on);
+      // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
+      const [year, month, day] = task.due_on.split('-').map(Number);
+      const dueDate = new Date(year, month - 1, day);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     }
@@ -773,8 +775,14 @@ export const exportToPDF = (
     });
   }
   
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreProyectoLimpio = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+  const nombreTareaLimpio = mainTask.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+  const filename = `Reporte_Avance_${nombreProyectoLimpio}_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
 
 export const exportBeneficiariesToPDF = (
@@ -966,8 +974,14 @@ export const exportBeneficiariesToPDF = (
     });
   }
 
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreProyectoLimpio = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+  const nombreTareaLimpio = mainTask ? mainTask.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 'General';
+  const filename = `Reporte_Beneficiarios_${nombreProyectoLimpio}_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
 
 // Interfaz para los materiales
@@ -1023,7 +1037,14 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   const metadataX = pageWidth - margins.right;
   let metadataY = margins.top + 13;
   
-  const today = data.fechaGeneracion ? new Date(data.fechaGeneracion) : new Date();
+  // Parsear fecha de generación en zona horaria local si existe
+  let today: Date;
+  if (data.fechaGeneracion && data.fechaGeneracion.includes('-')) {
+    const [year, month, day] = data.fechaGeneracion.split('-').map(Number);
+    today = new Date(year, month - 1, day);
+  } else {
+    today = new Date();
+  }
   const dayNumber = format(today, 'd', { locale: es });
   const monthName = format(today, 'MMMM', { locale: es });
   const yearNumber = format(today, 'yyyy', { locale: es });
@@ -1170,8 +1191,13 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   finalY += 4;
   doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
 
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+  const filename = `Solicitud_Material_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
 
 // Interfaz para datos de solicitud de devolución
@@ -1364,8 +1390,13 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   finalY += 4;
   doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
 
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+  const filename = `Devolucion_Material_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
 
 // Interfaz para items de fondos
@@ -1565,8 +1596,13 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   finalY += 4;
   doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
 
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+  const filename = `Solicitud_Fondos_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
 
 // Exportar distribución por municipios o responsables a PDF
@@ -1663,6 +1699,12 @@ export const exportDistributionToPDF = (
   yPos += 4;
   doc.text(`Fecha y hora de generación: ${new Date().toLocaleString('es-ES')}`, margins.left, yPos);
   
-  // Abrir PDF en nueva pestaña
-  doc.output('dataurlnewwindow');
+  // Generar nombre de archivo descriptivo
+  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
+  const nombreProyectoLimpio = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+  const tituloLimpio = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+  const filename = `Distribucion_${tituloLimpio}_${nombreProyectoLimpio}_${fechaActualFormato}.pdf`;
+  
+  // Descargar PDF con nombre descriptivo
+  doc.save(filename);
 };
