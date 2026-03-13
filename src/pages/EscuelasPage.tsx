@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
-import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
+import CreateEscuelaModal from '../components/CreateEscuelaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -47,16 +47,16 @@ interface NotaEstudiante {
   nota: number;
 }
 
-const DiplomadosPage: React.FC = () => {
+const EscuelasPage: React.FC = () => {
   const navigate = useNavigate();
-  const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
+  const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [diplomadoToEdit, setDiplomadoToEdit] = useState<any>(null);
-  const [selectedDiplomado, setSelectedDiplomado] = useState<AsanaSection | null>(null);
-  const [diplomadosProjectGid, setDiplomadosProjectGid] = useState<string>('');
+  const [escuelaToEdit, setEscuelaToEdit] = useState<any>(null);
+  const [selectedEscuela, setSelectedEscuela] = useState<AsanaSection | null>(null);
+  const [escuelasProjectGid, setEscuelasProjectGid] = useState<string>('');
   const [showNotasModal, setShowNotasModal] = useState(false);
   const [showAsistenciaPanel, setShowAsistenciaPanel] = useState(false);
   const [selectedInfo, setSelectedInfo] = useState<InfoPrimaria | null>(null);
@@ -80,7 +80,7 @@ const DiplomadosPage: React.FC = () => {
   const [estudianteSeleccionadoNotas, setEstudianteSeleccionadoNotas] = useState<AsanaTask | null>(null);
   const [estudianteSeleccionadoAsistencia, setEstudianteSeleccionadoAsistencia] = useState<AsanaTask | null>(null);
   
-  // Estados para los detalles del diplomado
+  // Estados para los detalles de la escuela
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [docentes, setDocentes] = useState<AsanaTask[]>([]);
   const [estudiantes, setEstudiantes] = useState<AsanaTask[]>([]);
@@ -92,10 +92,10 @@ const DiplomadosPage: React.FC = () => {
       navigate('/');
       return;
     }
-    loadDiplomados();
+    loadEscuelas();
   }, [navigate]);
 
-  const loadDiplomados = async () => {
+  const loadEscuelas = async () => {
     setLoading(true);
     setError('');
     try {
@@ -107,24 +107,24 @@ const DiplomadosPage: React.FC = () => {
         throw new Error('No se encontró el workspace CDIMA');
       }
 
-      // Obtener proyectos y buscar "Diplomados"
+      // Obtener proyectos y buscar "Escuelas CDIMA"
       const projects = await asanaService.getProjects(cdima.gid);
-      const diplomadosProject = projects.find(p => 
-        p.name.toLowerCase().includes('diplomado')
+      const escuelasProject = projects.find(p => 
+        p.name.toLowerCase().includes('escuela')
       );
 
-      if (!diplomadosProject) {
-        throw new Error('No se encontró el proyecto "Diplomados"');
+      if (!escuelasProject) {
+        throw new Error('No se encontró el proyecto "Escuelas CDIMA"');
       }
 
-      setDiplomadosProjectGid(diplomadosProject.gid);
+      setEscuelasProjectGid(escuelasProject.gid);
 
-      // Obtener secciones del proyecto (cada sección es un diplomado)
-      const sections = await asanaService.getSections(diplomadosProject.gid);
-      setDiplomados(sections);
+      // Obtener secciones del proyecto (cada sección es una escuela)
+      const sections = await asanaService.getSections(escuelasProject.gid);
+      setEscuelas(sections);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar diplomados');
-      console.error('Error loading diplomados:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar escuelas');
+      console.error('Error loading escuelas:', err);
     } finally {
       setLoading(false);
     }
@@ -133,21 +133,21 @@ const DiplomadosPage: React.FC = () => {
   const handleCreateSuccess = () => {
     setShowCreateModal(false);
     setEditMode(false);
-    setDiplomadoToEdit(null);
-    loadDiplomados();
-    // Si hay un diplomado seleccionado, recargar sus detalles
-    if (selectedDiplomado) {
-      handleViewDetails(selectedDiplomado);
+    setEscuelaToEdit(null);
+    loadEscuelas();
+    // Si hay una escuela seleccionada, recargar sus detalles
+    if (selectedEscuela) {
+      handleViewDetails(selectedEscuela);
     }
   };
 
-  const handleEditDiplomado = async () => {
-    if (!selectedDiplomado) return;
+  const handleEditEscuela = async () => {
+    if (!selectedEscuela) return;
 
     setLoadingDetails(true);
     try {
       // Obtener tareas de la sección
-      const sectionTasks = await asanaService.getSectionTasks(selectedDiplomado.gid);
+      const sectionTasks = await asanaService.getSectionTasks(selectedEscuela.gid);
 
       // Buscar las tareas principales
       const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
@@ -190,9 +190,9 @@ const DiplomadosPage: React.FC = () => {
       });
 
       // Preparar datos para el modal
-      setDiplomadoToEdit({
-        gid: selectedDiplomado.gid,
-        nombre: selectedDiplomado.name,
+      setEscuelaToEdit({
+        gid: selectedEscuela.gid,
+        nombre: selectedEscuela.name,
         docentes: docentesData,
         estudiantes: estudiantesData,
         docentesTaskGid: tareaDocentes.gid,
@@ -202,15 +202,15 @@ const DiplomadosPage: React.FC = () => {
       setEditMode(true);
       setShowCreateModal(true);
     } catch (err) {
-      console.error('Error loading diplomado for edit:', err);
-      setError(err instanceof Error ? err.message : 'Error al cargar diplomado para editar');
+      console.error('Error loading escuela for edit:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar escuela para editar');
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const handleViewDetails = async (diplomado: AsanaSection) => {
-    setSelectedDiplomado(diplomado);
+  const handleViewDetails = async (escuela: AsanaSection) => {
+    setSelectedEscuela(escuela);
     setLoadingDetails(true);
     setDocentes([]);
     setEstudiantes([]);
@@ -218,7 +218,7 @@ const DiplomadosPage: React.FC = () => {
 
     try {
       // Obtener tareas de la sección
-      const sectionTasks = await asanaService.getSectionTasks(diplomado.gid);
+      const sectionTasks = await asanaService.getSectionTasks(escuela.gid);
 
       // Buscar las tareas principales
       const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
@@ -241,8 +241,8 @@ const DiplomadosPage: React.FC = () => {
         setDocumentos(subtasks);
       }
     } catch (err) {
-      console.error('Error loading diplomado details:', err);
-      setError(err instanceof Error ? err.message : 'Error al cargar detalles del diplomado');
+      console.error('Error loading escuela details:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar detalles de la escuela');
     } finally {
       setLoadingDetails(false);
     }
@@ -291,17 +291,17 @@ const DiplomadosPage: React.FC = () => {
     return `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
   };
 
-  /* const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
-    if (!window.confirm(`¿Está seguro de eliminar el diplomado "${diplomadoName}"?`)) {
+  /* const handleDeleteEscuela = async (sectionGid: string, escuelaName: string) => {
+    if (!window.confirm(`¿Está seguro de eliminar la escuela "${escuelaName}"?`)) {
       return;
     }
 
     setLoading(true);
     try {
       await asanaService.deleteSection(sectionGid);
-      await loadDiplomados();
+      await loadEscuelas();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar diplomado');
+      setError(err instanceof Error ? err.message : 'Error al eliminar escuela');
     } finally {
       setLoading(false);
     }
@@ -483,11 +483,11 @@ const DiplomadosPage: React.FC = () => {
         // ✅ TODO EXITOSO - CERRAR EL MODAL
         alert(`✅ ¡Perfecto! Todas las ${exitosos.length} asistencias para ${fechaSeleccionada} fueron guardadas correctamente en ${duration}s`);
         
-        console.log('\n🔄 Recargando datos del diplomado...');
+        console.log('\n🔄 Recargando datos de la escuela...');
         
-        // Recargar los detalles del diplomado para ver los cambios
-        if (selectedDiplomado) {
-          await handleViewDetails(selectedDiplomado);
+        // Recargar los detalles de la escuela para ver los cambios
+        if (selectedEscuela) {
+          await handleViewDetails(selectedEscuela);
         }
         
         // Cerrar el modal solo cuando TODO sea exitoso
@@ -658,11 +658,11 @@ const DiplomadosPage: React.FC = () => {
         // ✅ TODO EXITOSO - CERRAR EL MODAL
         alert(`✅ ¡Perfecto! Todas las ${exitosos.length} notas de ${moduloSeleccionado} fueron guardadas correctamente en ${duration}s`);
         
-        console.log('\n🔄 Recargando datos del diplomado...');
+        console.log('\n🔄 Recargando datos de la escuela...');
         
-        // Recargar los detalles del diplomado para ver los cambios
-        if (selectedDiplomado) {
-          await handleViewDetails(selectedDiplomado);
+        // Recargar los detalles de la escuela para ver los cambios
+        if (selectedEscuela) {
+          await handleViewDetails(selectedEscuela);
         }
         
         // Cerrar el modal solo cuando TODO sea exitoso
@@ -727,8 +727,8 @@ const DiplomadosPage: React.FC = () => {
     return { asistenciasPorEstudiante, fechasOrdenadas };
   };
 
-  const generarReporteDiplomado = () => {
-    if (!selectedDiplomado) return;
+  const generarReporteEscuela = () => {
+    if (!selectedEscuela) return;
 
     // Colores del proyecto (mismo esquema que PlanningPage)
     const colors = {
@@ -772,7 +772,7 @@ const DiplomadosPage: React.FC = () => {
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text('REPORTE DE DIPLOMADO', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+    pdf.text('REPORTE DE ESCUELA', pageWidth - margins.right, margins.top + 8, { align: 'right' });
     
     // Metadatos
     pdf.setFontSize(9);
@@ -780,7 +780,7 @@ const DiplomadosPage: React.FC = () => {
     pdf.setTextColor(45, 45, 45);
     
     let metaY = margins.top + 14;
-    pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+    pdf.text(`ESCUELA: ${selectedEscuela.name}`, pageWidth - margins.right, metaY, { align: 'right' });
     
     metaY += 5;
     const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
@@ -951,13 +951,13 @@ const DiplomadosPage: React.FC = () => {
 
     // Generar nombre descriptivo y descargar
     const fechaFormato = format(new Date(), 'yyyy-MM-dd');
-    const diplomadoLimpio = selectedDiplomado.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-    const filename = `Reporte_Diplomado_${diplomadoLimpio}_${fechaFormato}.pdf`;
+    const escuelaLimpio = selectedEscuela.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const filename = `Reporte_Escuela_${escuelaLimpio}_${fechaFormato}.pdf`;
     pdf.save(filename);
   };
 
-  const generarReporteCentralizadorNotas = () => {
-    if (!selectedDiplomado || estudiantes.length === 0) return;
+  const generarReporteCentralizadorNotasEscuela = () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
 
     // Colores del proyecto (mismo esquema que PlanningPage)
     const colors = {
@@ -1011,7 +1011,7 @@ const DiplomadosPage: React.FC = () => {
     pdf.setTextColor(45, 45, 45);
     
     let metaY = margins.top + 14;
-    pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+    pdf.text(`ESCUELA: ${selectedEscuela.name}`, pageWidth - margins.right, metaY, { align: 'right' });
     
     metaY += 5;
     const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
@@ -1045,7 +1045,9 @@ const DiplomadosPage: React.FC = () => {
       const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
       const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
       const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+      const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+      const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
       
       return {
         nombreFormateado,
@@ -1055,6 +1057,8 @@ const DiplomadosPage: React.FC = () => {
         modulo3,
         modulo4,
         modulo5,
+        modulo6,
+        modulo7,
         total: Math.round(total)
       };
     });
@@ -1080,6 +1084,8 @@ const DiplomadosPage: React.FC = () => {
       est.modulo3.toString(),
       est.modulo4.toString(),
       est.modulo5.toString(),
+      est.modulo6.toString(),
+      est.modulo7.toString(),
       est.total.toString()
     ]);
 
@@ -1093,11 +1099,13 @@ const DiplomadosPage: React.FC = () => {
       calcularPromedioModulo('modulo3').toString(),
       calcularPromedioModulo('modulo4').toString(),
       calcularPromedioModulo('modulo5').toString(),
+      calcularPromedioModulo('modulo6').toString(),
+      calcularPromedioModulo('modulo7').toString(),
       calcularPromedioModulo('total').toString()
     ]);
 
     autoTable(pdf, {
-      head: [['No.', 'C.I', 'Nombres', 'M1', 'M2', 'M3', 'M4', 'M5', 'PROM']],
+      head: [['No.', 'C.I', 'Nombres', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'PROM']],
       body: tableBody,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -1127,19 +1135,21 @@ const DiplomadosPage: React.FC = () => {
       },
       columnStyles: {
         0: { cellWidth: 10, halign: 'center' }, // No.
-        1: { cellWidth: 20, halign: 'center' }, // C.I
-        2: { cellWidth: 50, halign: 'left' },   // Nombres
-        3: { cellWidth: 15, halign: 'center' }, // MODULO 1
-        4: { cellWidth: 15, halign: 'center' }, // MODULO 2
-        5: { cellWidth: 15, halign: 'center' }, // MODULO 3
-        6: { cellWidth: 15, halign: 'center' }, // MODULO 4
-        7: { cellWidth: 15, halign: 'center' }, // MODULO 5
-        8: { cellWidth: 18, halign: 'center', fontStyle: 'bold' } // PROMEDIO
+        1: { cellWidth: 18, halign: 'center' }, // C.I
+        2: { cellWidth: 45, halign: 'left' },   // Nombres
+        3: { cellWidth: 12, halign: 'center' }, // MODULO 1
+        4: { cellWidth: 12, halign: 'center' }, // MODULO 2
+        5: { cellWidth: 12, halign: 'center' }, // MODULO 3
+        6: { cellWidth: 12, halign: 'center' }, // MODULO 4
+        7: { cellWidth: 12, halign: 'center' }, // MODULO 5
+        8: { cellWidth: 12, halign: 'center' }, // MODULO 6
+        9: { cellWidth: 12, halign: 'center' }, // MODULO 7
+        10: { cellWidth: 15, halign: 'center', fontStyle: 'bold' } // PROMEDIO
       },
       // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
       didDrawCell: (data: any) => {
         // Dibujar texto vertical para las cabeceras de módulos y promedio
-        if (data.section === 'head' && data.column.index >= 3 && data.column.index <= 8) {
+        if (data.section === 'head' && data.column.index >= 3 && data.column.index <= 10) {
           const cellX = data.cell.x;
           const cellY = data.cell.y;
           const cellWidth = data.cell.width;
@@ -1152,7 +1162,9 @@ const DiplomadosPage: React.FC = () => {
             5: 'MODULO 3',
             6: 'MODULO 4',
             7: 'MODULO 5',
-            8: 'PROMEDIO'
+            8: 'MODULO 6',
+            9: 'MODULO 7',
+            10: 'PROMEDIO'
           };
           
           const texto = textos[data.column.index];
@@ -1201,12 +1213,12 @@ const DiplomadosPage: React.FC = () => {
 
     // Generar nombre descriptivo y descargar
     const fechaFormato = format(new Date(), 'yyyy-MM-dd');
-    const diplomadoLimpio = selectedDiplomado.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-    const filename = `Centralizador_Notas_${diplomadoLimpio}_${fechaFormato}.pdf`;
+    const escuelaLimpio = selectedEscuela.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const filename = `Centralizador_Notas_Escuela_${escuelaLimpio}_${fechaFormato}.pdf`;
     pdf.save(filename);
   };
 
-  const generarReporteEstudiante = (estudiante: AsanaTask) => {
+  const generarReporteEstudianteEscuela = (estudiante: AsanaTask) => {
     // Colores del proyecto
     const colors = {
       navyBlue: [70, 100, 140],
@@ -1259,8 +1271,8 @@ const DiplomadosPage: React.FC = () => {
     pdf.setTextColor(45, 45, 45);
     
     let metaY = margins.top + 14;
-    if (selectedDiplomado) {
-      pdf.text(`DIPLOMADO: ${selectedDiplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
+    if (selectedEscuela) {
+      pdf.text(`ESCUELA: ${selectedEscuela.name}`, pageWidth - margins.right, metaY, { align: 'right' });
       metaY += 5;
     }
     
@@ -1317,7 +1329,9 @@ const DiplomadosPage: React.FC = () => {
     const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
     const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
     const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-    const promedio = Math.round((modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5);
+    const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+    const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+    const promedio = Math.round((modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7);
 
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
@@ -1331,7 +1345,9 @@ const DiplomadosPage: React.FC = () => {
       ['Módulo 2', modulo2.toString(), modulo2 >= 51 ? 'Aprobado' : 'Reprobado'],
       ['Módulo 3', modulo3.toString(), modulo3 >= 51 ? 'Aprobado' : 'Reprobado'],
       ['Módulo 4', modulo4.toString(), modulo4 >= 51 ? 'Aprobado' : 'Reprobado'],
-      ['Módulo 5', modulo5.toString(), modulo5 >= 51 ? 'Aprobado' : 'Reprobado']
+      ['Módulo 5', modulo5.toString(), modulo5 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 6', modulo6.toString(), modulo6 >= 51 ? 'Aprobado' : 'Reprobado'],
+      ['Módulo 7', modulo7.toString(), modulo7 >= 51 ? 'Aprobado' : 'Reprobado']
     ];
 
     // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
@@ -1510,12 +1526,12 @@ const DiplomadosPage: React.FC = () => {
     // Generar nombre descriptivo y descargar
     const fechaFormato = format(new Date(), 'yyyy-MM-dd');
     const nombreLimpio = nombreFormateado.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-    const filename = `Reporte_Estudiante_${nombreLimpio}_${fechaFormato}.pdf`;
+    const filename = `Reporte_Estudiante_Escuela_${nombreLimpio}_${fechaFormato}.pdf`;
     pdf.save(filename);
   };
 
   if (loading) {
-    return <LoadingOverlay message="Cargando diplomados..." />;
+    return <LoadingOverlay message="Cargando escuelas..." />;
   }
 
   return (
@@ -1523,38 +1539,38 @@ const DiplomadosPage: React.FC = () => {
       {/* Header */}
       <div className="planning-header">
         <div className="planning-header-left">
-          <div className="planning-icon">🎓</div>
+          <div className="planning-icon">🏫</div>
           <div className="planning-info">
-            <h1 className="planning-title">Gestión de Diplomados</h1>
+            <h1 className="planning-title">Gestión de Escuelas</h1>
             <p className="planning-subtitle">
-              {diplomados.length} {diplomados.length === 1 ? 'diplomado registrado' : 'diplomados registrados'}
+              {escuelas.length} {escuelas.length === 1 ? 'escuela registrada' : 'escuelas registradas'}
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             className="button-secondary"
-            onClick={handleEditDiplomado}
-            disabled={!selectedDiplomado}
+            onClick={handleEditEscuela}
+            disabled={!selectedEscuela}
             style={{ 
               fontSize: '1rem', 
               padding: '0.75rem 1.5rem',
-              opacity: !selectedDiplomado ? 0.5 : 1,
-              cursor: !selectedDiplomado ? 'not-allowed' : 'pointer'
+              opacity: !selectedEscuela ? 0.5 : 1,
+              cursor: !selectedEscuela ? 'not-allowed' : 'pointer'
             }}
           >
-            ✏️ Editar Diplomado
+            ✏️ Editar Escuela
           </button>
           <button
             className="button-primary"
             onClick={() => {
               setEditMode(false);
-              setDiplomadoToEdit(null);
+              setEscuelaToEdit(null);
               setShowCreateModal(true);
             }}
             style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}
           >
-            + Crear Diplomado
+            + Crear Escuela
           </button>
         </div>
       </div>
@@ -1565,15 +1581,15 @@ const DiplomadosPage: React.FC = () => {
         </div>
       )}
 
-      {/* Lista de Diplomados */}
+      {/* Lista de Escuelas */}
       <div className="card">
-          {diplomados.length === 0 ? (
+          {escuelas.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                No hay diplomados registrados
+                No hay escuelas registradas
               </p>
               <p style={{ fontSize: '0.9rem' }}>
-                Haga clic en "Crear Diplomado" para agregar uno nuevo
+                Haga clic en "Crear Escuela" para agregar una nueva
               </p>
             </div>
           ) : (
@@ -1581,35 +1597,35 @@ const DiplomadosPage: React.FC = () => {
               <table>
                 <thead>
                   <tr>
-                    <th style={{ minWidth: '250px' }}>Nombre del Diplomado</th>
+                    <th style={{ minWidth: '250px' }}>Nombre de la Escuela</th>
                     <th style={{ minWidth: '180px', textAlign: 'center' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {diplomados.map((diplomado) => (
+                  {escuelas.map((escuela) => (
                     <tr 
-                      key={diplomado.gid}
+                      key={escuela.gid}
                       style={{
-                        backgroundColor: selectedDiplomado?.gid === diplomado.gid ? '#e3f2fd' : undefined
+                        backgroundColor: selectedEscuela?.gid === escuela.gid ? '#e3f2fd' : undefined
                       }}
                     >
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '1.2rem' }}>🎓</span>
-                          <span style={{ fontWeight: 500 }}>{diplomado.name}</span>
+                          <span style={{ fontSize: '1.2rem' }}>🏫</span>
+                          <span style={{ fontWeight: 500 }}>{escuela.name}</span>
                         </div>
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           <button
-                            onClick={() => handleViewDetails(diplomado)}
+                            onClick={() => handleViewDetails(escuela)}
                             className="button-primary"
                             style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
                           >
                             👁️ Ver Detalles
                           </button>
                           {/* <button
-                            onClick={() => handleDeleteDiplomado(diplomado.gid, diplomado.name)}
+                            onClick={() => handleDeleteEscuela(escuela.gid, escuela.name)}
                             className="button-secondary"
                             style={{ 
                               fontSize: '0.875rem', 
@@ -1631,8 +1647,8 @@ const DiplomadosPage: React.FC = () => {
           )}
       </div>
 
-      {/* Detalles del Diplomado Seleccionado */}
-      {selectedDiplomado && (
+      {/* Detalles de la Escuela Seleccionada */}
+      {selectedEscuela && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
             <div style={{ 
               padding: '1.5rem',
@@ -1643,14 +1659,14 @@ const DiplomadosPage: React.FC = () => {
             }}>
               <div>
                 <h2 style={{ margin: 0, marginBottom: '0.25rem', fontSize: '1.5rem' }}>
-                  🎓 {selectedDiplomado.name}
+                  🏫 {selectedEscuela.name}
                 </h2>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                  Detalles del diplomado
+                  Detalles de la escuela
                 </p>
               </div>
               <button
-                onClick={() => setSelectedDiplomado(null)}
+                onClick={() => setSelectedEscuela(null)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1707,7 +1723,7 @@ const DiplomadosPage: React.FC = () => {
                         </>
                       )}
                       <button
-                        onClick={generarReporteDiplomado}
+                        onClick={generarReporteEscuela}
                         className="button-secondary"
                         style={{ 
                           fontSize: '0.9rem', 
@@ -1860,7 +1876,7 @@ const DiplomadosPage: React.FC = () => {
               }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#e65100' }}>
                   <strong>📌 Nota:</strong> Para agregar más docentes, estudiantes o documentos, 
-                  vaya a Asana y agregue subtareas a las tareas correspondientes dentro de este diplomado.
+                  vaya a Asana y agregue subtareas a las tareas correspondientes dentro de esta escuela.
                 </p>
               </div>
 
@@ -1900,7 +1916,7 @@ const DiplomadosPage: React.FC = () => {
       )}
 
       {/* Panel de Centralizador de Notas */}
-      {showNotasModal && selectedDiplomado && estudiantes.length > 0 && (
+      {showNotasModal && selectedEscuela && estudiantes.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ 
             padding: '1.5rem',
@@ -1915,11 +1931,11 @@ const DiplomadosPage: React.FC = () => {
                 📊 Centralizador de Notas
               </h2>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                {selectedDiplomado.name}
+                {selectedEscuela.name}
               </p>
             </div>
             <button
-              onClick={generarReporteCentralizadorNotas}
+              onClick={generarReporteCentralizadorNotasEscuela}
               className="button-secondary"
               style={{ 
                 fontSize: '0.9rem', 
@@ -1970,6 +1986,12 @@ const DiplomadosPage: React.FC = () => {
                     <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
                       Módulo 5
                     </th>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                      Módulo 6
+                    </th>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                      Módulo 7
+                    </th>
                     <th style={{ 
                       padding: '1rem', 
                       textAlign: 'center', 
@@ -1993,7 +2015,9 @@ const DiplomadosPage: React.FC = () => {
                       const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
                       const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
                       const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-                      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+                      const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+                      const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+                      const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
                       
                       return {
                         nombreFormateado,
@@ -2002,6 +2026,8 @@ const DiplomadosPage: React.FC = () => {
                         modulo3,
                         modulo4,
                         modulo5,
+                        modulo6,
+                        modulo7,
                         total: Math.round(total)
                       };
                     });
@@ -2081,6 +2107,24 @@ const DiplomadosPage: React.FC = () => {
                             <td style={{ 
                               padding: '0.875rem 1rem', 
                               textAlign: 'center',
+                              borderRight: '1px solid #dee2e6',
+                              fontWeight: 500,
+                              color: estudiante.modulo6 >= 51 ? '#27AE60' : '#E74C3C'
+                            }}>
+                              {estudiante.modulo6}
+                            </td>
+                            <td style={{ 
+                              padding: '0.875rem 1rem', 
+                              textAlign: 'center',
+                              borderRight: '1px solid #dee2e6',
+                              fontWeight: 500,
+                              color: estudiante.modulo7 >= 51 ? '#27AE60' : '#E74C3C'
+                            }}>
+                              {estudiante.modulo7}
+                            </td>
+                            <td style={{ 
+                              padding: '0.875rem 1rem', 
+                              textAlign: 'center',
                               fontWeight: 700,
                               fontSize: '1rem',
                               backgroundColor: estudiante.total >= 51 ? '#d1fae5' : '#fee2e2',
@@ -2122,6 +2166,12 @@ const DiplomadosPage: React.FC = () => {
                           <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
                             {calcularPromedioModulo('modulo5')}
                           </td>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                            {calcularPromedioModulo('modulo6')}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                            {calcularPromedioModulo('modulo7')}
+                          </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
@@ -2148,8 +2198,8 @@ const DiplomadosPage: React.FC = () => {
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#2e7d32' }}>
                 <strong>📌 Información:</strong> Las calificaciones se obtienen de los campos personalizados 
-                "Módulo 1" a "Módulo 5" de cada estudiante. El promedio se calcula automáticamente 
-                sumando las 5 notas y dividiendo entre 5. Las notas ≥ 51 se muestran en verde (aprobado) 
+                "Módulo 1" a "Módulo 7" de cada estudiante. El promedio se calcula automáticamente 
+                sumando las 7 notas y dividiendo entre 7. Las notas ≥ 51 se muestran en verde (aprobado) 
                 y las notas &lt; 51 en rojo (reprobado).
               </p>
             </div>
@@ -2158,7 +2208,7 @@ const DiplomadosPage: React.FC = () => {
       )}
 
       {/* Panel de Asistencia */}
-      {showAsistenciaPanel && selectedDiplomado && estudiantes.length > 0 && (
+      {showAsistenciaPanel && selectedEscuela && estudiantes.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ 
             padding: '1.5rem',
@@ -2173,7 +2223,7 @@ const DiplomadosPage: React.FC = () => {
                 ✓ Registro de Asistencia
               </h2>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                {selectedDiplomado.name}
+                {selectedEscuela.name}
               </p>
             </div>
           </div>
@@ -2323,7 +2373,7 @@ const DiplomadosPage: React.FC = () => {
               <h2 style={{ margin: 0 }}>📊 Notas del Estudiante</h2>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <button
-                  onClick={() => generarReporteEstudiante(estudianteSeleccionadoNotas)}
+                  onClick={() => generarReporteEstudianteEscuela(estudianteSeleccionadoNotas)}
                   className="button-secondary"
                   style={{
                     padding: '0.5rem 1rem',
@@ -2353,7 +2403,9 @@ const DiplomadosPage: React.FC = () => {
                 const modulo3 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
                 const modulo4 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
                 const modulo5 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-                const promedio = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+                const modulo6 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+                const modulo7 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+                const promedio = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
 
                 return (
                   <div>
@@ -2377,7 +2429,9 @@ const DiplomadosPage: React.FC = () => {
                           { nombre: 'Módulo 2', nota: modulo2 },
                           { nombre: 'Módulo 3', nota: modulo3 },
                           { nombre: 'Módulo 4', nota: modulo4 },
-                          { nombre: 'Módulo 5', nota: modulo5 }
+                          { nombre: 'Módulo 5', nota: modulo5 },
+                          { nombre: 'Módulo 6', nota: modulo6 },
+                          { nombre: 'Módulo 7', nota: modulo7 }
                         ].map((modulo, index) => (
                           <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
                             <td style={{ padding: '0.75rem', fontWeight: 500 }}>
@@ -2445,7 +2499,7 @@ const DiplomadosPage: React.FC = () => {
                     }}>
                       <p style={{ margin: 0, fontSize: '0.9rem', color: promedio >= 51 ? '#065f46' : '#991b1b', lineHeight: '1.5' }}>
                         <strong>📌 Estado:</strong> {promedio >= 51 
-                          ? 'El estudiante ha aprobado el diplomado.' 
+                          ? 'El estudiante ha aprobado la escuela.' 
                           : 'El estudiante no alcanzó el mínimo de 51 puntos.'}
                       </p>
                     </div>
@@ -2652,16 +2706,16 @@ const DiplomadosPage: React.FC = () => {
 
       {/* Modal de Creación/Edición */}
       {showCreateModal && (
-        <CreateDiplomadoModal
-          projectGid={diplomadosProjectGid}
+        <CreateEscuelaModal
+          projectGid={escuelasProjectGid}
           onClose={() => {
             setShowCreateModal(false);
             setEditMode(false);
-            setDiplomadoToEdit(null);
+            setEscuelaToEdit(null);
           }}
           onSuccess={handleCreateSuccess}
           editMode={editMode}
-          diplomadoData={diplomadoToEdit}
+          escuelaData={escuelaToEdit}
         />
       )}
 
@@ -2747,6 +2801,8 @@ const DiplomadosPage: React.FC = () => {
                     <option value={ASANA_CUSTOM_FIELDS.MODULO_3}>Módulo 3</option>
                     <option value={ASANA_CUSTOM_FIELDS.MODULO_4}>Módulo 4</option>
                     <option value={ASANA_CUSTOM_FIELDS.MODULO_5}>Módulo 5</option>
+                    <option value={ASANA_CUSTOM_FIELDS.MODULO_6}>Módulo 6</option>
+                    <option value={ASANA_CUSTOM_FIELDS.MODULO_7}>Módulo 7</option>
                   </select>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#424242' }}>
@@ -2845,7 +2901,7 @@ const DiplomadosPage: React.FC = () => {
                   padding: '2rem',
                   fontStyle: 'italic'
                 }}>
-                  No hay estudiantes registrados en este diplomado
+                  No hay estudiantes registrados en esta escuela
                 </p>
               )}
 
@@ -3066,7 +3122,7 @@ const DiplomadosPage: React.FC = () => {
                   padding: '2rem',
                   fontStyle: 'italic'
                 }}>
-                  No hay estudiantes registrados en este diplomado
+                  No hay estudiantes registrados en esta escuela
                 </p>
               )}
             </div>
@@ -3126,4 +3182,4 @@ const DiplomadosPage: React.FC = () => {
   );
 };
 
-export default DiplomadosPage;
+export default EscuelasPage;

@@ -22,7 +22,7 @@ const Layout: React.FC = () => {
               to="/" 
               className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
             >
-              Inicio
+              🏠 Inicio
             </Link>
           </li>
           <li>
@@ -30,7 +30,7 @@ const Layout: React.FC = () => {
               to="/report" 
               className={`nav-link ${location.pathname === '/report' ? 'active' : ''}`}
             >
-              Reportes
+              📊 Reportes
             </Link>
           </li>
           <li>
@@ -38,7 +38,7 @@ const Layout: React.FC = () => {
               to="/biblioteca" 
               className={`nav-link ${location.pathname === '/biblioteca' ? 'active' : ''}`}
             >
-              Biblioteca de Recursos
+              📚 Biblioteca de Recursos
             </Link>
           </li>
           <li>
@@ -46,7 +46,7 @@ const Layout: React.FC = () => {
               to="/planificacion" 
               className={`nav-link ${location.pathname === '/planificacion' ? 'active' : ''}`}
             >
-              Planificación
+              📅 Planificación
             </Link>
           </li>
           <li>
@@ -54,7 +54,15 @@ const Layout: React.FC = () => {
               to="/diplomados" 
               className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
             >
-              Diplomados
+              🎓 Diplomados
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/escuelas" 
+              className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
+            >
+              🏫 Escuelas
             </Link>
           </li>
           <li>

@@ -5,6 +5,7 @@ import ReportPage from './pages/ReportPage';
 import ResourceLibraryPage from './pages/ResourceLibraryPage';
 import PlanningPage from './pages/PlanningPage';
 import DiplomadosPage from './pages/DiplomadosPage';
+import EscuelasPage from './pages/EscuelasPage';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
@@ -20,6 +21,7 @@ function App() {
             <Route path="biblioteca" element={<ResourceLibraryPage />} />
             <Route path="planificacion" element={<PlanningPage />} />
             <Route path="diplomados" element={<DiplomadosPage />} />
+            <Route path="escuelas" element={<EscuelasPage />} />
             <Route path="configuracion" element={<ConfiguracionPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

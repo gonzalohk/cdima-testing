@@ -18,6 +18,13 @@ export const ASANA_CUSTOM_FIELDS = {
   MODULO_5: 'Módulo 5',
   
   // ============================================
+  // CAMPOS DE ESCUELAS (Estudiantes/Docentes) - 7 Módulos
+  // ============================================
+  MODULO_6: 'Módulo 6',
+  MODULO_7: 'Módulo 7',
+  TIPO_ESCUELA: 'Tipo de Escuela',
+  
+  // ============================================
   // CAMPOS DE PLANIFICACIÓN
   // ============================================
   ESTADO: 'Estado',
@@ -49,6 +56,14 @@ export const ASANA_CUSTOM_FIELDS = {
     FEMENINO: 'Femenino',
     OTRO: 'Otro',
   },
+  
+  // ============================================
+  // VALORES ESPERADOS PARA TIPO DE ESCUELA
+  // ============================================
+  TIPO_ESCUELA_VALORES: {
+    LIDERAZGO_SOCIAL: 'Liderazgo Social',
+    LIDERAZGO_GESTION: 'Liderazgo de Gestión',
+  },
 } as const;
 
 /**
@@ -56,6 +71,7 @@ export const ASANA_CUSTOM_FIELDS = {
  */
 export type EstadoValor = typeof ASANA_CUSTOM_FIELDS.ESTADO_VALORES[keyof typeof ASANA_CUSTOM_FIELDS.ESTADO_VALORES];
 export type GeneroValor = typeof ASANA_CUSTOM_FIELDS.GENERO_VALORES[keyof typeof ASANA_CUSTOM_FIELDS.GENERO_VALORES];
+export type TipoEscuelaValor = typeof ASANA_CUSTOM_FIELDS.TIPO_ESCUELA_VALORES[keyof typeof ASANA_CUSTOM_FIELDS.TIPO_ESCUELA_VALORES];
 
 /**
  * Helper para verificar si un valor es un estado válido
