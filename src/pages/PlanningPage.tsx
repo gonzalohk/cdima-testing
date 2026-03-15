@@ -456,7 +456,7 @@ const PlanningPage: React.FC = () => {
             disabled={exportingCalendar || events.length === 0}
             title="Exportar vista de calendario a PDF (lista por día)"
           >
-            {exportingCalendar ? 'Exportando...' : '📅 Exportar Calendario'}
+            {exportingCalendar ? 'Exportando...' : '� Exportar Actividades'}
           </button>
           <button
             className="btn-export"

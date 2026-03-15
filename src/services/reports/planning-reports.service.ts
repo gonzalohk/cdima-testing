@@ -70,7 +70,7 @@ interface ExportTablesParams {
  * Exporta la vista de calendario a PDF
  */
 export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Promise<void> => {
-  const { events, currentMonthTasks, statistics, date, projectName } = params;
+  const { events, date, projectName } = params;
 
   // Márgenes para diseño ejecutivo
   const margins = {
@@ -120,7 +120,7 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
   pdf.setFontSize(15);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text(`CALENDARIO MENSUAL DE ACTIVIDADES - ${periodoHeader}`, pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  pdf.text(`LISTADO MENSUAL DE ACTIVIDADES - ${periodoHeader}`, pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos (alineados a la derecha)
   pdf.setFontSize(9);
@@ -182,21 +182,15 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
 
       // Agregar cada tarea en su propia fila
       dayTasks.forEach(task => {
-        // Verificar si la tarea está atrasada
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const isEjecutado = task.resource.estado === 'Ejecutado';
-        const isOverdue = !isEjecutado && task.end < today;
-        
         tableData.push([
           {
-            content: isOverdue ? `[ATRASADA] ${task.title}` : task.title,
+            content: task.title,
             styles: {
-              fillColor: isOverdue ? [255, 235, 238] : colors.white,
-              textColor: isOverdue ? [183, 28, 28] : [45, 45, 45],
+              fillColor: colors.white,
+              textColor: [45, 45, 45],
               fontSize: 8.5,
               cellPadding: 4,
-              fontStyle: isOverdue ? 'bold' : 'normal'
+              fontStyle: 'normal'
             }
           }
         ]);
@@ -242,27 +236,11 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
     },
   });
 
-  // ============ RESUMEN DEL PERÍODO ============
-  const finalY = (pdf as any).lastAutoTable.finalY + 12;
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('RESUMEN DEL PERÍODO', margins.left, finalY);
-  
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45);
-  pdf.text(`Total de tareas: ${currentMonthTasks.length}`, margins.left, finalY + 7);
-  pdf.text(`Completadas: ${statistics.completed}`, margins.left + 55, finalY + 7);
-  pdf.text(`En Proceso: ${statistics.pending}`, margins.left + 105, finalY + 7);
-  pdf.text(`Progreso: ${statistics.completionPercentage.toFixed(1)}%`, margins.left + 150, finalY + 7);
-
   // ============ PIE DE PÁGINA ============
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-  const footerText = `CDIMA - Vista Calendario ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
+  const footerText = `CDIMA - Listado de Actividades ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
   pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir PDF en nueva pestaña
@@ -574,7 +552,7 @@ interface ExportMonthlyScheduleParams {
  * @param params.projectName - Nombre del proyecto para incluir en el encabezado
  */
 export const exportMonthlyCalendarSchedule = async (params: ExportMonthlyScheduleParams): Promise<void> => {
-  const { tasks, date, projectName } = params;
+  const { tasks, date } = params;
 
   // ============ PREPARAR DATOS ============
   
@@ -728,8 +706,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
+  
   // ============ ENCABEZADO DEL DOCUMENTO ============
   
   // Título único: "Cronograma de {mes} {año}"
@@ -744,7 +721,6 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   
   // Preparar cabecera única con días de la semana (solo una vez)
   // Usar isoWeek para que empiece en lunes
-  const firstWeekStart = moment(startOfMonth).startOf('isoWeek');
   // Headers fijos empezando por lunes, sin abreviar
   const headerDayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   
