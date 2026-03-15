@@ -8,7 +8,7 @@ import SubtasksTable from '../components/SubtasksTable';
 // import RequestsTable from '../components/RequestsTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
-import { exportDistributionToPDF } from '../services/pdf.service';
+import { exportDistributionReportToPDF } from '../services/reports/report-reports.service';
 
 const ReportPage: React.FC = () => {
   const {
@@ -44,7 +44,7 @@ const ReportPage: React.FC = () => {
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
 
   const handleExportMunicipios = () => {
-    exportDistributionToPDF(
+    exportDistributionReportToPDF(
       statistics.byAssignee,
       'Distribución por Municipio',
       'Municipio',
@@ -53,7 +53,7 @@ const ReportPage: React.FC = () => {
   };
 
   const handleExportResponsables = () => {
-    exportDistributionToPDF(
+    exportDistributionReportToPDF(
       statistics.byResponsable,
       'Distribución por Responsable',
       'Responsable',

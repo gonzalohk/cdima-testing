@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
-import { exportToPDF } from '../services/pdf.service';
+import { exportTaskReportToPDF } from '../services/reports/report-reports.service';
 import {
   AsanaWorkspace,
   AsanaProject,
@@ -417,7 +417,7 @@ export const useReportPage = () => {
       notes: 'Reporte de todas las tareas del proyecto',
       completed: false 
     } as AsanaTask;
-    exportToPDF(taskForPDF, displayTasks, projectName);
+    exportTaskReportToPDF(taskForPDF, displayTasks, projectName);
   };
 
   return {

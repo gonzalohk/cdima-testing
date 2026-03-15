@@ -75,7 +75,7 @@ const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
   return '-';
 };
 
-export const exportToPDF = (
+export const exportTaskReportToPDF = (
   mainTask: AsanaTask,
   subtasks: AsanaTask[],
   projectName: string
