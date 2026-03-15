@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer, View, Event as BigCalendarEvent } from 'react-big-calendar';
 import moment from 'moment';
+// IMPORTANTE: Importar locale español ANTES de configurarlo
 import 'moment/locale/es';
+// Configurar moment globalmente en español
+moment.locale('es');
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -42,6 +45,20 @@ const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
 
 // Configurar moment en español (para formateo de fechas)
 moment.locale('es');
+
+// Función helper para formatear mes y año en español
+const formatMonthYear = (date: Date): string => {
+  // Array de nombres de meses en español
+  const mesesEspanol = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  
+  const mes = date.getMonth();
+  const anio = date.getFullYear();
+  
+  return `${mesesEspanol[mes]} ${anio}`;
+};
 
 // Configurar localizer de date-fns para el calendario
 const locales = {
@@ -87,6 +104,11 @@ const PlanningPage: React.FC = () => {
   const [exportingTables, setExportingTables] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
+
+  // Forzar locale español cada vez que el componente se monta o actualiza
+  useEffect(() => {
+    moment.locale('es');
+  }, []);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -257,11 +279,22 @@ const PlanningPage: React.FC = () => {
     return Array.from(areas).sort();
   }, [currentMonthTasks]);
 
-  // Actividades ejecutadas y pendientes del mes actual
-  const executedTasks = useMemo(() => {
-    let filtered = currentMonthTasks.filter(t => 
-      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
-    );
+  // Actividades del mes actual: Atrasadas, En Proceso, y Ejecutadas
+  const overdueTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let filtered = currentMonthTasks.filter(t => {
+      if (getCustomFieldValue(t, 'Estado') !== 'En Proceso') return false;
+      
+      if (!t.due_on) return false;
+      
+      const [year, month, day] = t.due_on.split('-').map(Number);
+      const dueDate = new Date(year, month - 1, day);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      return dueDate < today;
+    });
     
     if (areaFilter !== 'todas') {
       filtered = filtered.filter(t => 
@@ -272,9 +305,34 @@ const PlanningPage: React.FC = () => {
     return filtered;
   }, [currentMonthTasks, areaFilter]);
 
-  const pendingTasks = useMemo(() => {
+  const inProcessTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let filtered = currentMonthTasks.filter(t => {
+      if (getCustomFieldValue(t, 'Estado') !== 'En Proceso') return false;
+      
+      if (!t.due_on) return true; // Sin fecha de fin, se considera en proceso normal
+      
+      const [year, month, day] = t.due_on.split('-').map(Number);
+      const dueDate = new Date(year, month - 1, day);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      return dueDate >= today;
+    });
+    
+    if (areaFilter !== 'todas') {
+      filtered = filtered.filter(t => 
+        getCustomFieldValue(t, 'Area') === areaFilter
+      );
+    }
+    
+    return filtered;
+  }, [currentMonthTasks, areaFilter]);
+
+  const executedTasks = useMemo(() => {
     let filtered = currentMonthTasks.filter(t => 
-      getCustomFieldValue(t, 'Estado') === 'En Proceso'
+      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
     );
     
     if (areaFilter !== 'todas') {
@@ -312,7 +370,7 @@ const PlanningPage: React.FC = () => {
     try {
       await exportTasksTablesToPDF({
         executedTasks,
-        pendingTasks,
+        pendingTasks: [...overdueTasks, ...inProcessTasks],
         date,
         projectName,
         areaFilter
@@ -419,7 +477,7 @@ const PlanningPage: React.FC = () => {
           <div className="planning-info">
             <h1 className="planning-title">{projectName}</h1>
             <p className="planning-subtitle">
-              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'actividad programada' : 'actividades programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
+              {formatMonthYear(date)} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'actividad programada' : 'actividades programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
             </p>
           </div>
         </div>
@@ -556,16 +614,180 @@ const PlanningPage: React.FC = () => {
             <button
               className="btn-export"
               onClick={handleExportTables}
-              disabled={exportingTables || (executedTasks.length === 0 && pendingTasks.length === 0)}
+              disabled={exportingTables || (overdueTasks.length === 0 && inProcessTasks.length === 0 && executedTasks.length === 0)}
               title="Exportar tablas a PDF"
             >
               {exportingTables ? 'Exportando...' : '📄 Exportar'}
             </button>
           </div>
 
-          {/* Actividades Ejecutadas */}
+          {/* Tabla 1: Actividades En Proceso (Atrasadas) */}
           <div className="card">
-            <h2>Actividades Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            <h2 style={{ marginBottom: '0.25rem' }}>Actividades En Proceso (Atrasadas)</h2>
+            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
+              {formatMonthYear(date)}
+            </p>
+            
+            {overdueTasks.length === 0 ? (
+              <p style={{ color: '#666', fontStyle: 'italic' }}>
+                {areaFilter !== 'todas' 
+                  ? `No hay actividades atrasadas en el área "${areaFilter}" en este mes`
+                  : 'No hay actividades atrasadas en este mes'
+                }
+              </p>
+            ) : (
+              <div className="planning-tasks-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overdueTasks.map((task, index) => (
+                      <tr 
+                        key={task.gid}
+                        style={{ 
+                          borderBottom: index < overdueTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          backgroundColor: 'white'
+                        }}
+                      >
+                        <td style={{ padding: '0.875rem', verticalAlign: 'top' }}>
+                          <div>
+                            <div style={{ fontWeight: 500, color: '#333', lineHeight: '1.4' }}>
+                              {task.name}
+                            </div>
+                            {task.parent && (
+                              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
+                                Subactividad de: {task.parent.name}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
+                          {getCustomFieldValue(task, 'Responsables de actividad')}
+                        </td>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
+                          {(() => {
+                            const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+                            const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+                            if (inicio && fin) return `${inicio} - ${fin}`;
+                            if (inicio) return inicio;
+                            if (fin) return fin;
+                            return '-';
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          <span style={{
+                            padding: '0.375rem 0.875rem',
+                            borderRadius: '6px',
+                            fontSize: '0.813rem',
+                            fontWeight: 600,
+                            backgroundColor: '#d32f2f',
+                            color: 'white',
+                            display: 'inline-block',
+                            boxShadow: '0 2px 4px rgba(211, 47, 47, 0.2)'
+                          }}>
+                            En Proceso
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla 2: Actividades En Proceso */}
+          <div className="card">
+            <h2 style={{ marginBottom: '0.25rem' }}>Actividades En Proceso</h2>
+            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
+              {formatMonthYear(date)}
+            </p>
+            
+            {inProcessTasks.length === 0 ? (
+              <p style={{ color: '#666', fontStyle: 'italic' }}>
+                {areaFilter !== 'todas' 
+                  ? `No hay actividades en proceso en el área "${areaFilter}" en este mes`
+                  : 'No hay actividades en proceso en este mes'
+                }
+              </p>
+            ) : (
+              <div className="planning-tasks-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inProcessTasks.map((task, index) => (
+                      <tr 
+                        key={task.gid}
+                        style={{ 
+                          borderBottom: index < inProcessTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          backgroundColor: 'white'
+                        }}
+                      >
+                        <td style={{ padding: '0.875rem', verticalAlign: 'top' }}>
+                          <div>
+                            <div style={{ fontWeight: 500, color: '#333', lineHeight: '1.4' }}>
+                              {task.name}
+                            </div>
+                            {task.parent && (
+                              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
+                                Subactividad de: {task.parent.name}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
+                          {getCustomFieldValue(task, 'Responsables de actividad')}
+                        </td>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
+                          {(() => {
+                            const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+                            const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+                            if (inicio && fin) return `${inicio} - ${fin}`;
+                            if (inicio) return inicio;
+                            if (fin) return fin;
+                            return '-';
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          <span style={{
+                            padding: '0.375rem 0.875rem',
+                            borderRadius: '6px',
+                            fontSize: '0.813rem',
+                            fontWeight: 600,
+                            backgroundColor: '#fff3e0',
+                            color: '#e65100',
+                            display: 'inline-block'
+                          }}>
+                            En Proceso
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla 3: Actividades Ejecutadas */}
+          <div className="card">
+            <h2 style={{ marginBottom: '0.25rem' }}>Actividades Ejecutadas</h2>
+            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
+              {formatMonthYear(date)}
+            </p>
             
             {executedTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -578,11 +800,11 @@ const PlanningPage: React.FC = () => {
               <div className="planning-tasks-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Actividad</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
+                    <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -591,23 +813,25 @@ const PlanningPage: React.FC = () => {
                         key={task.gid}
                         style={{ 
                           borderBottom: index < executedTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                          backgroundColor: index % 2 === 0 ? '#fafafa' : 'white'
+                          backgroundColor: 'white'
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>
+                        <td style={{ padding: '0.875rem', verticalAlign: 'top' }}>
                           <div>
-                            <div style={{ fontWeight: 500, color: '#333' }}>{task.name}</div>
+                            <div style={{ fontWeight: 500, color: '#333', lineHeight: '1.4' }}>
+                              {task.name}
+                            </div>
                             {task.parent && (
-                              <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
-                                Subtarea de: {task.parent.name}
+                              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
+                                Subactividad de: {task.parent.name}
                               </div>
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
                           {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#666' }}>
+                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
                           {(() => {
                             const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
                             const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
@@ -617,113 +841,21 @@ const PlanningPage: React.FC = () => {
                             return '-';
                           })()}
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 500,
+                            padding: '0.375rem 0.875rem',
+                            borderRadius: '6px',
+                            fontSize: '0.813rem',
+                            fontWeight: 600,
                             backgroundColor: '#e8f5e9',
-                            color: '#2e7d32'
+                            color: '#2e7d32',
+                            display: 'inline-block'
                           }}>
                             Ejecutado
                           </span>
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Actividades Pendientes */}
-          <div className="card">
-            <h2>Actividades En Proceso - {moment(date).format('MMMM YYYY')}</h2>
-            
-            {pendingTasks.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>
-                {areaFilter !== 'todas' 
-                  ? `No hay actividades en proceso en el área "${areaFilter}" en este mes`
-                  : 'No hay actividades en proceso en este mes'
-                }
-              </p>
-            ) : (
-              <div className="planning-tasks-table">
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Actividad</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingTasks.map((task, index) => {
-                      // Verificar si la actividad está atrasada
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
-                      let dueDate: Date | null = null;
-                      if (task.due_on) {
-                        const [year, month, day] = task.due_on.split('-').map(Number);
-                        dueDate = new Date(year, month - 1, day);
-                        dueDate.setHours(0, 0, 0, 0);
-                      }
-                      const isOverdue = dueDate && dueDate < today;
-                      
-                      return (
-                        <tr 
-                          key={task.gid}
-                          style={{ 
-                            borderBottom: index < pendingTasks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                            backgroundColor: isOverdue ? '#ffebee' : (index % 2 === 0 ? '#fafafa' : 'white')
-                          }}
-                        >
-                          <td style={{ padding: '0.75rem' }}>
-                            <div>
-                              <div style={{ 
-                                fontWeight: isOverdue ? 600 : 500, 
-                                color: isOverdue ? '#c62828' : '#333' 
-                              }}>
-                                {isOverdue && '⚠️ '}{task.name}
-                              </div>
-                              {task.parent && (
-                                <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
-                                  Subactividad de: {task.parent.name}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '0.75rem', color: isOverdue ? '#b71c1c' : '#666' }}>
-                            {getCustomFieldValue(task, 'Responsables de actividad')}
-                          </td>
-                          <td style={{ padding: '0.75rem', color: isOverdue ? '#b71c1c' : '#666' }}>
-                            {(() => {
-                              const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
-                              const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
-                              if (inicio && fin) return `${inicio} - ${fin}`;
-                              if (inicio) return inicio;
-                              if (fin) return fin;
-                              return '-';
-                            })()}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <span style={{
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 500,
-                              backgroundColor: isOverdue ? '#d32f2f' : '#fff3e0',
-                              color: isOverdue ? 'white' : '#e65100'
-                            }}>
-                              En Proceso
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
                   </tbody>
                 </table>
               </div>

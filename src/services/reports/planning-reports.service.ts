@@ -1,10 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
+import 'moment/locale/es';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AsanaTask, TaskStatistics } from '../../types/asana.types';
 import logoInicial from '../../assets/logoinicial.png';
+
+// Configurar moment en español
+moment.locale('es');
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -71,6 +75,9 @@ interface ExportTablesParams {
  */
 export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Promise<void> => {
   const { events, date, projectName } = params;
+
+  // Forzar locale español para moment
+  moment.locale('es');
 
   // Márgenes para diseño ejecutivo
   const margins = {
@@ -251,6 +258,9 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
 export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promise<void> => {
   const { executedTasks, pendingTasks, date, projectName, areaFilter } = params;
 
+  // Forzar locale español para moment
+  moment.locale('es');
+
   // Márgenes para diseño ejecutivo
   const margins = {
     top: 20,
@@ -334,7 +344,14 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-    pdf.text('ACTIVIDADES EN PROCESO', margins.left, startY);
+    pdf.text('ACTIVIDADES EN PROCESO (ATRASADAS)', margins.left, startY);
+    
+    // Subtítulo con mes y año
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    const mesAnio = moment(date).locale('es').format('MMMM YYYY');
+    const mesAnioCapitalizado = mesAnio.charAt(0).toUpperCase() + mesAnio.slice(1);
+    pdf.text(mesAnioCapitalizado, margins.left, startY + 5);
     
     const pendingHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
     
@@ -373,7 +390,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     autoTable(pdf, {
       head: pendingHeaders,
       body: pendingBody,
-      startY: startY + 4,
+      startY: startY + 10,
       margin: { left: margins.left, right: margins.right },
       theme: 'plain',
       styles: {
@@ -427,6 +444,13 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('ACTIVIDADES EJECUTADAS', margins.left, startY);
     
+    // Subtítulo con mes y año
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    const mesAnioEjecutadas = moment(date).locale('es').format('MMMM YYYY');
+    const mesAnioEjecutadasCapitalizado = mesAnioEjecutadas.charAt(0).toUpperCase() + mesAnioEjecutadas.slice(1);
+    pdf.text(mesAnioEjecutadasCapitalizado, margins.left, startY + 5);
+    
     const executedHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
     const executedBody = executedTasks.map(task => {
       const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
@@ -447,7 +471,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     autoTable(pdf, {
       head: executedHeaders,
       body: executedBody,
-      startY: startY + 4,
+      startY: startY + 10,
       margin: { left: margins.left, right: margins.right },
       theme: 'plain',
       styles: {
@@ -550,6 +574,9 @@ interface ExportMonthlyScheduleParams {
 export const exportMonthlyCalendarSchedule = async (params: ExportMonthlyScheduleParams): Promise<void> => {
   const { tasks, date } = params;
 
+  // Forzar locale español para moment
+  moment.locale('es');
+
   // ============ PREPARAR DATOS ============
   
   // Obtener todas las áreas únicas
@@ -602,7 +629,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
     }
     
     // Título de la semana
-    const weekTitle = `Semana ${weeks.length + 1} (${currentWeekStart.format('D')} - ${currentWeekEnd.format('D MMM')})`;
+    const weekTitle = `Semana ${weeks.length + 1} (${currentWeekStart.locale('es').format('D')} - ${currentWeekEnd.locale('es').format('D MMM')})`;
     
     // Inicializar estructura de datos para cada área
     const weekAreas: AreaData[] = areas.map(area => ({
