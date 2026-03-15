@@ -80,7 +80,7 @@ const PlanningPage: React.FC = () => {
   const [tasks, setTasks] = useState<AsanaTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<View>('week');
+  const [view, setView] = useState<View>('month');
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('todas');

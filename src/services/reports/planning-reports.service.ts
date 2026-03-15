@@ -580,27 +580,52 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   
   // Obtener todas las áreas únicas
   const areasSet = new Set<string>();
+  let hasTasksWithoutArea = false;
+  
   tasks.forEach(task => {
     const area = getCustomFieldValue(task, 'Area');
     if (area && area !== '-') {
       areasSet.add(area);
+    } else {
+      hasTasksWithoutArea = true;
     }
   });
   
-  // Si no hay áreas definidas, usar "Sin área"
-  const areas = areasSet.size > 0 
-    ? Array.from(areasSet).sort() 
-    : ['Sin área'];
+  // Construir lista de áreas ordenadas
+  const areas = Array.from(areasSet).sort();
+  
+  // Agregar área vacía si hay tareas sin área definida
+  if (hasTasksWithoutArea || areas.length === 0) {
+    areas.push(''); // modificar el nombre del área vacía a "Sin Área" o similar si se desea mostrar un título en la tabla
+  }
 
   // Agrupar tareas por semana
   const startOfMonth = moment(date).startOf('month');
   const endOfMonth = moment(date).endOf('month');
+  const currentMonth = moment(date).month();
   
   const weeks: WeekData[] = [];
-  let currentWeekStart = moment(startOfMonth).startOf('week');
+  // Configurar que la semana empiece en lunes (día 1)
+  let currentWeekStart = moment(startOfMonth).startOf('isoWeek');
 
   while (currentWeekStart.isSameOrBefore(endOfMonth)) {
-    const currentWeekEnd = moment(currentWeekStart).endOf('week');
+    const currentWeekEnd = moment(currentWeekStart).endOf('isoWeek');
+    
+    // Verificar si esta semana tiene al menos un día del mes actual
+    let hasCurrentMonthDay = false;
+    for (let i = 0; i < 7; i++) {
+      const checkDay = moment(currentWeekStart).add(i, 'days');
+      if (checkDay.month() === currentMonth) {
+        hasCurrentMonthDay = true;
+        break;
+      }
+    }
+    
+    // Solo incluir semanas que tengan al menos un día del mes actual
+    if (!hasCurrentMonthDay) {
+      currentWeekStart.add(1, 'week');
+      continue;
+    }
     
     // Título de la semana
     const weekTitle = `Semana ${weeks.length + 1} (${currentWeekStart.format('D')} - ${currentWeekEnd.format('D MMM')})`;
@@ -619,7 +644,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       }
     }));
 
-    // Filtrar tareas de esta semana
+    // Filtrar tareas de esta semana que estén dentro del mes actual
     const weekTasks = tasks.filter(task => {
       const taskDate = task.start_on 
         ? moment(task.start_on) 
@@ -627,13 +652,15 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       
       if (!taskDate) return false;
       
-      return taskDate.isBetween(currentWeekStart, currentWeekEnd, null, '[]');
+      // Solo incluir tareas del mes actual
+      return taskDate.month() === currentMonth && 
+             taskDate.isBetween(currentWeekStart, currentWeekEnd, null, '[]');
     });
 
     // Agrupar tareas por área y día
     weekTasks.forEach(task => {
       const taskArea = getCustomFieldValue(task, 'Area');
-      const area = taskArea && taskArea !== '-' ? taskArea : 'Sin área';
+      const area = taskArea && taskArea !== '-' ? taskArea : '';
       
       const taskDate = task.start_on 
         ? moment(task.start_on) 
@@ -680,24 +707,24 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   // ============ GENERAR PDF ============
   
   const margins = {
-    top: 20,
-    bottom: 20,
-    left: 15,
-    right: 15
+    top: 5,
+    bottom: 5,
+    left: 5,
+    right: 5
   };
 
   const colors = {
-    navyBlue: [70, 100, 140],
+    beige: [245, 245, 220],
+    black: [0, 0, 0],
     white: [255, 255, 255],
     lightGray: [240, 240, 240],
-    darkGray: [60, 60, 60],
     borderGray: [200, 200, 200]
   };
 
   const pdf = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
-    format: 'a4'
+    format: 'letter'  // Formato carta (Letter)
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -705,142 +732,164 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
 
   // ============ ENCABEZADO DEL DOCUMENTO ============
   
-  // Logo CDIMA
-  try {
-    const logoWidth = 25;
-    pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
-  } catch (error) {
-    console.error('Error al cargar logo:', error);
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text('CDIMA', margins.left, margins.top + 8);
-  }
-
-  // Título principal
+  // Título único: "Cronograma de {mes} {año}"
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('CRONOGRAMA DE ACTIVIDADES', pageWidth / 2, margins.top + 8, { align: 'center' });
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  pdf.text(`Cronograma de ${scheduleData.month} ${scheduleData.year}`, pageWidth / 2, margins.top + 8, { align: 'center' });
 
-  // Subtítulo con mes y año
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(`${scheduleData.month} ${scheduleData.year}`, pageWidth / 2, margins.top + 16, { align: 'center' });
+  let currentY = margins.top + 18;
 
-  // Metadatos
-  pdf.setFontSize(8);
-  pdf.setTextColor(100, 100, 100);
-  const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
-  pdf.text(`Generado: ${fechaGeneracion}`, pageWidth - margins.right, margins.top + 8, { align: 'right' });
-  pdf.text(`Proyecto: ${projectName}`, pageWidth - margins.right, margins.top + 13, { align: 'right' });
-
-  let currentY = margins.top + 25;
-
-  // ============ GENERAR TABLA POR CADA SEMANA ============
+  // ============ GENERAR UNA SOLA TABLA CONTINUA PARA TODO EL MES ============
   
+  // Preparar cabecera única con días de la semana (solo una vez)
+  // Usar isoWeek para que empiece en lunes
+  const firstWeekStart = moment(startOfMonth).startOf('isoWeek');
+  // Headers fijos empezando por lunes, sin abreviar
+  const headerDayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  
+  const tableHeaders = [
+    ['Área', headerDayNames[0], headerDayNames[1], headerDayNames[2], headerDayNames[3], headerDayNames[4], headerDayNames[5], headerDayNames[6]]
+  ];
+
+  // Construir cuerpo de la tabla con todas las semanas
+  const tableBody: any[] = [];
+
   scheduleData.weeks.forEach((week, weekIndex) => {
-    // Verificar si necesitamos nueva página
-    // Estimación: cada semana necesita al menos 40mm + (número de áreas * 8mm)
-    const estimatedHeight = 40 + (week.areas.length * 8);
-    if (currentY + estimatedHeight > pageHeight - margins.bottom) {
-      pdf.addPage();
-      currentY = margins.top + 10;
+    // Calcular los números de día para esta semana
+    // Usar isoWeek para que empiece en lunes
+    const weekStart = moment(startOfMonth).startOf('isoWeek').add(weekIndex, 'weeks');
+    const currentMonth = moment(date).month();
+    const dayNumbers = [];
+    for (let i = 0; i < 7; i++) {
+      const dayDate = moment(weekStart).add(i, 'days');
+      // Solo mostrar número si el día pertenece al mes actual
+      if (dayDate.month() === currentMonth) {
+        dayNumbers.push(dayDate.date().toString());
+      } else {
+        dayNumbers.push(''); // Dejar vacío para días fuera del mes
+      }
     }
 
-    // Título de la semana
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text(week.title, margins.left, currentY);
-    currentY += 6;
+    // Agregar fila con números de día
+    tableBody.push([
+      { content: '', styles: { fillColor: colors.beige, fontStyle: 'bold', halign: 'center' } },
+      { content: dayNumbers[0], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[1], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[2], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[3], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[4], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[5], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
+      { content: dayNumbers[6], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } }
+    ]);
 
-    // Preparar datos de la tabla
-    const tableHeaders = [['Área', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']];
-    
-    const tableBody = week.areas.map(area => {
-      // Formatear actividades con viñetas
-      const formatActivities = (activities: string[]): string => {
-        if (activities.length === 0) return '';
-        return activities.map(act => `• ${act}`).join('\n');
-      };
-
-      return [
-        area.name,
-        formatActivities(area.days.monday),
-        formatActivities(area.days.tuesday),
-        formatActivities(area.days.wednesday),
-        formatActivities(area.days.thursday),
-        formatActivities(area.days.friday),
-        formatActivities(area.days.saturday),
-        formatActivities(area.days.sunday)
+    // Agregar filas de áreas con actividades
+    week.areas.forEach(area => {
+      // Recopilar todas las actividades del área organizadas por día
+      const dayActivities = [
+        area.days.monday,
+        area.days.tuesday,
+        area.days.wednesday,
+        area.days.thursday,
+        area.days.friday,
+        area.days.saturday,
+        area.days.sunday
       ];
-    });
 
-    // Generar tabla con autoTable
-    autoTable(pdf, {
-      head: tableHeaders,
-      body: tableBody,
-      startY: currentY,
-      margin: { left: margins.left, right: margins.right },
-      theme: 'grid',
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-        overflow: 'linebreak',
-        cellWidth: 'wrap',
-        valign: 'top', // Alinear contenido arriba
-        textColor: colors.darkGray,
-        lineColor: colors.borderGray,
-        lineWidth: 0.3,
-      },
-      headStyles: {
-        fillColor: colors.navyBlue,
-        textColor: colors.white,
-        fontStyle: 'bold',
-        halign: 'center',
-        fontSize: 9,
-        cellPadding: 4,
-      },
-      bodyStyles: {
-        fillColor: colors.white,
-      },
-      alternateRowStyles: {
-        fillColor: colors.lightGray,
-      },
-      columnStyles: {
-        0: { 
-          cellWidth: 30, 
-          halign: 'left',
-          fontStyle: 'bold',
-          fillColor: colors.lightGray
-        },
-        1: { cellWidth: 32, halign: 'left' },
-        2: { cellWidth: 32, halign: 'left' },
-        3: { cellWidth: 32, halign: 'left' },
-        4: { cellWidth: 32, halign: 'left' },
-        5: { cellWidth: 32, halign: 'left' },
-        6: { cellWidth: 32, halign: 'left' },
-        7: { cellWidth: 32, halign: 'left' },
-      },
-      didDrawCell: (data) => {
-        // Resaltar celdas vacías con color más claro
-        if (data.section === 'body' && data.column.index > 0 && !data.cell.text[0]) {
-          // No hacer nada, dejar como está
+      // Verificar si el área tiene al menos una actividad en algún día
+      const totalActivities = dayActivities.reduce((sum, acts) => sum + acts.length, 0);
+      
+      // Si el área no tiene ninguna actividad, no mostrar la fila
+      if (totalActivities === 0) {
+        return;
+      }
+
+      // Encontrar el número máximo de actividades en un solo día
+      const maxActivitiesPerDay = Math.max(...dayActivities.map(acts => acts.length), 1);
+
+      // Crear una fila por cada "nivel" de actividad
+      for (let i = 0; i < maxActivitiesPerDay; i++) {
+        const row: any[] = [];
+
+        // Primera celda: Área (solo en la primera fila con rowSpan)
+        if (i === 0) {
+          row.push({
+            content: area.name,
+            rowSpan: maxActivitiesPerDay,
+            styles: {
+              fontStyle: 'bold',
+              fillColor: colors.lightGray,
+              valign: 'middle',
+              halign: 'left'
+            }
+          });
         }
-      },
-    });
 
-    currentY = (pdf as any).lastAutoTable.finalY + 10;
+        // Celdas de los días: mostrar la actividad del índice i si existe
+        dayActivities.forEach(activities => {
+          const activity = activities[i] || '';
+          row.push(activity);
+        });
+
+        tableBody.push(row);
+      }
+    });
   });
 
-  // ============ PIE DE PÁGINA EN ÚLTIMA PÁGINA ============
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(120, 120, 120);
-  const footerText = `CDIMA - Cronograma de Actividades ${scheduleData.month} ${scheduleData.year}`;
-  pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 10, { align: 'center' });
+  // Calcular ancho disponible: pageWidth - márgenes izq y der
+  const availableWidth = pageWidth - margins.left - margins.right;
+  const areaColumnWidth = 35; // Ancho fijo para columna de área
+  const dayColumnWidth = (availableWidth - areaColumnWidth) / 7; // Distribuir resto entre 7 días
 
-  // Descargar PDF
-  pdf.save(`cronograma_actividades_${scheduleData.month.toLowerCase()}_${scheduleData.year}.pdf`);
+  // Generar UNA SOLA tabla continua con todo el mes
+  autoTable(pdf, {
+    head: tableHeaders,
+    body: tableBody,
+    startY: currentY,
+    margin: { left: margins.left, right: margins.right },
+    theme: 'grid',
+    showHead: 'everyPage', // Mostrar cabecera en cada página
+    tableWidth: availableWidth, // Forzar ancho completo
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      overflow: 'linebreak',
+      cellWidth: 'wrap',
+      valign: 'middle',
+      textColor: colors.black,
+      lineColor: colors.borderGray,
+      lineWidth: 0.3,
+    },
+    headStyles: {
+      fillColor: colors.beige,
+      textColor: colors.black,
+      fontStyle: 'bold',
+      halign: 'center',
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    bodyStyles: {
+      fillColor: colors.white,
+    },
+    columnStyles: {
+      0: { 
+        cellWidth: areaColumnWidth, 
+        halign: 'left',
+        fontStyle: 'bold',
+        fillColor: colors.lightGray
+      },
+      1: { cellWidth: dayColumnWidth, halign: 'left' },
+      2: { cellWidth: dayColumnWidth, halign: 'left' },
+      3: { cellWidth: dayColumnWidth, halign: 'left' },
+      4: { cellWidth: dayColumnWidth, halign: 'left' },
+      5: { cellWidth: dayColumnWidth, halign: 'left' },
+      6: { cellWidth: dayColumnWidth, halign: 'left' },
+      7: { cellWidth: dayColumnWidth, halign: 'left' },
+    },
+  });
+
+  // Abrir PDF en nueva pestaña
+  const pdfBlob = pdf.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  window.open(pdfUrl, '_blank');
 };
