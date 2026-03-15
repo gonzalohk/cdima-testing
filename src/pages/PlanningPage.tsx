@@ -11,7 +11,7 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import { getTaskColor } from '../utils/colors';
-import { exportCalendarViewToPDF, exportTasksTablesToPDF } from '../services/reports/planning-reports.service';
+import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule } from '../services/reports/planning-reports.service';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -86,6 +86,7 @@ const PlanningPage: React.FC = () => {
   const [areaFilter, setAreaFilter] = useState<string>('todas');
   const [exportingTables, setExportingTables] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
+  const [exportingSchedule, setExportingSchedule] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -324,6 +325,22 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  const handleExportSchedule = async () => {
+    setExportingSchedule(true);
+    try {
+      await exportMonthlyCalendarSchedule({
+        tasks: currentMonthTasks,
+        date,
+        projectName
+      });
+    } catch (error) {
+      console.error('Error al exportar cronograma:', error);
+      alert('Error al generar el cronograma. Por favor, intenta de nuevo.');
+    } finally {
+      setExportingSchedule(false);
+    }
+  };
+
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isEjecutado = event.resource.estado === 'Ejecutado';
@@ -431,16 +448,29 @@ const PlanningPage: React.FC = () => {
 
       {/* Calendar */}
       <div className="planning-calendar-container">
-        {/* Export Button */}
-        <button
-          className="btn-export"
-          onClick={handleExportCalendar}
-          disabled={exportingCalendar || events.length === 0}
-          title="Exportar vista de calendario a PDF"
-          style={{ marginBottom: '1rem' }}
-        >
-          {exportingCalendar ? 'Exportando...' : '📅 Exportar Calendario'}
-        </button>
+        {/* Export Buttons */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button
+            className="btn-export"
+            onClick={handleExportCalendar}
+            disabled={exportingCalendar || events.length === 0}
+            title="Exportar vista de calendario a PDF (lista por día)"
+          >
+            {exportingCalendar ? 'Exportando...' : '📅 Exportar Calendario'}
+          </button>
+          <button
+            className="btn-export"
+            onClick={handleExportSchedule}
+            disabled={exportingSchedule || currentMonthTasks.length === 0}
+            title="Exportar cronograma mensual (tabla semanal por área)"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none'
+            }}
+          >
+            {exportingSchedule ? 'Exportando...' : '📋 Exportar Cronograma Mensual'}
+          </button>
+        </div>
         
         <Calendar
           localizer={localizer}

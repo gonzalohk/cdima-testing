@@ -525,3 +525,322 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');
 };
+
+/**
+ * Estructura de datos para el cronograma mensual
+ */
+interface WeekData {
+  title: string; // "Semana 1 (3 - 9 Nov)"
+  areas: AreaData[];
+}
+
+interface AreaData {
+  name: string; // "CDIMA"
+  days: {
+    monday: string[];
+    tuesday: string[];
+    wednesday: string[];
+    thursday: string[];
+    friday: string[];
+    saturday: string[];
+    sunday: string[];
+  };
+}
+
+interface MonthlyScheduleData {
+  month: string; // "Noviembre"
+  year: number;  // 2025
+  weeks: WeekData[];
+}
+
+interface ExportMonthlyScheduleParams {
+  tasks: AsanaTask[];
+  date: Date;
+  projectName: string;
+}
+
+/**
+ * Exporta el cronograma mensual en formato de calendario semanal
+ * 
+ * Genera un reporte PDF que muestra un calendario mensual donde:
+ * - Cada sección representa una semana del mes
+ * - Cada semana contiene una tabla con los días de la semana como columnas
+ * - Las filas representan diferentes áreas o departamentos
+ * - Cada celda contiene las actividades programadas para esa área en ese día específico
+ * 
+ * @param params - Parámetros de exportación
+ * @param params.tasks - Tareas del mes a mostrar en el cronograma
+ * @param params.date - Fecha del mes actual para generar el cronograma
+ * @param params.projectName - Nombre del proyecto para incluir en el encabezado
+ */
+export const exportMonthlyCalendarSchedule = async (params: ExportMonthlyScheduleParams): Promise<void> => {
+  const { tasks, date, projectName } = params;
+
+  // ============ PREPARAR DATOS ============
+  
+  // Obtener todas las áreas únicas
+  const areasSet = new Set<string>();
+  tasks.forEach(task => {
+    const area = getCustomFieldValue(task, 'Area');
+    if (area && area !== '-') {
+      areasSet.add(area);
+    }
+  });
+  
+  // Si no hay áreas definidas, usar "Sin área"
+  const areas = areasSet.size > 0 
+    ? Array.from(areasSet).sort() 
+    : ['Sin área'];
+
+  // Agrupar tareas por semana
+  const startOfMonth = moment(date).startOf('month');
+  const endOfMonth = moment(date).endOf('month');
+  
+  const weeks: WeekData[] = [];
+  let currentWeekStart = moment(startOfMonth).startOf('week');
+
+  while (currentWeekStart.isSameOrBefore(endOfMonth)) {
+    const currentWeekEnd = moment(currentWeekStart).endOf('week');
+    
+    // Título de la semana
+    const weekTitle = `Semana ${weeks.length + 1} (${currentWeekStart.format('D')} - ${currentWeekEnd.format('D MMM')})`;
+    
+    // Inicializar estructura de datos para cada área
+    const weekAreas: AreaData[] = areas.map(area => ({
+      name: area,
+      days: {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      }
+    }));
+
+    // Filtrar tareas de esta semana
+    const weekTasks = tasks.filter(task => {
+      const taskDate = task.start_on 
+        ? moment(task.start_on) 
+        : task.due_on ? moment(task.due_on) : null;
+      
+      if (!taskDate) return false;
+      
+      return taskDate.isBetween(currentWeekStart, currentWeekEnd, null, '[]');
+    });
+
+    // Agrupar tareas por área y día
+    weekTasks.forEach(task => {
+      const taskArea = getCustomFieldValue(task, 'Area');
+      const area = taskArea && taskArea !== '-' ? taskArea : 'Sin área';
+      
+      const taskDate = task.start_on 
+        ? moment(task.start_on) 
+        : task.due_on ? moment(task.due_on) : null;
+      
+      if (!taskDate) return;
+      
+      const dayOfWeek = taskDate.day(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
+      
+      // Mapear día de la semana a propiedad
+      const dayMap: { [key: number]: keyof AreaData['days'] } = {
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday',
+        0: 'sunday'
+      };
+      
+      const dayProp = dayMap[dayOfWeek];
+      
+      // Encontrar el área correspondiente
+      const areaData = weekAreas.find(a => a.name === area);
+      if (areaData && dayProp) {
+        areaData.days[dayProp].push(task.name);
+      }
+    });
+
+    weeks.push({
+      title: weekTitle,
+      areas: weekAreas
+    });
+
+    currentWeekStart.add(1, 'week');
+  }
+
+  const scheduleData: MonthlyScheduleData = {
+    month: format(date, 'MMMM', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM', { locale: es }).slice(1),
+    year: date.getFullYear(),
+    weeks
+  };
+
+  // ============ GENERAR PDF ============
+  
+  const margins = {
+    top: 20,
+    bottom: 20,
+    left: 15,
+    right: 15
+  };
+
+  const colors = {
+    navyBlue: [70, 100, 140],
+    white: [255, 255, 255],
+    lightGray: [240, 240, 240],
+    darkGray: [60, 60, 60],
+    borderGray: [200, 200, 200]
+  };
+
+  const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // ============ ENCABEZADO DEL DOCUMENTO ============
+  
+  // Logo CDIMA
+  try {
+    const logoWidth = 25;
+    pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
+  } catch (error) {
+    console.error('Error al cargar logo:', error);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text('CDIMA', margins.left, margins.top + 8);
+  }
+
+  // Título principal
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+  pdf.text('CRONOGRAMA DE ACTIVIDADES', pageWidth / 2, margins.top + 8, { align: 'center' });
+
+  // Subtítulo con mes y año
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`${scheduleData.month} ${scheduleData.year}`, pageWidth / 2, margins.top + 16, { align: 'center' });
+
+  // Metadatos
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 100, 100);
+  const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+  pdf.text(`Generado: ${fechaGeneracion}`, pageWidth - margins.right, margins.top + 8, { align: 'right' });
+  pdf.text(`Proyecto: ${projectName}`, pageWidth - margins.right, margins.top + 13, { align: 'right' });
+
+  let currentY = margins.top + 25;
+
+  // ============ GENERAR TABLA POR CADA SEMANA ============
+  
+  scheduleData.weeks.forEach((week, weekIndex) => {
+    // Verificar si necesitamos nueva página
+    // Estimación: cada semana necesita al menos 40mm + (número de áreas * 8mm)
+    const estimatedHeight = 40 + (week.areas.length * 8);
+    if (currentY + estimatedHeight > pageHeight - margins.bottom) {
+      pdf.addPage();
+      currentY = margins.top + 10;
+    }
+
+    // Título de la semana
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.text(week.title, margins.left, currentY);
+    currentY += 6;
+
+    // Preparar datos de la tabla
+    const tableHeaders = [['Área', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']];
+    
+    const tableBody = week.areas.map(area => {
+      // Formatear actividades con viñetas
+      const formatActivities = (activities: string[]): string => {
+        if (activities.length === 0) return '';
+        return activities.map(act => `• ${act}`).join('\n');
+      };
+
+      return [
+        area.name,
+        formatActivities(area.days.monday),
+        formatActivities(area.days.tuesday),
+        formatActivities(area.days.wednesday),
+        formatActivities(area.days.thursday),
+        formatActivities(area.days.friday),
+        formatActivities(area.days.saturday),
+        formatActivities(area.days.sunday)
+      ];
+    });
+
+    // Generar tabla con autoTable
+    autoTable(pdf, {
+      head: tableHeaders,
+      body: tableBody,
+      startY: currentY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'grid',
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak',
+        cellWidth: 'wrap',
+        valign: 'top', // Alinear contenido arriba
+        textColor: colors.darkGray,
+        lineColor: colors.borderGray,
+        lineWidth: 0.3,
+      },
+      headStyles: {
+        fillColor: colors.navyBlue,
+        textColor: colors.white,
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: 9,
+        cellPadding: 4,
+      },
+      bodyStyles: {
+        fillColor: colors.white,
+      },
+      alternateRowStyles: {
+        fillColor: colors.lightGray,
+      },
+      columnStyles: {
+        0: { 
+          cellWidth: 30, 
+          halign: 'left',
+          fontStyle: 'bold',
+          fillColor: colors.lightGray
+        },
+        1: { cellWidth: 32, halign: 'left' },
+        2: { cellWidth: 32, halign: 'left' },
+        3: { cellWidth: 32, halign: 'left' },
+        4: { cellWidth: 32, halign: 'left' },
+        5: { cellWidth: 32, halign: 'left' },
+        6: { cellWidth: 32, halign: 'left' },
+        7: { cellWidth: 32, halign: 'left' },
+      },
+      didDrawCell: (data) => {
+        // Resaltar celdas vacías con color más claro
+        if (data.section === 'body' && data.column.index > 0 && !data.cell.text[0]) {
+          // No hacer nada, dejar como está
+        }
+      },
+    });
+
+    currentY = (pdf as any).lastAutoTable.finalY + 10;
+  });
+
+  // ============ PIE DE PÁGINA EN ÚLTIMA PÁGINA ============
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(120, 120, 120);
+  const footerText = `CDIMA - Cronograma de Actividades ${scheduleData.month} ${scheduleData.year}`;
+  pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 10, { align: 'center' });
+
+  // Descargar PDF
+  pdf.save(`cronograma_actividades_${scheduleData.month.toLowerCase()}_${scheduleData.year}.pdf`);
+};

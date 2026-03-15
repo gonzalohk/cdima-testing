@@ -1,16 +1,22 @@
 # CDIMA - Reportes de Asana
 
-Aplicación web 100% frontend para generar reportes personalizados consumiendo la API de Asana.
+Aplicación web 100% frontend para gestión de proyectos educativos y generación de reportes personalizados consumiendo la API de Asana.
 
 ## 🚀 Características
 
 - ✅ **100% Frontend** - No requiere backend, toda la lógica corre en el navegador
+- 📚 **Gestión de Diplomados** - Control completo: estudiantes, docentes, asistencia, notas (5 módulos)
+- 🏫 **Gestión de Escuelas** - Similar a diplomados con 7 módulos y tipos de escuela
+- 📅 **Planificación con Calendario** - Vista interactiva de actividades con filtros por área
+- 📖 **Biblioteca de Recursos** - Gestión de documentos y archivos adjuntos
 - 📊 **Reportes Detallados** - Visualiza actividades, subtareas y estadísticas completas
-- 📥 **Exportación a PDF** - Genera reportes en PDF con jsPDF
+- 📥 **Exportación a PDF** - Múltiples tipos de reportes profesionales con logo CDIMA
 - 🔐 **Autenticación Segura** - Usa tu token personal de Asana (almacenado localmente)
-- 🎨 **Interfaz Moderna** - Diseño limpio y responsivo
-- 📈 **Estadísticas en Tiempo Real** - Progreso, distribución por asignado, y más
+- 🎨 **Interfaz Moderna** - Diseño limpio y responsivo con modales interactivos
+- 📈 **Estadísticas en Tiempo Real** - Progreso, distribución por asignado, promedios automáticos
 - 🔍 **Filtros y Búsqueda** - Filtra subtareas por estado, asignado o nombre
+- ✅ **Validación Robusta** - Schemas Zod para validar datos antes de enviar a Asana
+- 🔄 **Backward Compatible** - Soporta datos legacy y nuevos formatos JSON
 
 ## 🛠️ Stack Tecnológico
 
@@ -19,12 +25,20 @@ Aplicación web 100% frontend para generar reportes personalizados consumiendo l
 - **TypeScript** - Tipado estático
 - **Vite** - Build tool y dev server ultrarrápido
 
-### Navegación y Routing
-- **React Router DOM v6** - Navegación entre páginas
+### Navegación
+- **React Router DOM v6** - Navegación entre 7 páginas
+
+### Calendario y Fechas
+- **React Big Calendar** - Calendario interactivo para planificación
+- **date-fns** - Manipulación y formateo de fechas
+- **moment.js** - Soporte adicional de fechas
 
 ### Exportación
 - **jsPDF** - Generación de PDFs
-- **jsPDF-AutoTable** - Tablas en PDF
+- **jsPDF-AutoTable** - Tablas profesionales en PDF
+
+### Validación
+- **Zod** - Schema validation para datos de estudiantes, docentes, notas y asistencia
 
 ## 📋 Requisitos Previos
 
@@ -78,7 +92,7 @@ La aplicación se abrirá en `http://localhost:5173`
 4. Haz clic en **"Guardar Token"**
 5. La aplicación verificará la conexión y mostrará tus workspaces
 
-### 2. Generar un Reporte
+### 2. Generar un Reporte General
 
 1. Ve a la página de **"Reportes"**
 2. **Selecciona un Workspace** - Elige el workspace de Asana
@@ -89,7 +103,62 @@ La aplicación se abrirá en `http://localhost:5173`
    - Todas las subtareas
    - Estadísticas calculadas
 
-### 3. Visualizar Información
+### 3. Gestión de Diplomados
+
+> 📚 **Ver documentación completa:** [DIPLOMADOS_ESCUELAS.md](DIPLOMADOS_ESCUELAS.md)
+
+**Funcionalidades principales:**
+
+1. **Crear Nuevo Diplomado:**
+   - Click en "➕ Crear Nuevo Diplomado"
+   - Ingresar nombre del diplomado
+   - Agregar docentes (nombre, género, especialidad, etc.)
+   - Agregar estudiantes (nombre, género, lugar de nacimiento, etc.)
+   - El sistema crea automáticamente la estructura en Asana
+
+2. **Registrar Asistencia:**
+   - Seleccionar diplomado
+   - Click en "Registrar Asistencia"
+   - Marcar presente/ausente para cada estudiante
+   - Agregar observaciones si es necesario
+   - Las asistencias se almacenan en formato JSON
+
+3. **Registrar Notas (5 Módulos):**
+   - Seleccionar diplomado
+   - Click en "Registrar Notas"
+   - Elegir módulo (1-5)
+   - Ingresar notas (0-100) para cada estudiante
+   - ⚠️ **Automático:** Si inasistencias > 20%, nota = 0
+
+4. **Exportar Reportes PDF:**
+   - **Reporte General:** Lista de docentes y estudiantes
+   - **Centralizador de Notas:** Todas las notas + promedios
+   - **Reporte Individual:** Notas y asistencia por estudiante
+
+### 4. Gestión de Escuelas
+
+**Similar a Diplomados con estas diferencias:**
+- ✅ 7 módulos en lugar de 5
+- ✅ Campo adicional: Tipo de Escuela (Liderazgo Social / Liderazgo de Gestión)
+- ✅ Proyecto separado en Asana: "Escuelas CDIMA"
+
+### 5. Planificación con Calendario
+
+1. Ve a la página de **"Planificación"**
+2. Visualiza tareas en calendario interactivo
+3. Cambia vista: Semana / Mes / Agenda
+4. Filtra por área de trabajo
+5. Click en evento para ver detalles
+6. Exporta calendario o tablas a PDF
+
+### 6. Biblioteca de Recursos
+
+1. Ve a la página de **"Biblioteca"**
+2. Navega por proyectos y secciones
+3. Visualiza documentos adjuntos
+4. Descarga archivos directamente desde Asana
+
+### 7. Visualizar Información
 
 La página de reportes muestra:
 
