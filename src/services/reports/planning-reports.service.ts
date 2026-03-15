@@ -80,22 +80,18 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
     right: 20
   };
 
-  // Colores del diseño ejecutivo
+  // Colores del diseño minimalista
   const colors = {
-    navyBlue: [70, 100, 140],
-    forestGreen: [46, 125, 50],
-    charcoalGray: [110, 110, 110],
-    steelBlue: [69, 123, 157],
-    lightGray: [117, 117, 117],
-    ultraLightGray: [249, 249, 249],
+    black: [0, 0, 0],
     white: [255, 255, 255],
-    dateHeader: [220, 230, 240]  // Azul claro para fechas
+    lightGray: [245, 245, 245],
+    headerGray: [220, 220, 220]  // Gris para cabeceras
   };
 
   const pdf = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'letter'
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -111,21 +107,21 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
     console.error('Error al cargar logo:', error);
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('CDIMA', margins.left, margins.top + 8);
   }
   
   // Título Principal (lado derecho) - Incluye período
   const periodoHeader = format(date, 'MMMM yyyy', { locale: es }).toUpperCase();
-  pdf.setFontSize(15);
+  pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   pdf.text(`LISTADO MENSUAL DE ACTIVIDADES - ${periodoHeader}`, pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos (alineados a la derecha)
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   
   let metaY = margins.top + 12;
   pdf.text(`PROYECTO: ${projectName}`, pageWidth - margins.right, metaY, { align: 'right' });
@@ -171,8 +167,8 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
           content: dateString.toUpperCase(),
           colSpan: 1,
           styles: {
-            fillColor: colors.dateHeader,
-            textColor: [45, 45, 45],
+            fillColor: colors.headerGray,
+            textColor: colors.black,
             fontStyle: 'bold',
             fontSize: 9,
             cellPadding: 5
@@ -187,7 +183,7 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
             content: task.title,
             styles: {
               fillColor: colors.white,
-              textColor: [45, 45, 45],
+              textColor: colors.black,
               fontSize: 8.5,
               cellPadding: 4,
               fontStyle: 'normal'
@@ -207,7 +203,7 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
         content: 'No hay actividades programadas en este período',
         styles: {
           fillColor: colors.white,
-          textColor: [150, 150, 150],
+          textColor: colors.black,
           fontStyle: 'italic',
           fontSize: 9,
           cellPadding: 10,
@@ -227,8 +223,8 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
       overflow: 'linebreak',
       cellWidth: 'wrap',
       valign: 'middle',
-      lineColor: [230, 230, 230],
-      lineWidth: 0.1,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2,
     },
     tableWidth: 'auto',
     columnStyles: {
@@ -239,7 +235,7 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
   // ============ PIE DE PÁGINA ============
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   const footerText = `CDIMA - Listado de Actividades ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
   pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
@@ -263,15 +259,13 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     right: 20
   };
 
-  // Colores del diseño ejecutivo
+  // Colores del diseño minimalista
   const colors = {
-    navyBlue: [70, 100, 140],     // Azul marino más claro y sobrio
-    forestGreen: [46, 125, 50],   // Verde bosque
-    charcoalGray: [110, 110, 110], // Gris más claro y sobrio
-    steelBlue: [69, 123, 157],    // Azul acero
-    lightGray: [117, 117, 117],   // Gris claro para texto
-    ultraLightGray: [249, 249, 249], // Gris ultra-claro para filas
-    white: [255, 255, 255]
+    black: [0, 0, 0],
+    white: [255, 255, 255],
+    lightGray: [245, 245, 245],
+    headerGray: [220, 220, 220],
+    red: [220, 53, 69]  // Rojo para tareas atrasadas
   };
 
   const pdf = new jsPDF({
@@ -295,20 +289,21 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     // Fallback a texto si falla la carga de la imagen
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('CDIMA', margins.left, margins.top + 8);
   }
   
-  // Título Principal (lado derecho)
-  pdf.setFontSize(15);
+  // Título Principal (lado derecho) - Incluye período
+  const periodoHeader = format(date, 'MMMM yyyy', { locale: es }).toUpperCase();
+  pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('REPORTE EJECUTIVO DE AVANCE', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  pdf.text(`ESTADO DE ACTIVIDADES MENSUALES - ${periodoHeader}`, pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos (alineados a la derecha)
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45); // Negro suave
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   
   let metaY = margins.top + 12;
   pdf.text(`PROYECTO: ${projectName}`, pageWidth - margins.right, metaY, { align: 'right' });
@@ -333,15 +328,106 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
 
   let startY = metaY + 16;
 
-  // ============ SECCIÓN 1: TAREAS EJECUTADAS ============
-  if (executedTasks.length > 0) {
+  // ============ SECCIÓN 1: ACTIVIDADES EN PROCESO ============
+  if (pendingTasks.length > 0) {
     // Título de sección
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text('TAREAS EJECUTADAS', margins.left, startY);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+    pdf.text('ACTIVIDADES EN PROCESO', margins.left, startY);
     
-    const executedHeaders = [['TAREA', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
+    const pendingHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
+    
+    // Crear body con estilos condicionales para tareas atrasadas
+    const pendingBody = pendingTasks.map(task => {
+      const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+      const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+      let fecha = '-';
+      if (inicio) fecha = inicio;
+      else if (fin) fecha = fin;
+      
+      // Verificar si está atrasada
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let dueDate: Date | null = null;
+      if (task.due_on) {
+        const [year, month, day] = task.due_on.split('-').map(Number);
+        dueDate = new Date(year, month - 1, day);
+        dueDate.setHours(0, 0, 0, 0);
+      }
+      const isOverdue = dueDate && dueDate < today;
+
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Responsables de actividad'),
+        fecha,
+        {
+          content: 'EN PROCESO',
+          styles: {
+            textColor: isOverdue ? colors.red : colors.black
+          }
+        }
+      ];
+    });
+
+    autoTable(pdf, {
+      head: pendingHeaders,
+      body: pendingBody,
+      startY: startY + 4,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fontSize: 8.5,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        cellWidth: 'wrap',
+        valign: 'middle',
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fillColor: colors.headerGray,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      bodyStyles: {
+        fillColor: colors.white,
+      },
+      columnStyles: {
+        0: { cellWidth: 68, halign: 'left' },
+        1: { cellWidth: 45, halign: 'left' },
+        2: { cellWidth: 35, halign: 'left' },
+        3: { 
+          cellWidth: 30, 
+          halign: 'center',
+          textColor: colors.black,
+          fontStyle: 'bold'
+        },
+      },
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 12;
+  }
+
+  // ============ SECCIÓN 2: ACTIVIDADES EJECUTADAS ============
+  if (executedTasks.length > 0) {
+    // Si no hay espacio suficiente, agregar nueva página
+    if (startY > pageHeight - 80) {
+      pdf.addPage();
+      startY = margins.top + 10;
+    }
+
+    // Título de sección
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+    pdf.text('ACTIVIDADES EJECUTADAS', margins.left, startY);
+    
+    const executedHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
     const executedBody = executedTasks.map(task => {
       const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
       const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
@@ -365,106 +451,18 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       margin: { left: margins.left, right: margins.right },
       theme: 'plain',
       styles: {
-        fontSize: 9,
-        cellPadding: 4, // Espaciado amplio
-        overflow: 'linebreak',
-        cellWidth: 'wrap',
-        valign: 'middle',
-        textColor: [45, 45, 45],
-        lineColor: [230, 230, 230], // Líneas grises muy finas
-        lineWidth: 0.1,
-      },
-      headStyles: {
-        fillColor: colors.navyBlue, // Azul marino oscuro sólido
-        textColor: colors.white,
-        fontStyle: 'bold',
-        halign: 'left',
-        fontSize: 9,
-        cellPadding: 5,
-      },
-      bodyStyles: {
-        fillColor: colors.white,
-      },
-      alternateRowStyles: {
-        fillColor: colors.ultraLightGray, // Cebreado sutil
-      },
-      columnStyles: {
-        0: { cellWidth: 68, halign: 'left' },
-        1: { cellWidth: 45, halign: 'left' },
-        2: { cellWidth: 35, halign: 'left' },
-        3: { 
-          cellWidth: 30, 
-          halign: 'center',
-          textColor: colors.forestGreen, // Verde bosque
-          fontStyle: 'bold'
-        },
-      },
-    });
-
-    startY = (pdf as any).lastAutoTable.finalY + 12;
-  }
-
-  // ============ SECCIÓN 2: TAREAS EN PROCESO ============
-  if (pendingTasks.length > 0) {
-    // Si no hay espacio suficiente, agregar nueva página
-    if (startY > pageHeight - 80) {
-      pdf.addPage();
-      startY = margins.top + 10;
-    }
-
-    // Título de sección
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.charcoalGray[0], colors.charcoalGray[1], colors.charcoalGray[2]);
-    pdf.text('TAREAS EN PROCESO', margins.left, startY);
-    
-    const pendingHeaders = [['TAREA', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
-    const pendingBody = pendingTasks.map(task => {
-      const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
-      const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
-      let fecha = '-';
-      if (inicio) fecha = inicio; // Mostrar solo fecha de inicio para en proceso
-      else if (fin) fecha = fin;
-      
-      // Verificar si está atrasada
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
-      let dueDate: Date | null = null;
-      if (task.due_on) {
-        const [year, month, day] = task.due_on.split('-').map(Number);
-        dueDate = new Date(year, month - 1, day);
-        dueDate.setHours(0, 0, 0, 0);
-      }
-      const isOverdue = dueDate && dueDate < today;
-
-      return [
-        task.name,
-        getCustomFieldValue(task, 'Responsables de actividad'),
-        fecha,
-        isOverdue ? 'ATRASADA' : 'EN PROCESO'
-      ];
-    });
-
-    autoTable(pdf, {
-      head: pendingHeaders,
-      body: pendingBody,
-      startY: startY + 4,
-      margin: { left: margins.left, right: margins.right },
-      theme: 'plain',
-      styles: {
-        fontSize: 9,
+        fontSize: 8.5,
         cellPadding: 4,
         overflow: 'linebreak',
         cellWidth: 'wrap',
         valign: 'middle',
-        textColor: [45, 45, 45],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.1,
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
       },
       headStyles: {
-        fillColor: colors.charcoalGray, // Gris grafito oscuro sólido
-        textColor: colors.white,
+        fillColor: colors.headerGray,
+        textColor: colors.black,
         fontStyle: 'bold',
         halign: 'left',
         fontSize: 9,
@@ -473,9 +471,6 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       bodyStyles: {
         fillColor: colors.white,
       },
-      alternateRowStyles: {
-        fillColor: colors.ultraLightGray,
-      },
       columnStyles: {
         0: { cellWidth: 68, halign: 'left' },
         1: { cellWidth: 45, halign: 'left' },
@@ -483,6 +478,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
         3: { 
           cellWidth: 30, 
           halign: 'center',
+          textColor: colors.black,
           fontStyle: 'bold'
         },
       },
@@ -494,8 +490,8 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
   // ============ PIE DE PÁGINA ============
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-  const footerText = `CDIMA - Avance ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  const footerText = `CDIMA - Estado de Actividades ${format(date, 'MMMM yyyy', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: es }).slice(1)}`;
   pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir PDF en nueva pestaña

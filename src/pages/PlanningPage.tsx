@@ -159,7 +159,7 @@ const PlanningPage: React.FC = () => {
       
       setTasks(tasksWithSubtasks);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar tareas');
+      setError(err instanceof Error ? err.message : 'Error al cargar actividades');
     } finally {
       setLoading(false);
     }
@@ -257,7 +257,7 @@ const PlanningPage: React.FC = () => {
     return Array.from(areas).sort();
   }, [currentMonthTasks]);
 
-  // Tareas ejecutadas y pendientes del mes actual
+  // Actividades ejecutadas y pendientes del mes actual
   const executedTasks = useMemo(() => {
     let filtered = currentMonthTasks.filter(t => 
       getCustomFieldValue(t, 'Estado') === 'Ejecutado'
@@ -350,7 +350,7 @@ const PlanningPage: React.FC = () => {
     // Verificar si está atrasada (no ejecutada y fecha de fin ya pasó)
     const isOverdue = !isEjecutado && event.end < today;
     
-    // Obtener colores únicos basados en el ID de la tarea
+    // Obtener colores únicos basados en el ID de la actividad
     const colors = isOverdue 
       ? { bg: '#ffebee', border: '#c62828', text: '#b71c1c' } // Rojo para atrasadas
       : getTaskColor(event.id);
@@ -384,7 +384,7 @@ const PlanningPage: React.FC = () => {
     date: 'Fecha',
     time: 'Hora',
     event: 'Evento',
-    noEventsInRange: 'No hay tareas en este rango de fechas',
+    noEventsInRange: 'No hay actividades en este rango de fechas',
     showMore: (total: number) => `+ (${total}) más`
   };
 
@@ -419,7 +419,7 @@ const PlanningPage: React.FC = () => {
           <div className="planning-info">
             <h1 className="planning-title">{projectName}</h1>
             <p className="planning-subtitle">
-              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'tarea programada' : 'tareas programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
+              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'actividad programada' : 'actividades programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
             </p>
           </div>
         </div>
@@ -429,15 +429,15 @@ const PlanningPage: React.FC = () => {
       <div className="planning-legend">
         <div className="legend-item">
           <div className="legend-color" style={{ background: 'linear-gradient(135deg, #FFE5E5, #E5F4E5, #E5E5FF, #FFF4E5)' }}></div>
-          <span>Cada color representa una tarea diferente</span>
+          <span>Cada color representa una actividad diferente</span>
         </div>
         <div className="legend-item">
           <div className="legend-color" style={{ backgroundColor: '#ffebee', border: '2px solid #c62828' }}></div>
-          <span>Tareas atrasadas (no ejecutadas y fecha vencida)</span>
+          <span>Actividades atrasadas (no ejecutadas y fecha vencida)</span>
         </div>
         <div className="legend-item">
           <div className="legend-color" style={{ backgroundColor: '#999', opacity: 0.65 }}></div>
-          <span>Opacidad reducida indica tarea ejecutada</span>
+          <span>Opacidad reducida indica actividad ejecutada</span>
         </div>
         <div className="legend-item">
           <span style={{ fontWeight: 600, color: '#666' }}>
@@ -563,15 +563,15 @@ const PlanningPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Tareas Ejecutadas */}
+          {/* Actividades Ejecutadas */}
           <div className="card">
-            <h2>Tareas Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>Actividades Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
             
             {executedTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
                 {areaFilter !== 'todas' 
-                  ? `No hay tareas ejecutadas en el área "${areaFilter}" en este mes`
-                  : 'No hay tareas ejecutadas en este mes'
+                  ? `No hay actividades ejecutadas en el área "${areaFilter}" en este mes`
+                  : 'No hay actividades ejecutadas en este mes'
                 }
               </p>
             ) : (
@@ -579,7 +579,7 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Actividad</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
@@ -637,15 +637,15 @@ const PlanningPage: React.FC = () => {
             )}
           </div>
 
-          {/* Tareas Pendientes */}
+          {/* Actividades Pendientes */}
           <div className="card">
-            <h2>Tareas En Proceso - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>Actividades En Proceso - {moment(date).format('MMMM YYYY')}</h2>
             
             {pendingTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
                 {areaFilter !== 'todas' 
-                  ? `No hay tareas en proceso en el área "${areaFilter}" en este mes`
-                  : 'No hay tareas en proceso en este mes'
+                  ? `No hay actividades en proceso en el área "${areaFilter}" en este mes`
+                  : 'No hay actividades en proceso en este mes'
                 }
               </p>
             ) : (
@@ -653,7 +653,7 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Tarea</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Actividad</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Responsables</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#666' }}>Fecha</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#666' }}>Estado</th>
@@ -661,7 +661,7 @@ const PlanningPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {pendingTasks.map((task, index) => {
-                      // Verificar si la tarea está atrasada
+                      // Verificar si la actividad está atrasada
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
                       // Parsear fecha en zona horaria local (Bolivia) para evitar desplazamiento UTC
@@ -691,7 +691,7 @@ const PlanningPage: React.FC = () => {
                               </div>
                               {task.parent && (
                                 <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.25rem' }}>
-                                  Subtarea de: {task.parent.name}
+                                  Subactividad de: {task.parent.name}
                                 </div>
                               )}
                             </div>
@@ -718,7 +718,7 @@ const PlanningPage: React.FC = () => {
                               backgroundColor: isOverdue ? '#d32f2f' : '#fff3e0',
                               color: isOverdue ? 'white' : '#e65100'
                             }}>
-                              {isOverdue ? 'Atrasada' : 'En Proceso'}
+                              En Proceso
                             </span>
                           </td>
                         </tr>
@@ -749,7 +749,7 @@ const PlanningPage: React.FC = () => {
             <div className="task-detail-body">
               {selectedEvent.resource.isSubtask && (
                 <div className="task-detail-field">
-                  <span className="field-label">Tarea padre:</span>
+                  <span className="field-label">Actividad padre:</span>
                   <span className="field-value">{selectedEvent.resource.parentName}</span>
                 </div>
               )}
