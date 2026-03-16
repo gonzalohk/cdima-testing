@@ -92,25 +92,24 @@ const parseInfoPrimariaLegacy = (task: AsanaTask, tipo: 'Docente' | 'Estudiante'
  * Genera un reporte PDF general del diplomado con docentes y estudiantes
  */
 export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: ExportDiplomadoGeneralParams): void => {
-  // Colores del proyecto (mismo esquema que PlanningPage)
   const colors = {
-    navyBlue: [70, 100, 140],
-    lightGray: [117, 117, 117],
-    ultraLightGray: [249, 249, 249],
-    white: [255, 255, 255]
+    black: [0, 0, 0],
+    white: [255, 255, 255],
+    lightGray: [245, 245, 245],
+    headerGray: [220, 220, 220]
   };
 
   const margins = {
     top: 20,
     bottom: 20,
-    left: 20,
-    right: 20
+    left: 12,
+    right: 12
   };
 
   const pdf = new jsPDF({
-    orientation: 'portrait',
+    orientation: 'landscape',
     unit: 'mm',
-    format: 'a4'
+    format: 'letter'
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -126,43 +125,67 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
     console.error('Error al cargar logo:', error);
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('CDIMA', margins.left, margins.top + 8);
   }
-  
+
   // Título Principal (lado derecho)
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('REPORTE DE DIPLOMADO', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  pdf.text('LISTADO DE PARTICIPANTES', pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   
-  let metaY = margins.top + 14;
+  let metaY = margins.top + 12;
   pdf.text(`DIPLOMADO: ${diplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
   
   metaY += 5;
   const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
   pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+
+  metaY += 5;
+  pdf.text(`REGISTROS: DOCENTES ${docentes.length} | ESTUDIANTES ${estudiantes.length}`, pageWidth - margins.right, metaY, { align: 'right' });
   
   // Línea separadora
-  pdf.setDrawColor(220, 220, 220);
+  pdf.setDrawColor(colors.headerGray[0], colors.headerGray[1], colors.headerGray[2]);
   pdf.setLineWidth(0.3);
   pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
 
-  let startY = metaY + 14;
+  let startY = metaY + 22;
 
   // ============ TABLA DE DOCENTES ============
+  if (startY > pageHeight - 40) {
+    pdf.addPage();
+    startY = margins.top;
+  }
+
+  autoTable(pdf, {
+    body: [[`DOCENTES`]],
+    startY,
+    margin: { left: margins.left, right: margins.right },
+    tableWidth: pageWidth - margins.left - margins.right,
+    theme: 'plain',
+    styles: {
+      fillColor: colors.headerGray,
+      textColor: colors.black,
+      fontStyle: 'bold',
+      fontSize: 9,
+      cellPadding: 3,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2,
+      overflow: 'linebreak',
+      valign: 'middle',
+      cellWidth: 'wrap'
+    }
+  });
+
+  startY = (pdf as any).lastAutoTable.finalY;
+
   if (docentes.length > 0) {
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text('DOCENTES', margins.left, startY);
-    
-    startY += 8;
 
     const docentesData = docentes.map((docente, index) => {
       const info = parseInfoPrimariaLegacy(docente, 'Docente');
@@ -173,16 +196,18 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
       const apellidoPaterno = partes[1] || '';
       const apellidoMaterno = partes[2] || '';
       
+      const nombreCompleto = [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim() || 'N/A';
+      const lugarNacimiento = info.lugarNacimiento || 'N/A';
+      const fechaNacimiento = info.fechaNacimiento || 'N/A';
+      const nacimiento = `${lugarNacimiento} / ${fechaNacimiento}`;
+
       return [
         (index + 1).toString(),
-        nombre || 'N/A',
-        apellidoPaterno || 'N/A',
-        apellidoMaterno || 'N/A',
+        nombreCompleto,
         info.documentoIdentidad || 'N/A',
         info.genero || 'N/A',
         info.especialidad || 'N/A',
-        info.lugarNacimiento || 'N/A',
-        info.fechaNacimiento || 'N/A',
+        nacimiento,
         info.identidadCultural || 'N/A',
         info.telefono || 'N/A',
         info.domicilio || 'N/A'
@@ -190,56 +215,98 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
     });
 
     autoTable(pdf, {
-      head: [['#', 'Nombre', 'Apellido Paterno', 'Apellido Materno', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar de Nacimiento', 'Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
+      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
       body: docentesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
-      theme: 'striped',
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
       headStyles: {
-        fillColor: colors.navyBlue,
-        textColor: colors.white,
+        fillColor: colors.headerGray,
+        textColor: colors.black,
         fontStyle: 'bold',
         fontSize: 9,
         halign: 'center',
-        cellPadding: 5
+        cellPadding: 3
       },
       styles: {
-        fontSize: 8,
-        cellPadding: 4,
+        fontSize: 8.5,
+        cellPadding: 2.5,
         overflow: 'linebreak',
         valign: 'middle',
-        textColor: [45, 45, 45],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.1
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        cellWidth: 'wrap'
       },
       bodyStyles: {
         fillColor: colors.white
       },
-      alternateRowStyles: {
-        fillColor: colors.ultraLightGray
-      },
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' }
+        0: { cellWidth: 7, halign: 'center' },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 44 },
+        6: { cellWidth: 30 },
+        7: { cellWidth: 24, halign: 'center' },
+        8: { cellWidth: 40 }
+      }
+    } as any);
+  } else {
+    autoTable(pdf, {
+      body: [['No hay actividades programadas en este periodo']],
+      startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fillColor: colors.white,
+        textColor: colors.black,
+        fontStyle: 'italic',
+        fontSize: 9,
+        cellPadding: 5,
+        halign: 'center',
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        overflow: 'linebreak',
+        valign: 'middle',
+        cellWidth: 'wrap'
       }
     });
-
-    startY = (pdf as any).lastAutoTable.finalY + 12;
   }
 
-  // ============ TABLA DE ESTUDIANTES ============
-  if (estudiantes.length > 0) {
-    // Verificar si necesitamos una nueva página
-    if (startY > pageHeight - 80) {
-      pdf.addPage();
-      startY = margins.top + 10;
-    }
+  startY = (pdf as any).lastAutoTable.finalY + 8;
 
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-    pdf.text('ESTUDIANTES', margins.left, startY);
-    
-    startY += 8;
+  // ============ TABLA DE ESTUDIANTES ============
+  if (startY > pageHeight - 45) {
+    pdf.addPage();
+    startY = margins.top;
+  }
+
+  autoTable(pdf, {
+    body: [[`ESTUDIANTES`]],
+    startY,
+    margin: { left: margins.left, right: margins.right },
+    tableWidth: pageWidth - margins.left - margins.right,
+    theme: 'plain',
+    styles: {
+      fillColor: colors.headerGray,
+      textColor: colors.black,
+      fontStyle: 'bold',
+      fontSize: 9,
+      cellPadding: 3,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2,
+      overflow: 'linebreak',
+      valign: 'middle',
+      cellWidth: 'wrap'
+    }
+  });
+
+  startY = (pdf as any).lastAutoTable.finalY;
+
+  if (estudiantes.length > 0) {
 
     const estudiantesData = estudiantes.map((estudiante, index) => {
       const info = parseInfoPrimariaLegacy(estudiante, 'Estudiante');
@@ -250,16 +317,18 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
       const apellidoPaterno = partes[1] || '';
       const apellidoMaterno = partes[2] || '';
       
+      const nombreCompleto = [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim() || 'N/A';
+      const lugarNacimiento = info.lugarNacimiento || 'N/A';
+      const fechaNacimiento = info.fechaNacimiento || 'N/A';
+      const nacimiento = `${lugarNacimiento} / ${fechaNacimiento}`;
+
       return [
         (index + 1).toString(),
-        nombre || 'N/A',
-        apellidoPaterno || 'N/A',
-        apellidoMaterno || 'N/A',
+        nombreCompleto,
         info.documentoIdentidad || 'N/A',
         info.genero || 'N/A',
         info.especialidad || 'N/A',
-        info.lugarNacimiento || 'N/A',
-        info.fechaNacimiento || 'N/A',
+        nacimiento,
         info.identidadCultural || 'N/A',
         info.telefono || 'N/A',
         info.domicilio || 'N/A'
@@ -267,49 +336,73 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
     });
 
     autoTable(pdf, {
-      head: [['#', 'Nombre', 'Apellido Paterno', 'Apellido Materno', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar de Nacimiento', 'Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
+      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
       body: estudiantesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
-      theme: 'striped',
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
       headStyles: {
-        fillColor: colors.navyBlue,
-        textColor: colors.white,
+        fillColor: colors.headerGray,
+        textColor: colors.black,
         fontStyle: 'bold',
         fontSize: 9,
         halign: 'center',
-        cellPadding: 5
+        cellPadding: 3
       },
       styles: {
-        fontSize: 8,
-        cellPadding: 4,
+        fontSize: 8.5,
+        cellPadding: 2.5,
         overflow: 'linebreak',
         valign: 'middle',
-        textColor: [45, 45, 45],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.1
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        cellWidth: 'wrap'
       },
       bodyStyles: {
         fillColor: colors.white
       },
-      alternateRowStyles: {
-        fillColor: colors.ultraLightGray
-      },
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' }
+        0: { cellWidth: 7, halign: 'center' },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 44 },
+        6: { cellWidth: 30 },
+        7: { cellWidth: 24, halign: 'center' },
+        8: { cellWidth: 40 }
+      }
+    });
+  } else {
+    autoTable(pdf, {
+      body: [['No hay actividades programadas en este periodo']],
+      startY,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fillColor: colors.white,
+        textColor: colors.black,
+        fontStyle: 'italic',
+        fontSize: 9,
+        cellPadding: 5,
+        halign: 'center',
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        overflow: 'linebreak',
+        valign: 'middle',
+        cellWidth: 'wrap'
       }
     });
   }
 
   // ============ PIE DE PÁGINA ============
-  const finalY = (pdf as any).lastAutoTable?.finalY || startY;
-  if (finalY < pageHeight - 30) {
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-    const footerText = `Total Docentes: ${docentes.length} | Total Estudiantes: ${estudiantes.length}`;
-    pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
-  }
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  const footerText = `Total Docentes: ${docentes.length} | Total Estudiantes: ${estudiantes.length}`;
+  pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir en nueva pestaña en lugar de descargar
   const pdfBlob = pdf.output('blob');
@@ -321,16 +414,11 @@ export const exportDiplomadoGeneralPDF = ({ diplomado, docentes, estudiantes }: 
  * Genera un reporte PDF de centralizador de notas del diplomado
  */
 export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
-  if (estudiantes.length === 0) return;
-
-  // Colores del proyecto (mismo esquema que PlanningPage)
   const colors = {
-    navyBlue: [70, 100, 140],
-    lightGray: [117, 117, 117],
-    ultraLightGray: [249, 249, 249],
+    black: [0, 0, 0],
     white: [255, 255, 255],
-    forestGreen: [46, 125, 50],
-    errorRed: [231, 76, 60]
+    lightGray: [245, 245, 245],
+    headerGray: [220, 220, 220]
   };
 
   const margins = {
@@ -343,7 +431,7 @@ export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }:
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'letter'
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -359,34 +447,37 @@ export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }:
     console.error('Error al cargar logo:', error);
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('CDIMA', margins.left, margins.top + 8);
   }
   
   // Título Principal (lado derecho)
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('CENTRALIZADOR DE NOTAS', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  pdf.text('Nómina Oficial de Aprobados/os', pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   
-  let metaY = margins.top + 14;
+  let metaY = margins.top + 12;
   pdf.text(`DIPLOMADO: ${diplomado.name}`, pageWidth - margins.right, metaY, { align: 'right' });
   
   metaY += 5;
   const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
   pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
+
+  metaY += 5;
+  pdf.text(`REGISTROS: ${estudiantes.length}`, pageWidth - margins.right, metaY, { align: 'right' });
   
   // Línea separadora
-  pdf.setDrawColor(220, 220, 220);
+  pdf.setDrawColor(colors.headerGray[0], colors.headerGray[1], colors.headerGray[2]);
   pdf.setLineWidth(0.3);
   pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
 
-  let startY = metaY + 14;
+  let startY = metaY + 22;
 
   // ============ TABLA DE NOTAS ============
   // Calcular datos de estudiantes con parseo de nombres
@@ -448,120 +539,111 @@ export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }:
   ]);
 
   // Agregar fila de promedios
-  tableBody.push([
-    '',
-    '',
-    'PROMEDIO GENERAL',
-    calcularPromedioModulo('modulo1').toString(),
-    calcularPromedioModulo('modulo2').toString(),
-    calcularPromedioModulo('modulo3').toString(),
-    calcularPromedioModulo('modulo4').toString(),
-    calcularPromedioModulo('modulo5').toString(),
-    calcularPromedioModulo('total').toString()
-  ]);
+  if (notasEstudiantes.length > 0) {
+    tableBody.push([
+      '',
+      '',
+      'PROMEDIO GENERAL',
+      calcularPromedioModulo('modulo1').toString(),
+      calcularPromedioModulo('modulo2').toString(),
+      calcularPromedioModulo('modulo3').toString(),
+      calcularPromedioModulo('modulo4').toString(),
+      calcularPromedioModulo('modulo5').toString(),
+      calcularPromedioModulo('total').toString()
+    ]);
 
-  autoTable(pdf, {
-    head: [['No.', 'C.I', 'Nombres', 'M1', 'M2', 'M3', 'M4', 'M5', 'PROM']],
-    body: tableBody,
-    startY: startY,
-    margin: { left: margins.left, right: margins.right },
-    theme: 'striped',
-    headStyles: {
-      fillColor: colors.navyBlue,
-      textColor: colors.white,
-      fontStyle: 'bold',
-      fontSize: 8,
-      halign: 'center',
-      cellPadding: { top: 18, right: 2, bottom: 2, left: 2 } // Más espacio arriba para texto vertical
-    },
-    styles: {
-      fontSize: 7,
-      cellPadding: 3,
-      overflow: 'linebreak',
-      valign: 'middle',
-      textColor: [45, 45, 45],
-      lineColor: [230, 230, 230],
-      lineWidth: 0.1
-    },
-    bodyStyles: {
-      fillColor: colors.white
-    },
-    alternateRowStyles: {
-      fillColor: colors.ultraLightGray
-    },
-    columnStyles: {
-      0: { cellWidth: 10, halign: 'center' }, // No.
-      1: { cellWidth: 20, halign: 'center' }, // C.I
-      2: { cellWidth: 50, halign: 'left' },   // Nombres
-      3: { cellWidth: 15, halign: 'center' }, // MODULO 1
-      4: { cellWidth: 15, halign: 'center' }, // MODULO 2
-      5: { cellWidth: 15, halign: 'center' }, // MODULO 3
-      6: { cellWidth: 15, halign: 'center' }, // MODULO 4
-      7: { cellWidth: 15, halign: 'center' }, // MODULO 5
-      8: { cellWidth: 18, halign: 'center', fontStyle: 'bold' } // PROMEDIO
-    },
-    // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
-    didDrawCell: (data: any) => {
-      // Dibujar texto vertical para las cabeceras de módulos y promedio
-      if (data.section === 'head' && data.column.index >= 3 && data.column.index <= 8) {
-        const cellX = data.cell.x;
-        const cellY = data.cell.y;
-        const cellWidth = data.cell.width;
-        const cellHeight = data.cell.height;
-        
-        // Definir el texto completo para cada columna
-        const textos: { [key: number]: string } = {
-          3: 'MODULO 1',
-          4: 'MODULO 2',
-          5: 'MODULO 3',
-          6: 'MODULO 4',
-          7: 'MODULO 5',
-          8: 'PROMEDIO'
-        };
-        
-        const texto = textos[data.column.index];
-        
-        if (texto) {
-          // Limpiar el texto por defecto (ya dibujado)
-          pdf.setFillColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-          pdf.rect(cellX, cellY, cellWidth, cellHeight, 'F');
-          
-          // Configurar estilo del texto
-          pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-          pdf.setFontSize(8);
+    autoTable(pdf, {
+      head: [['No.', 'C.I', 'Nombres', 'Módulo 1', 'Módulo 2', 'Módulo 3', 'Módulo 4', 'Módulo 5', 'Prom.']],
+      body: tableBody,
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
+      headStyles: {
+        fillColor: colors.headerGray,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        fontSize: 9,
+        halign: 'center',
+        cellPadding: 0.8,
+        overflow: 'linebreak',
+        valign: 'middle'
+      },
+      styles: {
+        fontSize: 8.5,
+        cellPadding: 0.8,
+        overflow: 'linebreak',
+        valign: 'middle',
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        cellWidth: 'wrap'
+      },
+      bodyStyles: {
+        fillColor: colors.white
+      },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 18, halign: 'center' },
+        2: { cellWidth: 66, halign: 'left' },
+        3: { cellWidth: 14, halign: 'center' },
+        4: { cellWidth: 14, halign: 'center' },
+        5: { cellWidth: 14, halign: 'center' },
+        6: { cellWidth: 14, halign: 'center' },
+        7: { cellWidth: 14, halign: 'center' },
+        8: { cellWidth: 14, halign: 'center' }
+      },
+      didParseCell: (data: any) => {
+        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 7) {
+          data.cell.styles.minCellHeight = 20;
+          data.cell.text = [''];
+        }
+      },
+      didDrawCell: (data: any) => {
+        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 7) {
+          const moduleLabel = `Módulo ${data.column.index - 2}`;
+          const textWidth = pdf.getTextWidth(moduleLabel);
+          const x = data.cell.x + data.cell.width / 2;
+          const y = data.cell.y + data.cell.height / 2 + textWidth / 2;
+
           pdf.setFont('helvetica', 'bold');
-          
-          // Calcular posición para centrar el texto vertical
-          const textX = cellX + cellWidth / 2 + 2; // Ajuste para centrar
-          const textY = cellY + cellHeight / 2 + (pdf.getStringUnitWidth(texto) * 8 / pdf.internal.scaleFactor / 2);
-          
-          // Dibujar texto rotado 90 grados (vertical)
-          pdf.text(texto, textX, textY, {
-            angle: 90,
-            align: 'center'
-          });
+          pdf.setFontSize(9);
+          pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+          pdf.text(moduleLabel, x, y, { angle: 90 } as any);
         }
       }
-    }
-  });
-
-  // ============ NOTA INFORMATIVA ============
-  const finalY = (pdf as any).lastAutoTable.finalY + 8;
-  if (finalY < pageHeight - 35) {
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-    pdf.text('Nota: Las calificaciones >= 51 se consideran aprobadas y < 51 reprobadas.', margins.left, finalY);
-    pdf.text(`Total de estudiantes: ${estudiantes.length}`, margins.left, finalY + 4);
-    pdf.text(`Aprobados: ${contarAprobados()} | Reprobados: ${estudiantes.length - contarAprobados()}`, margins.left, finalY + 8);
+    } as any);
+  } else {
+    autoTable(pdf, {
+      body: [['No hay actividades programadas en este período']],
+      startY,
+      margin: { left: margins.left, right: margins.right },
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
+      styles: {
+        fillColor: colors.white,
+        textColor: colors.black,
+        fontStyle: 'italic',
+        fontSize: 9,
+        cellPadding: 0.8,
+        halign: 'center',
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        overflow: 'linebreak',
+        valign: 'middle',
+        cellWidth: 'wrap'
+      }
+    });
   }
 
   // ============ PIE DE PÁGINA ============
   pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'italic');
-  pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-  const footerText = `Promedio General: ${calcularPromedioModulo('total')} | Aprobados: ${contarAprobados()}`;
-  pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  const footerText = notasEstudiantes.length > 0
+    ? `Promedio General: ${calcularPromedioModulo('total')} | Aprobados: ${contarAprobados()}`
+    : 'Sin registros en el período';
+  pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir en nueva pestaña en lugar de descargar
   const pdfBlob = pdf.output('blob');
