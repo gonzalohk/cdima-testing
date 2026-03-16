@@ -66,11 +66,14 @@ export interface EstudianteData {
   genero: string;
   telefono?: string;
   lugarNacimiento?: string;
+  fechaNacimiento?: string;
+  domicilio?: string;
   documentoIdentidad?: string;
   identidadCultural?: string;
   observaciones?: string;
-  // Campos específicos de docentes
+  // Campo adicional solicitado
   especialidad?: string;
+  // Campo legacy de docentes
   experiencia?: string;
 }
 
@@ -120,6 +123,8 @@ export function parseEstudianteData(notes: string | undefined | null): Estudiant
     genero: 'No especificado',
     telefono: '',
     lugarNacimiento: '',
+    fechaNacimiento: '',
+    domicilio: '',
     documentoIdentidad: '',
     identidadCultural: '',
   };
@@ -168,6 +173,8 @@ function parseLegacyFormat(notes: string, defaultData: EstudianteData): Estudian
     const generoMatch = notes.match(/Género:\s*(.+)/i);
     const telefonoMatch = notes.match(/Teléfono:\s*(.+)/i);
     const lugarMatch = notes.match(/Lugar de Nacimiento:\s*(.+)/i);
+    const fechaNacimientoMatch = notes.match(/Fecha de Nacimiento:\s*(.+)/i);
+    const domicilioMatch = notes.match(/Domicilio:\s*(.+)/i);
     const documentoMatch = notes.match(/Documento de Identidad:\s*(.+)/i);
     const identidadMatch = notes.match(/Identidad Cultural:\s*(.+)/i);
     const especialidadMatch = notes.match(/Especialidad:\s*(.+)/i);
@@ -177,6 +184,8 @@ function parseLegacyFormat(notes: string, defaultData: EstudianteData): Estudian
       genero: generoMatch?.[1]?.trim() || defaultData.genero,
       telefono: telefonoMatch?.[1]?.trim() || defaultData.telefono,
       lugarNacimiento: lugarMatch?.[1]?.trim() || defaultData.lugarNacimiento,
+      fechaNacimiento: fechaNacimientoMatch?.[1]?.trim() || defaultData.fechaNacimiento,
+      domicilio: domicilioMatch?.[1]?.trim() || defaultData.domicilio,
       documentoIdentidad: documentoMatch?.[1]?.trim() || defaultData.documentoIdentidad,
       identidadCultural: identidadMatch?.[1]?.trim() || defaultData.identidadCultural,
       especialidad: especialidadMatch?.[1]?.trim(),

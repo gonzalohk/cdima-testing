@@ -28,6 +28,9 @@ interface PersonaData {
   apellidoPaterno: string;
   apellidoMaterno: string;
   genero: string;
+  fechaNacimiento: string;
+  especialidad: string;
+  domicilio: string;
   telefono: string;
   lugarNacimiento: string;
   documentoIdentidad: string;
@@ -47,8 +50,8 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 }) => {
   const [nombreEscuela, setNombreEscuela] = useState('');
   const [tipoEscuela, setTipoEscuela] = useState('');
-  const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-  const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+  const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+  const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -79,19 +82,31 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         return { ...e, ...nombreParts };
       });
       
-      setDocentes(docentesParseados.length > 0 ? docentesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-      setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+      setDocentes(docentesParseados.length > 0 ? docentesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+      setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
     }
   }, [editMode, escuelaData]);
 
   const handleAddDocente = () => {
-    setDocentes([...docentes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+    setDocentes([...docentes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveDocente = (index: number) => {
-    if (docentes.length > 1) {
-      setDocentes(docentes.filter((_, i) => i !== index));
-    }
+    if (docentes.length <= 1) return;
+
+    const docente = docentes[index];
+    const nombre = [docente.nombre, docente.apellidoPaterno, docente.apellidoMaterno]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || `Docente ${index + 1}`;
+
+    const mensaje = docente.subtaskGid
+      ? `⚠️ Esta acción eliminará permanentemente a "${nombre}" de Asana.\n\n¿Deseas continuar?`
+      : `¿Deseas eliminar a "${nombre}" de la lista?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setDocentes(docentes.filter((_, i) => i !== index));
   };
 
   const handleDocenteChange = (index: number, field: keyof PersonaData, value: string) => {
@@ -101,13 +116,25 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   };
 
   const handleAddEstudiante = () => {
-    setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+    setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveEstudiante = (index: number) => {
-    if (estudiantes.length > 1) {
-      setEstudiantes(estudiantes.filter((_, i) => i !== index));
-    }
+    if (estudiantes.length <= 1) return;
+
+    const estudiante = estudiantes[index];
+    const nombre = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || `Estudiante ${index + 1}`;
+
+    const mensaje = estudiante.subtaskGid
+      ? `⚠️ Esta acción eliminará permanentemente a "${nombre}" de Asana.\n\n¿Deseas continuar?`
+      : `¿Deseas eliminar a "${nombre}" de la lista?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setEstudiantes(estudiantes.filter((_, i) => i !== index));
   };
 
   const handleEstudianteChange = (index: number, field: keyof PersonaData, value: string) => {
@@ -187,12 +214,17 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         const docentesOriginales = escuelaData.docentes;
         const docentesActuales = docentesValidos;
 
-        // Actualizar o crear docentes
-        for (const docente of docentesActuales) {
+        // Actualizar o crear docentes en paralelo
+        await Promise.all(docentesActuales.map(async (docente) => {
           const validationResult = validateData(DocenteDataSchema, {
             genero: docente.genero,
             telefono: docente.telefono,
-            especialidad: '',
+            lugarNacimiento: docente.lugarNacimiento,
+            fechaNacimiento: docente.fechaNacimiento,
+            domicilio: docente.domicilio,
+            documentoIdentidad: docente.documentoIdentidad,
+            identidadCultural: docente.identidadCultural,
+            especialidad: docente.especialidad,
             experiencia: ''
           });
 
@@ -203,6 +235,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
           const notasDocente = serializeEstudianteData({
             genero: docente.genero,
+            fechaNacimiento: docente.fechaNacimiento || '',
+            especialidad: docente.especialidad || '',
+            domicilio: docente.domicilio || '',
             telefono: docente.telefono || '',
             lugarNacimiento: docente.lugarNacimiento || '',
             documentoIdentidad: docente.documentoIdentidad || '',
@@ -234,26 +269,29 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
               notes: notasDocente
             });
           }
-        }
+        }));
 
-        // Eliminar docentes que ya no están
+        // Eliminar docentes que ya no están en paralelo
         const gidasActuales = new Set(docentesActuales.map(d => d.subtaskGid).filter(Boolean));
-        for (const original of docentesOriginales) {
+        await Promise.all(docentesOriginales.map(async (original) => {
           if (original.subtaskGid && !gidasActuales.has(original.subtaskGid)) {
             await asanaService.deleteTask(original.subtaskGid);
           }
-        }
+        }));
 
         // 4. Actualizar estudiantes
         const estudiantesOriginales = escuelaData.estudiantes;
         const estudiantesActuales = estudiantesValidos;
 
-        // Actualizar o crear estudiantes
-        for (const estudiante of estudiantesActuales) {
+        // Actualizar o crear estudiantes en paralelo
+        await Promise.all(estudiantesActuales.map(async (estudiante) => {
           const validationResult = validateData(EstudianteDataSchema, {
             genero: estudiante.genero,
             telefono: estudiante.telefono,
             lugarNacimiento: estudiante.lugarNacimiento,
+            fechaNacimiento: estudiante.fechaNacimiento,
+            domicilio: estudiante.domicilio,
+            especialidad: estudiante.especialidad,
             documentoIdentidad: estudiante.documentoIdentidad,
             identidadCultural: estudiante.identidadCultural
           });
@@ -265,6 +303,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
           const notasEstudiante = serializeEstudianteData({
             genero: estudiante.genero,
+            fechaNacimiento: estudiante.fechaNacimiento || '',
+            especialidad: estudiante.especialidad || '',
+            domicilio: estudiante.domicilio || '',
             telefono: estudiante.telefono || '',
             lugarNacimiento: estudiante.lugarNacimiento || '',
             documentoIdentidad: estudiante.documentoIdentidad || '',
@@ -296,15 +337,15 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
               notes: notasEstudiante
             });
           }
-        }
+        }));
 
-        // Eliminar estudiantes que ya no están
+        // Eliminar estudiantes que ya no están en paralelo
         const gidasActualesEstudiantes = new Set(estudiantesActuales.map(e => e.subtaskGid).filter(Boolean));
-        for (const original of estudiantesOriginales) {
+        await Promise.all(estudiantesOriginales.map(async (original) => {
           if (original.subtaskGid && !gidasActualesEstudiantes.has(original.subtaskGid)) {
             await asanaService.deleteTask(original.subtaskGid);
           }
-        }
+        }));
 
         setNotification({
           message: '¡Escuela actualizada exitosamente!',
@@ -342,13 +383,18 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           notes: 'Documentos relacionados a la escuela'
         });
 
-        // 3. Crear subtareas de docentes
-        for (const docente of docentesValidos) {
+        // 3. Crear subtareas de docentes en paralelo
+        await Promise.all(docentesValidos.map(async (docente) => {
           // Validar datos del docente
           const validationResult = validateData(DocenteDataSchema, {
             genero: docente.genero,
             telefono: docente.telefono,
-            especialidad: '',
+            lugarNacimiento: docente.lugarNacimiento,
+            fechaNacimiento: docente.fechaNacimiento,
+            domicilio: docente.domicilio,
+            documentoIdentidad: docente.documentoIdentidad,
+            identidadCultural: docente.identidadCultural,
+            especialidad: docente.especialidad,
             experiencia: ''
           });
 
@@ -360,6 +406,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           // Usar el nuevo formato JSON estructurado
           const notasDocente = serializeEstudianteData({
             genero: docente.genero,
+            fechaNacimiento: docente.fechaNacimiento || '',
+            especialidad: docente.especialidad || '',
+            domicilio: docente.domicilio || '',
             telefono: docente.telefono || '',
             lugarNacimiento: docente.lugarNacimiento || '',
             documentoIdentidad: docente.documentoIdentidad || '',
@@ -371,15 +420,18 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             name: nombreCompleto,
             notes: notasDocente
           });
-        }
+        }));
 
-        // 4. Crear subtareas de estudiantes
-        for (const estudiante of estudiantesValidos) {
+        // 4. Crear subtareas de estudiantes en paralelo
+        await Promise.all(estudiantesValidos.map(async (estudiante) => {
           // Validar datos del estudiante
           const validationResult = validateData(EstudianteDataSchema, {
             genero: estudiante.genero,
             telefono: estudiante.telefono,
             lugarNacimiento: estudiante.lugarNacimiento,
+            fechaNacimiento: estudiante.fechaNacimiento,
+            domicilio: estudiante.domicilio,
+            especialidad: estudiante.especialidad,
             documentoIdentidad: estudiante.documentoIdentidad,
             identidadCultural: estudiante.identidadCultural
           });
@@ -392,6 +444,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           // Usar el nuevo formato JSON estructurado
           const notasEstudiante = serializeEstudianteData({
             genero: estudiante.genero,
+            fechaNacimiento: estudiante.fechaNacimiento || '',
+            especialidad: estudiante.especialidad || '',
+            domicilio: estudiante.domicilio || '',
             telefono: estudiante.telefono || '',
             lugarNacimiento: estudiante.lugarNacimiento || '',
             documentoIdentidad: estudiante.documentoIdentidad || '',
@@ -403,7 +458,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             name: nombreCompleto,
             notes: notasEstudiante
           });
-        }
+        }));
 
         // 5. Crear subtareas de documentos
         const documentosTipo = ['Currícula', 'Informe', 'Otros'];
@@ -562,6 +617,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                       
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.documentoIdentidad}
+                          onChange={(e) => handleDocenteChange(index, 'documentoIdentidad', e.target.value)}
+                          placeholder="CI, DNI, Pasaporte"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Género <span style={{ color: 'red' }}>*</span>
                         </label>
                         <select
@@ -576,20 +645,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           <option value="Otro">Otro</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Teléfono
+                          Especialidad
                         </label>
                         <input
-                          type="tel"
-                          value={docente.telefono}
-                          onChange={(e) => handleDocenteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
+                          type="text"
+                          value={docente.especialidad}
+                          onChange={(e) => handleDocenteChange(index, 'especialidad', e.target.value)}
+                          placeholder="Área de especialidad"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Lugar de Nacimiento
@@ -602,22 +671,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
+                          Fecha de Nacimiento
                         </label>
                         <input
-                          type="text"
-                          value={docente.documentoIdentidad}
-                          onChange={(e) => handleDocenteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
+                          type="date"
+                          value={docente.fechaNacimiento}
+                          onChange={(e) => handleDocenteChange(index, 'fechaNacimiento', e.target.value)}
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
                         />
                       </div>
-                      
-                      <div style={{ gridColumn: '1 / -1' }}>
+
+                      <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Identidad Cultural
                         </label>
@@ -629,6 +696,33 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Teléfono
+                        </label>
+                        <input
+                          type="tel"
+                          value={docente.telefono}
+                          onChange={(e) => handleDocenteChange(index, 'telefono', e.target.value)}
+                          placeholder="Número de teléfono"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Domicilio
+                        </label>
+                        <input
+                          type="text"
+                          value={docente.domicilio}
+                          onChange={(e) => handleDocenteChange(index, 'domicilio', e.target.value)}
+                          placeholder="Dirección de domicilio"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
                     </div>
                   </div>
                 ))}
@@ -715,6 +809,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                       
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.documentoIdentidad}
+                          onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
+                          placeholder="CI, DNI, Pasaporte"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Género <span style={{ color: 'red' }}>*</span>
                         </label>
                         <select
@@ -729,20 +837,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           <option value="Otro">Otro</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Teléfono
+                          Especialidad
                         </label>
                         <input
-                          type="tel"
-                          value={estudiante.telefono}
-                          onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
+                          type="text"
+                          value={estudiante.especialidad}
+                          onChange={(e) => handleEstudianteChange(index, 'especialidad', e.target.value)}
+                          placeholder="Área de especialidad"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Lugar de Nacimiento
@@ -755,22 +863,20 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
+                          Fecha de Nacimiento
                         </label>
                         <input
-                          type="text"
-                          value={estudiante.documentoIdentidad}
-                          onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
+                          type="date"
+                          value={estudiante.fechaNacimiento}
+                          onChange={(e) => handleEstudianteChange(index, 'fechaNacimiento', e.target.value)}
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
                         />
                       </div>
-                      
-                      <div style={{ gridColumn: '1 / -1' }}>
+
+                      <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                           Identidad Cultural
                         </label>
@@ -782,6 +888,33 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Teléfono
+                        </label>
+                        <input
+                          type="tel"
+                          value={estudiante.telefono}
+                          onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
+                          placeholder="Número de teléfono"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          Domicilio
+                        </label>
+                        <input
+                          type="text"
+                          value={estudiante.domicilio}
+                          onChange={(e) => handleEstudianteChange(index, 'domicilio', e.target.value)}
+                          placeholder="Dirección de domicilio"
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                      
                     </div>
                   </div>
                 ))}

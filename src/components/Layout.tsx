@@ -1,8 +1,74 @@
-import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { asanaService } from '../services/asana.service';
+import { AsanaSection } from '../types/asana.types';
 
 const Layout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
+  const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
+  const [showEscuelasSubmenu, setShowEscuelasSubmenu] = useState(false);
+  const [showDiplomadosSubmenu, setShowDiplomadosSubmenu] = useState(false);
+
+  useEffect(() => {
+    loadMenuData();
+  }, []);
+
+  const loadMenuData = async () => {
+    try {
+      const token = asanaService.getToken();
+      if (!token) return;
+
+      const workspaces = await asanaService.getWorkspaces();
+      const cdima = workspaces.find(ws => ws.name === 'CDIMA');
+      if (!cdima) return;
+
+      const projects = await asanaService.getProjects(cdima.gid);
+      
+      // Cargar Escuelas
+      const escuelasProject = projects.find(p => 
+        p.name.toLowerCase().includes('escuela')
+      );
+      if (escuelasProject) {
+        const escuelasSections = await asanaService.getSections(escuelasProject.gid);
+        setEscuelas(escuelasSections);
+      }
+
+      // Cargar Diplomados
+      const diplomadosProject = projects.find(p => 
+        p.name.toLowerCase().includes('diplomado')
+      );
+      if (diplomadosProject) {
+        const diplomadosSections = await asanaService.getSections(diplomadosProject.gid);
+        setDiplomados(diplomadosSections);
+      }
+    } catch (error) {
+      console.error('Error loading menu data:', error);
+    }
+  };
+
+  const handleEscuelaClick = (escuela: AsanaSection) => {
+    navigate('/escuelas', { state: { selectedEscuela: escuela } });
+    setShowEscuelasSubmenu(false);
+  };
+
+  const handleDiplomadoClick = (diplomado: AsanaSection) => {
+    navigate('/diplomados', { state: { selectedDiplomado: diplomado } });
+    setShowDiplomadosSubmenu(false);
+  };
+
+  const toggleEscuelasSubmenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowEscuelasSubmenu(!showEscuelasSubmenu);
+    setShowDiplomadosSubmenu(false);
+  };
+
+  const toggleDiplomadosSubmenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowDiplomadosSubmenu(!showDiplomadosSubmenu);
+    setShowEscuelasSubmenu(false);
+  };
 
   return (
     <div className="app-container">
@@ -49,22 +115,85 @@ const Layout: React.FC = () => {
               📅 Planificación
             </Link>
           </li>
-          <li>
-            <Link 
-              to="/diplomados" 
+          
+          {/* Escuela de Formación con submenú */}
+          <li 
+            className="nav-item-submenu"
+            onMouseLeave={() => setShowEscuelasSubmenu(false)}
+          >
+            <a 
+              href="#"
+              className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
+              onClick={toggleEscuelasSubmenu}
+              onMouseEnter={() => setShowEscuelasSubmenu(true)}
+            >
+              🏫 Escuela de Formación
+              <span className="submenu-arrow">▼</span>
+            </a>
+            {showEscuelasSubmenu && escuelas.length > 0 && (
+              <ul className="submenu" onMouseEnter={() => setShowEscuelasSubmenu(true)}>
+                <li>
+                  <Link 
+                    to="/escuelas"
+                    className="submenu-link"
+                    onClick={() => setShowEscuelasSubmenu(false)}
+                  >
+                    Ver todas
+                  </Link>
+                </li>
+                {escuelas.map(escuela => (
+                  <li key={escuela.gid}>
+                    <button
+                      className="submenu-link"
+                      onClick={() => handleEscuelaClick(escuela)}
+                    >
+                      {escuela.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+
+          {/* Diplomados con submenú */}
+          <li 
+            className="nav-item-submenu"
+            onMouseLeave={() => setShowDiplomadosSubmenu(false)}
+          >
+            <a 
+              href="#"
               className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
+              onClick={toggleDiplomadosSubmenu}
+              onMouseEnter={() => setShowDiplomadosSubmenu(true)}
             >
               🎓 Diplomados
-            </Link>
+              <span className="submenu-arrow">▼</span>
+            </a>
+            {showDiplomadosSubmenu && diplomados.length > 0 && (
+              <ul className="submenu" onMouseEnter={() => setShowDiplomadosSubmenu(true)}>
+                <li>
+                  <Link 
+                    to="/diplomados"
+                    className="submenu-link"
+                    onClick={() => setShowDiplomadosSubmenu(false)}
+                  >
+                    Ver todos
+                  </Link>
+                </li>
+                {diplomados.map(diplomado => (
+                  <li key={diplomado.gid}>
+                    <button
+                      className="submenu-link"
+                      onClick={() => handleDiplomadoClick(diplomado)}
+                    >
+                      {diplomado.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
-          <li>
-            <Link 
-              to="/escuelas" 
-              className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
-            >
-              🏫 Escuelas
-            </Link>
-          </li>
+
           <li>
             <Link 
               to="/configuracion" 

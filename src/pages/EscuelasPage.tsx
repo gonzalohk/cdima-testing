@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -27,6 +27,9 @@ interface InfoPrimaria {
   genero: string;
   telefono: string;
   lugarNacimiento: string;
+  fechaNacimiento: string;
+  domicilio: string;
+  especialidad: string;
   documentoIdentidad: string;
   identidadCultural: string;
   tipo: 'Docente' | 'Estudiante';
@@ -47,6 +50,7 @@ interface NotaEstudiante {
 
 const EscuelasPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -83,6 +87,9 @@ const EscuelasPage: React.FC = () => {
   const [docentes, setDocentes] = useState<AsanaTask[]>([]);
   const [estudiantes, setEstudiantes] = useState<AsanaTask[]>([]);
   const [documentos, setDocumentos] = useState<AsanaTask[]>([]);
+  
+  // Estado para controlar si se muestran todas las escuelas
+  const [showAllEscuelas, setShowAllEscuelas] = useState(false);
 
   useEffect(() => {
     const token = asanaService.getToken();
@@ -92,6 +99,18 @@ const EscuelasPage: React.FC = () => {
     }
     loadEscuelas();
   }, [navigate]);
+
+  // Efecto para manejar escuela seleccionada desde el menú
+  useEffect(() => {
+    if (location.state?.selectedEscuela && escuelas.length > 0) {
+      const escuela = escuelas.find(e => e.gid === location.state.selectedEscuela.gid);
+      if (escuela) {
+        handleViewDetails(escuela);
+        // Limpiar el estado de navegación
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [location.state, escuelas]);
 
   const loadEscuelas = async () => {
     setLoading(true);
@@ -165,6 +184,9 @@ const EscuelasPage: React.FC = () => {
         return {
           nombre: subtask.name,
           genero: data.genero,
+          fechaNacimiento: data.fechaNacimiento || '',
+          especialidad: data.especialidad || '',
+          domicilio: data.domicilio || '',
           telefono: data.telefono || '',
           lugarNacimiento: data.lugarNacimiento || '',
           documentoIdentidad: data.documentoIdentidad || '',
@@ -179,6 +201,9 @@ const EscuelasPage: React.FC = () => {
         return {
           nombre: subtask.name,
           genero: data.genero,
+          fechaNacimiento: data.fechaNacimiento || '',
+          especialidad: data.especialidad || '',
+          domicilio: data.domicilio || '',
           telefono: data.telefono || '',
           lugarNacimiento: data.lugarNacimiento || '',
           documentoIdentidad: data.documentoIdentidad || '',
@@ -759,19 +784,6 @@ const EscuelasPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
-            className="button-secondary"
-            onClick={handleEditEscuela}
-            disabled={!selectedEscuela}
-            style={{ 
-              fontSize: '1rem', 
-              padding: '0.75rem 1.5rem',
-              opacity: !selectedEscuela ? 0.5 : 1,
-              cursor: !selectedEscuela ? 'not-allowed' : 'pointer'
-            }}
-          >
-            ✏️ Editar Escuela
-          </button>
-          <button
             className="button-primary"
             onClick={() => {
               setEditMode(false);
@@ -792,33 +804,36 @@ const EscuelasPage: React.FC = () => {
       )}
 
       {/* Lista de Escuelas */}
-      <div className="card">
-          {escuelas.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                No hay escuelas registradas
-              </p>
-              <p style={{ fontSize: '0.9rem' }}>
-                Haga clic en "Crear Escuela" para agregar una nueva
-              </p>
-            </div>
-          ) : (
-            <div className="table-container">
+      {showAllEscuelas && (
+        <div className="card">
+            {escuelas.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+                  No hay escuelas registradas
+                </p>
+                <p style={{ fontSize: '0.9rem' }}>
+                  Haga clic en "Crear Escuela" para agregar una nueva
+                </p>
+              </div>
+            ) : (
+              <div className="table-container">
               <table>
                 <thead>
                   <tr>
+                    <th style={{ width: '50px', textAlign: 'center' }}>#</th>
                     <th style={{ minWidth: '250px' }}>Nombre de la Escuela</th>
                     <th style={{ minWidth: '180px', textAlign: 'center' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {escuelas.map((escuela) => (
+                  {escuelas.map((escuela, index) => (
                     <tr 
                       key={escuela.gid}
                       style={{
                         backgroundColor: selectedEscuela?.gid === escuela.gid ? '#e3f2fd' : undefined
                       }}
                     >
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '1.2rem' }}>🏫</span>
@@ -854,8 +869,29 @@ const EscuelasPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          )}
-      </div>
+            )}
+        </div>
+      )}
+      
+      {/* Mensaje cuando no se muestran todas las escuelas */}
+      {!showAllEscuelas && !selectedEscuela && (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏫</div>
+            <h2 style={{ marginBottom: '0.5rem', color: '#555' }}>Selecciona una escuela</h2>
+            <p style={{ color: '#777', fontSize: '1rem' }}>
+              Usa el menú superior para seleccionar una escuela específica
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAllEscuelas(true)}
+            className="button-primary"
+            style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}
+          >
+            📋 Ver Todas las Escuelas
+          </button>
+        </div>
+      )}
 
       {/* Detalles de la Escuela Seleccionada */}
       {selectedEscuela && (
@@ -899,7 +935,7 @@ const EscuelasPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {/* Botones Ver Listado y Asistencia */}
+                  {/* Botones de acciones de la escuela */}
                   {(estudiantes.length > 0 || docentes.length > 0) && (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
                       {estudiantes.length > 0 && (
@@ -945,25 +981,47 @@ const EscuelasPage: React.FC = () => {
                       >
                         📄 Ver Listado
                       </button>
+                      <button
+                        onClick={handleEditEscuela}
+                        title="Configurar escuela"
+                        aria-label="Configurar escuela"
+                        style={{
+                          fontSize: '1.05rem',
+                          padding: '0.25rem 0.4rem',
+                          minWidth: '30px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          opacity: 0.85
+                        }}
+                      >
+                        ⚙️
+                      </button>
                     </div>
                   )}
 
                   {/* Docentes */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '0.5rem' }}>👨‍🏫 Docentes ({docentes.length})</h3>
+                    <h3 style={{ marginBottom: '0.5rem', color: '#333' }}>👨‍🏫 Docentes ({docentes.length})</h3>
                     {docentes.length === 0 ? (
                       <p style={{ color: '#999' }}>No hay docentes registrados</p>
                     ) : (
                       <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '50px' }}>#</th>
                             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
                             <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {docentes.map((docente) => (
+                          {docentes.map((docente, index) => (
                             <tr key={docente.gid}>
+                              <td style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
                               <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(docente.name)}</td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
@@ -983,13 +1041,14 @@ const EscuelasPage: React.FC = () => {
 
                   {/* Estudiantes */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '0.5rem' }}>👨‍🎓 Estudiantes ({estudiantes.length})</h3>
+                    <h3 style={{ marginBottom: '0.5rem', color: '#333' }}>👨‍🎓 Estudiantes ({estudiantes.length})</h3>
                     {estudiantes.length === 0 ? (
                       <p style={{ color: '#999' }}>No hay estudiantes registrados</p>
                     ) : (
                       <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
+                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '50px' }}>#</th>
                             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
                             <th style={{ textAlign: 'center', padding: '0.5rem', width: '100px' }}>Notas</th>
                             <th style={{ textAlign: 'center', padding: '0.5rem', width: '110px' }}>Asistencia</th>
@@ -997,8 +1056,9 @@ const EscuelasPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {estudiantes.map((estudiante) => (
+                          {estudiantes.map((estudiante, index) => (
                             <tr key={estudiante.gid}>
+                              <td style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
                               <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(estudiante.name)}</td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
@@ -1036,7 +1096,7 @@ const EscuelasPage: React.FC = () => {
 
                   {/* Documentos */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '1rem' }}>📄 Documentos ({documentos.length})</h3>
+                    <h3 style={{ marginBottom: '1rem', color: '#333' }}>📄 Documentos ({documentos.length})</h3>
                     {documentos.length === 0 ? (
                       <p style={{ color: '#999' }}>No hay documentos registrados</p>
                     ) : (
@@ -1170,6 +1230,15 @@ const EscuelasPage: React.FC = () => {
                   <tr style={{ backgroundColor: '#e3f2fd', color: '#1565c0' }}>
                     <th style={{ 
                       padding: '1rem', 
+                      textAlign: 'center', 
+                      borderRight: '1px solid #bbdefb',
+                      width: '50px',
+                      fontWeight: 600
+                    }}>
+                      #
+                    </th>
+                    <th style={{ 
+                      padding: '1rem', 
                       textAlign: 'left', 
                       borderRight: '1px solid #bbdefb',
                       minWidth: '200px',
@@ -1258,6 +1327,15 @@ const EscuelasPage: React.FC = () => {
                               borderBottom: '1px solid #dee2e6'
                             }}
                           >
+                            <td style={{ 
+                              padding: '0.875rem 1rem',
+                              fontWeight: 'bold',
+                              color: '#666',
+                              textAlign: 'center',
+                              borderRight: '1px solid #dee2e6'
+                            }}>
+                              {index + 1}
+                            </td>
                             <td style={{ 
                               padding: '0.875rem 1rem', 
                               fontWeight: 500,
@@ -1350,6 +1428,12 @@ const EscuelasPage: React.FC = () => {
                           fontWeight: 700,
                           borderTop: '3px solid #90caf9'
                         }}>
+                          <td style={{ 
+                            padding: '1rem', 
+                            textAlign: 'center',
+                            borderRight: '1px solid #64b5f6'
+                          }}>
+                          </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'left',
@@ -1469,6 +1553,15 @@ const EscuelasPage: React.FC = () => {
                       <tr style={{ backgroundColor: '#e8f5e9', color: '#2e7d32' }}>
                         <th style={{ 
                           padding: '1rem', 
+                          textAlign: 'center', 
+                          borderRight: '1px solid #c8e6c9',
+                          width: '50px',
+                          fontWeight: 600
+                        }}>
+                          #
+                        </th>
+                        <th style={{ 
+                          padding: '1rem', 
                           textAlign: 'left', 
                           borderRight: '1px solid #c8e6c9',
                           minWidth: '200px',
@@ -1505,6 +1598,15 @@ const EscuelasPage: React.FC = () => {
                             borderBottom: '1px solid #dee2e6'
                           }}
                         >
+                          <td style={{ 
+                            padding: '0.875rem 1rem',
+                            fontWeight: 'bold',
+                            color: '#666',
+                            textAlign: 'center',
+                            borderRight: '1px solid #dee2e6'
+                          }}>
+                            {estudianteIndex + 1}
+                          </td>
                           <td style={{ 
                             padding: '0.875rem 1rem', 
                             fontWeight: 500,
@@ -1936,6 +2038,9 @@ const EscuelasPage: React.FC = () => {
           genero={selectedInfo.genero}
           telefono={selectedInfo.telefono}
           lugarNacimiento={selectedInfo.lugarNacimiento}
+          fechaNacimiento={selectedInfo.fechaNacimiento}
+          domicilio={selectedInfo.domicilio}
+          especialidad={selectedInfo.especialidad}
           documentoIdentidad={selectedInfo.documentoIdentidad}
           identidadCultural={selectedInfo.identidadCultural}
           tipo={selectedInfo.tipo}
@@ -2024,14 +2129,15 @@ const EscuelasPage: React.FC = () => {
                 <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#e8f5e9' }}>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '65%', color: '#2e7d32' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '35%', color: '#2e7d32' }}>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '50px', color: '#2e7d32' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '60%', color: '#2e7d32' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: 'calc(40% - 50px)', color: '#2e7d32' }}>
                         Nota para {moduloSeleccionado} (0-100)
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {notasEstudiantes.map((nota) => {
+                    {notasEstudiantes.map((nota, index) => {
                       const tieneError = notasConError.has(nota.gid);
                       return (
                         <tr 
@@ -2041,6 +2147,14 @@ const EscuelasPage: React.FC = () => {
                             backgroundColor: tieneError ? '#ffebee' : 'transparent'
                           }}
                         >
+                          <td style={{ 
+                            padding: '0.75rem',
+                            fontWeight: 'bold',
+                            color: '#666',
+                            textAlign: 'center'
+                          }}>
+                            {index + 1}
+                          </td>
                           <td style={{ 
                             padding: '0.75rem', 
                             fontWeight: 500,
@@ -2253,13 +2367,14 @@ const EscuelasPage: React.FC = () => {
                 <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '35%', minWidth: '180px' }}>Estudiante</th>
+                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '50px' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '30%', minWidth: '180px' }}>Estudiante</th>
                       <th style={{ textAlign: 'center', padding: '0.75rem', width: '15%', minWidth: '100px' }}>Asistió</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '50%', minWidth: '200px' }}>Observaciones</th>
+                      <th style={{ textAlign: 'left', padding: '0.75rem', width: 'calc(55% - 50px)', minWidth: '200px' }}>Observaciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {asistencias.map((asistencia) => {
+                    {asistencias.map((asistencia, index) => {
                       const tieneError = asistenciasConError.has(asistencia.gid);
                       return (
                         <tr 
@@ -2268,6 +2383,14 @@ const EscuelasPage: React.FC = () => {
                             backgroundColor: tieneError ? '#ffebee' : 'transparent'
                           }}
                         >
+                          <td style={{ 
+                            padding: '0.75rem',
+                            fontWeight: 'bold',
+                            color: '#666',
+                            textAlign: 'center'
+                          }}>
+                            {index + 1}
+                          </td>
                           <td style={{ 
                             padding: '0.75rem',
                             borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',

@@ -18,6 +18,9 @@ interface InfoPrimaria {
   genero: string;
   telefono: string;
   lugarNacimiento: string;
+  fechaNacimiento: string;
+  domicilio: string;
+  especialidad: string;
   documentoIdentidad: string;
   identidadCultural: string;
 }
@@ -67,6 +70,9 @@ export const parseInfoPrimariaLegacy = (task: AsanaTask): InfoPrimaria => {
     genero: data.genero,
     telefono: data.telefono || '',
     lugarNacimiento: data.lugarNacimiento || '',
+    fechaNacimiento: data.fechaNacimiento || '',
+    domicilio: data.domicilio || '',
+    especialidad: data.especialidad || '',
     documentoIdentidad: data.documentoIdentidad || '',
     identidadCultural: data.identidadCultural || ''
   };
@@ -154,7 +160,7 @@ export const exportEscuelaGeneralPDF = ({
     
     startY += 8;
 
-    const docentesData = docentes.map(docente => {
+    const docentesData = docentes.map((docente, index) => {
       const info = parseInfoPrimariaLegacy(docente);
       
       // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
@@ -162,20 +168,25 @@ export const exportEscuelaGeneralPDF = ({
       const nombre = partes[0] || '';
       const apellidoPaterno = partes[1] || '';
       const apellidoMaterno = partes[2] || '';
-      const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
       
       return [
-        nombreFormateado,
-        info.genero || 'N/A',
-        info.telefono || 'N/A',
-        info.lugarNacimiento || 'N/A',
+        (index + 1).toString(),
+        nombre || 'N/A',
+        apellidoPaterno || 'N/A',
+        apellidoMaterno || 'N/A',
         info.documentoIdentidad || 'N/A',
-        info.identidadCultural || 'N/A'
+        info.genero || 'N/A',
+        info.especialidad || 'N/A',
+        info.lugarNacimiento || 'N/A',
+        info.fechaNacimiento || 'N/A',
+        info.identidadCultural || 'N/A',
+        info.telefono || 'N/A',
+        info.domicilio || 'N/A'
       ];
     });
 
     autoTable(pdf, {
-      head: [['Nombre', 'Genero', 'Telefono', 'Lugar de Nacimiento', 'Doc. Identidad', 'Identidad Cultural']],
+      head: [['#', 'Nombre', 'Apellido Paterno', 'Apellido Materno', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar de Nacimiento', 'Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
       body: docentesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -204,12 +215,7 @@ export const exportEscuelaGeneralPDF = ({
         fillColor: colors.ultraLightGray
       },
       columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 20, halign: 'center' },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 25, halign: 'center' },
-        5: { cellWidth: 30 }
+        0: { cellWidth: 8, halign: 'center' }
       }
     });
 
@@ -231,7 +237,7 @@ export const exportEscuelaGeneralPDF = ({
     
     startY += 8;
 
-    const estudiantesData = estudiantes.map(estudiante => {
+    const estudiantesData = estudiantes.map((estudiante, index) => {
       const info = parseInfoPrimariaLegacy(estudiante);
       
       // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
@@ -239,20 +245,25 @@ export const exportEscuelaGeneralPDF = ({
       const nombre = partes[0] || '';
       const apellidoPaterno = partes[1] || '';
       const apellidoMaterno = partes[2] || '';
-      const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
       
       return [
-        nombreFormateado,
-        info.genero || 'N/A',
-        info.telefono || 'N/A',
-        info.lugarNacimiento || 'N/A',
+        (index + 1).toString(),
+        nombre || 'N/A',
+        apellidoPaterno || 'N/A',
+        apellidoMaterno || 'N/A',
         info.documentoIdentidad || 'N/A',
-        info.identidadCultural || 'N/A'
+        info.genero || 'N/A',
+        info.especialidad || 'N/A',
+        info.lugarNacimiento || 'N/A',
+        info.fechaNacimiento || 'N/A',
+        info.identidadCultural || 'N/A',
+        info.telefono || 'N/A',
+        info.domicilio || 'N/A'
       ];
     });
 
     autoTable(pdf, {
-      head: [['Nombre', 'Genero', 'Telefono', 'Lugar de Nacimiento', 'Doc. Identidad', 'Identidad Cultural']],
+      head: [['#', 'Nombre', 'Apellido Paterno', 'Apellido Materno', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar de Nacimiento', 'Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
       body: estudiantesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -281,12 +292,7 @@ export const exportEscuelaGeneralPDF = ({
         fillColor: colors.ultraLightGray
       },
       columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 20, halign: 'center' },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 25, halign: 'center' },
-        5: { cellWidth: 30 }
+        0: { cellWidth: 8, halign: 'center' }
       }
     });
   }
@@ -665,7 +671,12 @@ export const exportEscuelaEstudiantePDF = ({
     ['Nombre Completo:', nombreFormateado],
     ['Carnet de Identidad:', ci],
     ['Género:', data.genero || 'N/A'],
-    ['Teléfono:', data.telefono || 'N/A']
+    ['Especialidad:', data.especialidad || 'N/A'],
+    ['Lugar de Nacimiento:', data.lugarNacimiento || 'N/A'],
+    ['Fecha de Nacimiento:', data.fechaNacimiento || 'N/A'],
+    ['Identidad Cultural:', data.identidadCultural || 'N/A'],
+    ['Teléfono:', data.telefono || 'N/A'],
+    ['Domicilio:', data.domicilio || 'N/A']
   ];
 
   autoTable(pdf, {

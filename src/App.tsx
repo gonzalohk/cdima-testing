@@ -20,8 +20,8 @@ function App() {
             <Route path="report" element={<ReportPage />} />
             <Route path="biblioteca" element={<ResourceLibraryPage />} />
             <Route path="planificacion" element={<PlanningPage />} />
-            <Route path="diplomados" element={<DiplomadosPage />} />
             <Route path="escuelas" element={<EscuelasPage />} />
+            <Route path="diplomados" element={<DiplomadosPage />} />
             <Route path="configuracion" element={<ConfiguracionPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
