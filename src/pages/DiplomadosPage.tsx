@@ -5,7 +5,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
-import { exportDiplomadoGeneralPDF, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
+import { exportDiplomadoGeneralPDF, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
@@ -780,6 +780,19 @@ const DiplomadosPage: React.FC = () => {
     }
   };
 
+  const handleExportCentralizadorNotasWord = async () => {
+    if (!selectedDiplomado || estudiantes.length === 0) return;
+    try {
+      await exportDiplomadoCentralizadorNotasWord({
+        diplomado: selectedDiplomado,
+        estudiantes
+      });
+    } catch (error) {
+      console.error('Error al exportar documento WORD:', error);
+      alert('Error al generar el documento WORD. Por favor, intenta de nuevo.');
+    }
+  };
+
   const handleExportEstudianteReport = async (estudiante: AsanaTask) => {
     try {
       await exportDiplomadoEstudiantePDF({
@@ -1231,19 +1244,34 @@ const DiplomadosPage: React.FC = () => {
                 {selectedDiplomado.name}
               </p>
             </div>
-            <button
-              onClick={handleExportCentralizadorNotas}
-              className="button-secondary"
-              style={{ 
-                fontSize: '0.9rem', 
-                padding: '0.75rem 1.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              📄 Exportar Notas
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={handleExportCentralizadorNotas}
+                className="button-secondary"
+                style={{ 
+                  fontSize: '0.9rem', 
+                  padding: '0.75rem 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                📄 Exportar Notas
+              </button>
+              <button
+                onClick={handleExportCentralizadorNotasWord}
+                className="button-secondary"
+                style={{ 
+                  fontSize: '0.9rem', 
+                  padding: '0.75rem 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                📄 Exportar Notas a Documento
+              </button>
+            </div>
           </div>
 
           <div style={{ padding: '1.5rem' }}>

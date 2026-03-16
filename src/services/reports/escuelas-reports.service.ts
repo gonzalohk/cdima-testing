@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoInicial from '../../assets/logoinicial.png';
+import logoCdima from '../../assets/logocdima.png';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../../constants/asana-fields';
@@ -657,6 +658,177 @@ export const exportEscuelaCentralizadorNotasPDF = ({
   const pdfBlob = pdf.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');
+};
+
+/**
+ * Genera un reporte WORD de centralizador de notas de una escuela
+ * sin cabecera, mostrando solo el título y la tabla.
+ */
+export const exportEscuelaCentralizadorNotasWord = ({
+  escuela,
+  estudiantes
+}: ExportEscuelaCentralizadorNotasParams): void => {
+  const escapeHtml = (value: string): string =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const notasEstudiantes = estudiantes.map(estudiante => {
+    const partes = estudiante.name.split(',').map(p => p.trim());
+    const nombre = partes[0] || '';
+    const apellidoPaterno = partes[1] || '';
+    const apellidoMaterno = partes[2] || '';
+    const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
+
+    const data = parseEstudianteData(estudiante.notes);
+    const ci = data.documentoIdentidad || 'N/A';
+
+    const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
+    const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
+    const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
+    const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
+    const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
+    const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+    const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+    const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
+
+    return {
+      nombreFormateado,
+      ci,
+      modulos: [modulo1, modulo2, modulo3, modulo4, modulo5, modulo6, modulo7],
+      total
+    };
+  });
+
+  const calcularPromedioModulo = (index: number): string => {
+    if (notasEstudiantes.length === 0) return '0.0';
+    const suma = notasEstudiantes.reduce((acc, est) => acc + est.modulos[index], 0);
+    return (suma / notasEstudiantes.length).toFixed(1);
+  };
+
+  const promedioGeneral = (): string => {
+    if (notasEstudiantes.length === 0) return '0.0';
+    const suma = notasEstudiantes.reduce((acc, est) => acc + est.total, 0);
+    return (suma / notasEstudiantes.length).toFixed(1);
+  };
+
+  const modulosHeaders = Array.from({ length: 7 }, (_, i) => `
+    <th>MODULO ${i + 1}</th>
+  `).join('');
+
+  const filas = notasEstudiantes.map((est, index) => {
+    const notas = est.modulos.map(mod => `<td class="num-cell">${mod}</td>`).join('');
+    return `
+      <tr>
+        <td class="num-cell">${index + 1}</td>
+        <td>${escapeHtml(est.ci)}</td>
+        <td class="name-cell">${escapeHtml(est.nombreFormateado)}</td>
+        ${notas}
+        <td class="num-cell">${est.total.toFixed(1)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const filaPromedio = notasEstudiantes.length > 0
+    ? `
+      <tr class="avg-row">
+        <td></td>
+        <td></td>
+        <td class="name-cell">PROMEDIO GENERAL</td>
+        <td class="num-cell">${calcularPromedioModulo(0)}</td>
+        <td class="num-cell">${calcularPromedioModulo(1)}</td>
+        <td class="num-cell">${calcularPromedioModulo(2)}</td>
+        <td class="num-cell">${calcularPromedioModulo(3)}</td>
+        <td class="num-cell">${calcularPromedioModulo(4)}</td>
+        <td class="num-cell">${calcularPromedioModulo(5)}</td>
+        <td class="num-cell">${calcularPromedioModulo(6)}</td>
+        <td class="num-cell">${promedioGeneral()}</td>
+      </tr>
+    `
+    : '';
+
+  const htmlContent = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          @page { size: letter portrait; margin: 10mm; }
+          body { font-family: Arial, sans-serif; margin: 0; color: #000; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
+          thead th { font-weight: 800; text-align: center; border-width: 1.4px; }
+          .doc-header-cell { padding: 8px; border-width: 1.4px; }
+          .header-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr 150px;
+            align-items: start;
+            column-gap: 8px;
+          }
+          .logo-block { text-align: center; font-size: 10px; font-weight: 700; }
+          .logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 4px auto; }
+          .title-wrap { text-align: center; }
+          .title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
+          .subtitle { margin: 6px 0 0 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.4; text-align: left; }
+          .num-cell { text-align: center; }
+          .name-cell { text-align: left; }
+          .avg-row td { font-weight: 800; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th colspan="11" class="doc-header-cell">
+                <div class="header-grid">
+                  <div class="logo-block">
+                    <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
+                    UNIVERSIDAD [Espacio para Editar]
+                  </div>
+                  <div class="title-wrap">
+                    <h1 class="title">NOMINA OFICIAL DE APROBADAS/OS</h1>
+                    <div class="subtitle">${escapeHtml(escuela.name)}</div>
+                  </div>
+                  <div class="logo-block">
+                    <img class="logo" src="${logoCdima}" alt="Logo CDIMA" />
+                    CDIMA
+                  </div>
+                </div>
+                <div class="meta">
+                  <div>GESTION: [Espacio para editar]</div>
+                  <div>PERIODO: [Espacio para editar]</div>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th style="width: 30px;">No.</th>
+              <th style="width: 92px;">C.I.</th>
+              <th style="width: 40%;">NOMBRES</th>
+              ${modulosHeaders}
+              <th>PROMEDIO APROBADOS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || '<tr><td colspan="11" class="num-cell">No hay actividades programadas en este período</td></tr>'}
+            ${filaPromedio}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `nomina-oficial-escuela-${escuela.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 /**
