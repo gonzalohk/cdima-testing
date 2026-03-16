@@ -5,7 +5,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateEscuelaModal from '../components/CreateEscuelaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
-import { exportEscuelaGeneralPDF, exportEscuelaCentralizadorNotasPDF, exportEscuelaCentralizadorNotasWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
+import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaCentralizadorNotasWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
@@ -30,6 +30,7 @@ interface InfoPrimaria {
   fechaNacimiento: string;
   domicilio: string;
   especialidad: string;
+  comunidad: string;
   documentoIdentidad: string;
   identidadCultural: string;
   tipo: 'Docente' | 'Estudiante';
@@ -185,7 +186,7 @@ const EscuelasPage: React.FC = () => {
           nombre: subtask.name,
           genero: data.genero,
           fechaNacimiento: data.fechaNacimiento || '',
-          especialidad: data.especialidad || '',
+          cargo: data.especialidad || '',
           domicilio: data.domicilio || '',
           telefono: data.telefono || '',
           lugarNacimiento: data.lugarNacimiento || '',
@@ -202,7 +203,7 @@ const EscuelasPage: React.FC = () => {
           nombre: subtask.name,
           genero: data.genero,
           fechaNacimiento: data.fechaNacimiento || '',
-          especialidad: data.especialidad || '',
+          cargo: data.especialidad || '',
           domicilio: data.domicilio || '',
           telefono: data.telefono || '',
           lugarNacimiento: data.lugarNacimiento || '',
@@ -319,8 +320,10 @@ const EscuelasPage: React.FC = () => {
   }; */
 
   const handleShowInfo = (task: AsanaTask, tipo: 'Docente' | 'Estudiante') => {
+    const rawInfo = parseInfoPrimariaLegacy(task);
     const info: InfoPrimaria = {
-      ...parseInfoPrimariaLegacy(task),
+      ...rawInfo,
+      comunidad: rawInfo.domicilio || rawInfo.lugarNacimiento || '',
       tipo
     };
     setSelectedInfo(info);
@@ -740,6 +743,19 @@ const EscuelasPage: React.FC = () => {
     }
   };
 
+  const handleExportEscuelaGeneralWord = async () => {
+    if (!selectedEscuela) return;
+    try {
+      await exportEscuelaGeneralWord({
+        escuela: selectedEscuela,
+        estudiantes
+      });
+    } catch (error) {
+      console.error('Error al exportar documento WORD:', error);
+      alert('Error al generar el documento WORD. Por favor, intenta de nuevo.');
+    }
+  };
+
   const handleExportCentralizadorNotas = async () => {
     if (!selectedEscuela || estudiantes.length === 0) return;
     try {
@@ -981,19 +997,34 @@ const EscuelasPage: React.FC = () => {
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={handleExportEscuelaGeneral}
-                        className="button-secondary"
-                        style={{ 
-                          fontSize: '0.9rem', 
-                          padding: '0.75rem 1.5rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        📄 Ver Listado
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button
+                          onClick={handleExportEscuelaGeneral}
+                          className="button-secondary"
+                          style={{ 
+                            fontSize: '0.9rem', 
+                            padding: '0.75rem 1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          📄 Ver Listado
+                        </button>
+                        <button
+                          onClick={handleExportEscuelaGeneralWord}
+                          className="button-secondary"
+                          style={{ 
+                            fontSize: '0.9rem', 
+                            padding: '0.75rem 1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          📄 Exportar Documento
+                        </button>
+                      </div>
                       <button
                         onClick={handleEditEscuela}
                         title="Configurar escuela"
@@ -2068,7 +2099,8 @@ const EscuelasPage: React.FC = () => {
           lugarNacimiento={selectedInfo.lugarNacimiento}
           fechaNacimiento={selectedInfo.fechaNacimiento}
           domicilio={selectedInfo.domicilio}
-          especialidad={selectedInfo.especialidad}
+          cargo={selectedInfo.especialidad}
+          comunidad={selectedInfo.comunidad}
           documentoIdentidad={selectedInfo.documentoIdentidad}
           identidadCultural={selectedInfo.identidadCultural}
           tipo={selectedInfo.tipo}

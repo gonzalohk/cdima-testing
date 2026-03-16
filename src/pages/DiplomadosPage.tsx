@@ -5,7 +5,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
-import { exportDiplomadoGeneralPDF, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
+import { exportDiplomadoGeneralPDF, exportDiplomadoGeneralWord, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
@@ -767,6 +767,19 @@ const DiplomadosPage: React.FC = () => {
     }
   };
 
+  const handleExportDiplomadoGeneralWord = async () => {
+    if (!selectedDiplomado) return;
+    try {
+      await exportDiplomadoGeneralWord({
+        diplomado: selectedDiplomado,
+        estudiantes
+      });
+    } catch (error) {
+      console.error('Error al exportar documento WORD:', error);
+      alert('Error al generar el documento WORD. Por favor, intenta de nuevo.');
+    }
+  };
+
   const handleExportCentralizadorNotas = async () => {
     if (!selectedDiplomado || estudiantes.length === 0) return;
     try {
@@ -1008,19 +1021,34 @@ const DiplomadosPage: React.FC = () => {
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={handleExportDiplomadoGeneral}
-                        className="button-secondary"
-                        style={{ 
-                          fontSize: '0.9rem', 
-                          padding: '0.75rem 1.5rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        📄 Ver Listado
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button
+                          onClick={handleExportDiplomadoGeneral}
+                          className="button-secondary"
+                          style={{ 
+                            fontSize: '0.9rem', 
+                            padding: '0.75rem 1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          📄 Ver Listado
+                        </button>
+                        <button
+                          onClick={handleExportDiplomadoGeneralWord}
+                          className="button-secondary"
+                          style={{ 
+                            fontSize: '0.9rem', 
+                            padding: '0.75rem 1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          📄 Exportar Documento
+                        </button>
+                      </div>
                       <button
                         onClick={handleEditDiplomado}
                         title="Configurar diplomado"

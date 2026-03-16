@@ -196,10 +196,19 @@ const Layout: React.FC = () => {
 
           <li>
             <Link 
-              to="/configuracion" 
-              className={`nav-link ${location.pathname === '/configuracion' ? 'active' : ''}`}
+              to="/produccion-alto-nivel" 
+              className={`nav-link ${location.pathname === '/produccion-alto-nivel' ? 'active' : ''}`}
             >
-              ⚙️ Configuración
+              🚀 Produccion de Alto Nivel
+            </Link>
+          </li>
+
+          <li>
+            <Link 
+              to="/investigacion-e-incidencia" 
+              className={`nav-link ${location.pathname === '/investigacion-e-incidencia' ? 'active' : ''}`}
+            >
+              🔎 Investigacion e incidencia
             </Link>
           </li>
         </ul>

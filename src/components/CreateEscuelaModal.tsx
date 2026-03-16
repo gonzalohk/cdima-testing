@@ -29,7 +29,7 @@ interface PersonaData {
   apellidoMaterno: string;
   genero: string;
   fechaNacimiento: string;
-  especialidad: string;
+  cargo: string;
   domicilio: string;
   telefono: string;
   lugarNacimiento: string;
@@ -50,8 +50,8 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 }) => {
   const [nombreEscuela, setNombreEscuela] = useState('');
   const [tipoEscuela, setTipoEscuela] = useState('');
-  const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-  const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+  const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+  const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -82,13 +82,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         return { ...e, ...nombreParts };
       });
       
-      setDocentes(docentesParseados.length > 0 ? docentesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-      setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+      setDocentes(docentesParseados.length > 0 ? docentesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+      setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
     }
   }, [editMode, escuelaData]);
 
   const handleAddDocente = () => {
-    setDocentes([...docentes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+    setDocentes([...docentes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveDocente = (index: number) => {
@@ -116,7 +116,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   };
 
   const handleAddEstudiante = () => {
-    setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+    setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   };
 
   const handleRemoveEstudiante = (index: number) => {
@@ -224,7 +224,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             domicilio: docente.domicilio,
             documentoIdentidad: docente.documentoIdentidad,
             identidadCultural: docente.identidadCultural,
-            especialidad: docente.especialidad,
+            especialidad: docente.cargo,
             experiencia: ''
           });
 
@@ -236,7 +236,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           const notasDocente = serializeEstudianteData({
             genero: docente.genero,
             fechaNacimiento: docente.fechaNacimiento || '',
-            especialidad: docente.especialidad || '',
+            especialidad: docente.cargo || '',
             domicilio: docente.domicilio || '',
             telefono: docente.telefono || '',
             lugarNacimiento: docente.lugarNacimiento || '',
@@ -291,7 +291,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             lugarNacimiento: estudiante.lugarNacimiento,
             fechaNacimiento: estudiante.fechaNacimiento,
             domicilio: estudiante.domicilio,
-            especialidad: estudiante.especialidad,
+            especialidad: estudiante.cargo,
             documentoIdentidad: estudiante.documentoIdentidad,
             identidadCultural: estudiante.identidadCultural
           });
@@ -304,7 +304,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           const notasEstudiante = serializeEstudianteData({
             genero: estudiante.genero,
             fechaNacimiento: estudiante.fechaNacimiento || '',
-            especialidad: estudiante.especialidad || '',
+            especialidad: estudiante.cargo || '',
             domicilio: estudiante.domicilio || '',
             telefono: estudiante.telefono || '',
             lugarNacimiento: estudiante.lugarNacimiento || '',
@@ -394,7 +394,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             domicilio: docente.domicilio,
             documentoIdentidad: docente.documentoIdentidad,
             identidadCultural: docente.identidadCultural,
-            especialidad: docente.especialidad,
+            especialidad: docente.cargo,
             experiencia: ''
           });
 
@@ -407,7 +407,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           const notasDocente = serializeEstudianteData({
             genero: docente.genero,
             fechaNacimiento: docente.fechaNacimiento || '',
-            especialidad: docente.especialidad || '',
+            especialidad: docente.cargo || '',
             domicilio: docente.domicilio || '',
             telefono: docente.telefono || '',
             lugarNacimiento: docente.lugarNacimiento || '',
@@ -431,7 +431,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             lugarNacimiento: estudiante.lugarNacimiento,
             fechaNacimiento: estudiante.fechaNacimiento,
             domicilio: estudiante.domicilio,
-            especialidad: estudiante.especialidad,
+            especialidad: estudiante.cargo,
             documentoIdentidad: estudiante.documentoIdentidad,
             identidadCultural: estudiante.identidadCultural
           });
@@ -445,7 +445,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           const notasEstudiante = serializeEstudianteData({
             genero: estudiante.genero,
             fechaNacimiento: estudiante.fechaNacimiento || '',
-            especialidad: estudiante.especialidad || '',
+            especialidad: estudiante.cargo || '',
             domicilio: estudiante.domicilio || '',
             telefono: estudiante.telefono || '',
             lugarNacimiento: estudiante.lugarNacimiento || '',
@@ -648,13 +648,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Especialidad
+                          Cargo
                         </label>
                         <input
                           type="text"
-                          value={docente.especialidad}
-                          onChange={(e) => handleDocenteChange(index, 'especialidad', e.target.value)}
-                          placeholder="Área de especialidad"
+                          value={docente.cargo}
+                          onChange={(e) => handleDocenteChange(index, 'cargo', e.target.value)}
+                          placeholder="Cargo del participante"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
@@ -712,13 +712,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Domicilio
+                          Comunidad
                         </label>
                         <input
                           type="text"
                           value={docente.domicilio}
                           onChange={(e) => handleDocenteChange(index, 'domicilio', e.target.value)}
-                          placeholder="Dirección de domicilio"
+                          placeholder="Nombre de comunidad"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
@@ -840,13 +840,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Especialidad
+                          Cargo
                         </label>
                         <input
                           type="text"
-                          value={estudiante.especialidad}
-                          onChange={(e) => handleEstudianteChange(index, 'especialidad', e.target.value)}
-                          placeholder="Área de especialidad"
+                          value={estudiante.cargo}
+                          onChange={(e) => handleEstudianteChange(index, 'cargo', e.target.value)}
+                          placeholder="Cargo del participante"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>
@@ -904,13 +904,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Domicilio
+                          Comunidad
                         </label>
                         <input
                           type="text"
                           value={estudiante.domicilio}
                           onChange={(e) => handleEstudianteChange(index, 'domicilio', e.target.value)}
-                          placeholder="Dirección de domicilio"
+                          placeholder="Nombre de comunidad"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                         />
                       </div>

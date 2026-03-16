@@ -7,7 +7,9 @@ interface InfoPrimariaModalProps {
   lugarNacimiento: string;
   fechaNacimiento: string;
   domicilio: string;
-  especialidad: string;
+  especialidad?: string;
+  cargo?: string;
+  comunidad?: string;
   documentoIdentidad: string;
   identidadCultural: string;
   tipo: 'Docente' | 'Estudiante';
@@ -22,6 +24,8 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
   fechaNacimiento,
   domicilio,
   especialidad,
+  cargo,
+  comunidad,
   documentoIdentidad,
   identidadCultural,
   tipo,
@@ -113,30 +117,55 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
               </p>
             </div>
 
-            <div>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '0.75rem', 
-                fontWeight: 600, 
-                color: '#666', 
-                textTransform: 'uppercase',
-                marginBottom: '0.25rem',
-                letterSpacing: '0.5px'
-              }}>
-                Especialidad
-              </label>
-              <p style={{ 
-                margin: 0, 
-                fontSize: '0.95rem', 
-                color: '#333',
-                padding: '0.5rem',
-                backgroundColor: '#f9f9f9',
-                borderRadius: '4px'
-              }}>
-                {especialidad || 'No especificado'}
-              </p>
-            </div>
-
+            {cargo !== undefined ? (
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600, 
+                  color: '#666', 
+                  textTransform: 'uppercase',
+                  marginBottom: '0.25rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Cargo
+                </label>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '0.95rem', 
+                  color: '#333',
+                  padding: '0.5rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '4px'
+                }}>
+                  {cargo || 'No especificado'}
+                </p>
+              </div>
+            ) : especialidad !== undefined ? (
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600, 
+                  color: '#666', 
+                  textTransform: 'uppercase',
+                  marginBottom: '0.25rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  Especialidad
+                </label>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '0.95rem', 
+                  color: '#333',
+                  padding: '0.5rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '4px'
+                }}>
+                  {especialidad || 'No especificado'}
+                </p>
+              </div>
+            ) : null}
             <div>
               <label style={{ 
                 display: 'block', 
@@ -243,7 +272,7 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
                 marginBottom: '0.25rem',
                 letterSpacing: '0.5px'
               }}>
-                Domicilio
+                {comunidad !== undefined ? 'Comunidad' : 'Domicilio'}
               </label>
               <p style={{ 
                 margin: 0, 
@@ -253,7 +282,7 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
                 backgroundColor: '#f9f9f9',
                 borderRadius: '4px'
               }}>
-                {domicilio || 'No especificado'}
+                {(comunidad ?? domicilio) || 'No especificado'}
               </p>
             </div>
           </div>

@@ -42,6 +42,11 @@ export interface ExportEscuelaEstudianteParams {
   escuela?: AsanaSection;
 }
 
+export interface ExportEscuelaGeneralWordParams {
+  escuela: AsanaSection;
+  estudiantes: AsanaTask[];
+}
+
 // ============ HELPER FUNCTIONS ============
 
 /**
@@ -212,7 +217,7 @@ export const exportEscuelaGeneralPDF = ({
     });
 
     autoTable(pdf, {
-      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
+      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Cargo', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Comunidad']],
       body: docentesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -333,7 +338,7 @@ export const exportEscuelaGeneralPDF = ({
     });
 
     autoTable(pdf, {
-      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Especialidad', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Domicilio']],
+      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Cargo', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Comunidad']],
       body: estudiantesData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -405,6 +410,227 @@ export const exportEscuelaGeneralPDF = ({
   const pdfBlob = pdf.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');
+};
+
+export const exportEscuelaGeneralWord = ({
+  escuela,
+  estudiantes
+}: ExportEscuelaGeneralWordParams): void => {
+  const escapeHtml = (value: string): string =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const calcularEdad = (fechaNacimiento?: string): string => {
+    if (!fechaNacimiento) return '';
+
+    const match = fechaNacimiento.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (!match) return '';
+
+    const dia = Number(match[1]);
+    const mes = Number(match[2]) - 1;
+    let anio = Number(match[3]);
+    if (anio < 100) anio += 1900;
+
+    const nacimiento = new Date(anio, mes, dia);
+    if (Number.isNaN(nacimiento.getTime())) return '';
+
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const mesDiff = hoy.getMonth() - nacimiento.getMonth();
+    const diaDiff = hoy.getDate() - nacimiento.getDate();
+    if (mesDiff < 0 || (mesDiff === 0 && diaDiff < 0)) edad -= 1;
+
+    return edad >= 0 ? String(edad) : '';
+  };
+
+  const filasParticipantes = estudiantes.map((estudiante, index) => {
+    const partes = estudiante.name.split(',').map(p => p.trim());
+    const nombres = partes[0] || '';
+    const apellidoPaterno = partes[1] || '';
+    const apellidoMaterno = partes[2] || '';
+    const nombreCompleto = `${apellidoPaterno} ${apellidoMaterno} ${nombres}`.trim();
+    const data = parseEstudianteData(estudiante.notes);
+
+    return {
+      numero: index + 1,
+      nombreCompleto,
+      ci: data.documentoIdentidad || '',
+      edad: calcularEdad(data.fechaNacimiento),
+      comunidad: data.domicilio || data.lugarNacimiento || '',
+      cargo: data.especialidad || '',
+      celular: data.telefono || '',
+      genero: (data.genero || '').toLowerCase()
+    };
+  });
+
+  const mujeres = filasParticipantes.filter(item => item.genero.includes('femen') || item.genero.includes('muj')).length;
+  const varones = filasParticipantes.filter(item => item.genero.includes('mascul') || item.genero.includes('varon') || item.genero.includes('hom')).length;
+  const total = filasParticipantes.length;
+  const filasTabla = Array.from({ length: Math.max(20, filasParticipantes.length) }, (_, index) => {
+    const item = filasParticipantes[index];
+    if (!item) {
+      return `
+        <tr>
+          <td class="center">${index + 1}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      `;
+    }
+
+    return `
+      <tr>
+        <td class="center">${item.numero}</td>
+        <td>${escapeHtml(item.nombreCompleto)}</td>
+        <td class="center">${escapeHtml(item.ci)}</td>
+        <td class="center">${item.edad}</td>
+        <td>${escapeHtml(item.comunidad)}</td>
+        <td>${escapeHtml(item.cargo)}</td>
+        <td class="center">${escapeHtml(item.celular)}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    `;
+  }).join('');
+
+  const htmlContent = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          @page Section1 {
+            size: 11in 8.5in;
+            mso-page-orientation: landscape;
+            margin: 10mm 10mm 10mm 10mm;
+          }
+          div.Section1 { page: Section1; }
+          body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000; }
+          table { border-collapse: collapse; }
+          td, th { border: 1px solid #000; font-size: 11px; padding: 4px 5px; vertical-align: middle; }
+          .main-table { width: 100%; table-layout: fixed; }
+          .center { text-align: center; }
+          .bold { font-weight: 700; }
+          .header-logo { text-align: center; vertical-align: middle; border: none; }
+          .header-logo img { max-width: 88px; max-height: 88px; object-fit: contain; display: block; margin: 0 auto 4px auto; }
+          .header-text { text-align: center; vertical-align: middle; border: none; }
+          .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+          .project { font-size: 11px; font-weight: 700; }
+          .saih { font-size: 11px; line-height: 1.35; margin-top: 6px; }
+          .field-cell { height: 28px; vertical-align: top; }
+          .summary-cell { vertical-align: top; padding: 4px; }
+          .summary-counts { width: 100%; }
+          .summary-title { font-size: 11px; font-weight: 700; text-align: center; }
+          tr.participant-head th { text-align: center; font-weight: 700; }
+          .participant-body td { height: 24px; }
+          .no-col { width: 4.5%; }
+          .name-col { width: 24%; }
+          .ci-col { width: 14%; }
+          .edad-col { width: 6%; }
+          .comunidad-col { width: 16%; }
+          .cargo-col { width: 10%; }
+          .cel-col { width: 10%; }
+          .firma-col { width: 10%; }
+          .material-col { width: 2.75%; }
+        </style>
+      </head>
+      <body>
+        <div class="Section1">
+        <table class="main-table">
+          <colgroup>
+            <col class="no-col" />
+            <col class="name-col" />
+            <col class="ci-col" />
+            <col class="edad-col" />
+            <col class="comunidad-col" />
+            <col class="cargo-col" />
+            <col class="cel-col" />
+            <col class="firma-col" />
+            <col class="material-col" />
+            <col class="material-col" />
+          </colgroup>
+          <tr>
+            <td class="header-logo" colspan="2">
+              <img src="${logoInicial}" alt="Logo institucional" />
+              <div class="bold">ESPACIO PARA LOGOTIPO</div>
+            </td>
+            <td class="header-text" colspan="8">
+              <div class="title">LISTA DE PARTICIPANTES</div>
+              <div class="project">PROYECTO: "Educación Superior Inclusiva para Mujeres y Jóvenes Indígenas y Afrodescendientes"</div>
+              <div class="saih">
+                <div class="bold">SAIH</div>
+                <div>El Fondo de Asistencia Internacional</div>
+                <div>de los Estudiantes y Académicos Noruegos</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="field-cell" colspan="6"><span class="bold">ACTIVIDAD:</span> ________________________________</td>
+            <td class="summary-cell" colspan="4" rowspan="4">
+              <table class="summary-counts">
+                <tr><td colspan="2" class="summary-title">NRO. DE ASISTENCIA DE PARTICIPANTES</td></tr>
+                <tr><td colspan="2" class="bold center">POBLACION</td></tr>
+                <tr><td>Mujeres</td><td class="center">${mujeres}</td></tr>
+                <tr><td>Varones</td><td class="center">${varones}</td></tr>
+                <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
+                <tr><td class="bold">19 D/B</td><td></td></tr>
+                <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="field-cell" colspan="6"><span class="bold">TEMA:</span> _____________________________________</td>
+          </tr>
+          <tr>
+            <td class="field-cell" colspan="6"><span class="bold">LUGAR Y FECHA:</span> ____________________________</td>
+          </tr>
+          <tr>
+            <td class="field-cell" colspan="6"><span class="bold">RESPONSABLE:</span> ______________________________</td>
+          </tr>
+          <tr class="participant-head">
+            <th rowspan="2">N°</th>
+            <th rowspan="2">NOMBRES Y APELLIDOS</th>
+            <th rowspan="2">N° CEDULA IDENTIDAD</th>
+            <th rowspan="2">EDAD</th>
+            <th rowspan="2">COMUNIDAD / MUNICIPIO</th>
+            <th rowspan="2">CARGO</th>
+            <th rowspan="2">N° DE CELULAR</th>
+            <th rowspan="2">FIRMAS</th>
+            <th colspan="2">MATERIAL</th>
+          </tr>
+          <tr class="participant-head">
+            <th>SI</th>
+            <th>NO</th>
+          </tr>
+          <tbody class="participant-body">
+            ${filasTabla}
+          </tbody>
+        </table>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `lista-participantes-escuela-${escuela.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -838,14 +1064,11 @@ export const exportEscuelaEstudiantePDF = ({
   estudiante,
   escuela
 }: ExportEscuelaEstudianteParams): void => {
-  // Colores del proyecto
   const colors = {
-    navyBlue: [70, 100, 140],
-    lightGray: [117, 117, 117],
-    ultraLightGray: [249, 249, 249],
+    black: [0, 0, 0],
     white: [255, 255, 255],
-    forestGreen: [46, 125, 50],
-    errorRed: [231, 76, 60]
+    lightGray: [245, 245, 245],
+    headerGray: [220, 220, 220]
   };
 
   const margins = {
@@ -858,15 +1081,15 @@ export const exportEscuelaEstudiantePDF = ({
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'letter'
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  
+
   // ============ ENCABEZADO ============
-  
-  // Logo CDIMA (lado izquierdo)
+
+  // Logo (lado izquierdo)
   try {
     const logoWidth = 28;
     pdf.addImage(logoInicial, 'PNG', margins.left, margins.top, logoWidth, 0);
@@ -874,36 +1097,36 @@ export const exportEscuelaEstudiantePDF = ({
     console.error('Error al cargar logo:', error);
     pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('CDIMA', margins.left, margins.top + 8);
   }
-  
+
   // Título Principal (lado derecho)
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
-  pdf.text('REPORTE DE ESTUDIANTE', pageWidth - margins.right, margins.top + 8, { align: 'right' });
-  
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+  pdf.text('REPORTE DE ESTUDIANTE', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+
   // Metadatos
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(45, 45, 45);
-  
-  let metaY = margins.top + 14;
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+  let metaY = margins.top + 12;
   if (escuela) {
     pdf.text(`ESCUELA: ${escuela.name}`, pageWidth - margins.right, metaY, { align: 'right' });
     metaY += 5;
   }
-  
+
   const fechaGeneracion = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
   pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
-  
+
   // Línea separadora
-  pdf.setDrawColor(220, 220, 220);
+  pdf.setDrawColor(colors.headerGray[0], colors.headerGray[1], colors.headerGray[2]);
   pdf.setLineWidth(0.3);
   pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
 
-  let startY = metaY + 14;
+  let startY = metaY + 22;
 
   // ============ DATOS DEL ESTUDIANTE ============
   const nombreFormateado = formatearNombreCompleto(estudiante.name);
@@ -912,40 +1135,39 @@ export const exportEscuelaEstudiantePDF = ({
 
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   pdf.text('DATOS DEL ESTUDIANTE', margins.left, startY);
-  
+
   startY += 8;
 
-  // Tabla de información personal
-  const datosPersonales = [
+  const camposDatos: [string, string][] = [
     ['Nombre Completo:', nombreFormateado],
     ['Carnet de Identidad:', ci],
     ['Género:', data.genero || 'N/A'],
-    ['Especialidad:', data.especialidad || 'N/A'],
+    ['Cargo:', data.especialidad || 'N/A'],
+    ['Comunidad:', data.domicilio || data.lugarNacimiento || 'N/A'],
     ['Lugar de Nacimiento:', data.lugarNacimiento || 'N/A'],
     ['Fecha de Nacimiento:', data.fechaNacimiento || 'N/A'],
     ['Identidad Cultural:', data.identidadCultural || 'N/A'],
-    ['Teléfono:', data.telefono || 'N/A'],
-    ['Domicilio:', data.domicilio || 'N/A']
+    ['Teléfono:', data.telefono || 'N/A']
   ];
 
-  autoTable(pdf, {
-    body: datosPersonales,
-    startY: startY,
-    margin: { left: margins.left, right: margins.right },
-    theme: 'plain',
-    styles: {
-      fontSize: 10,
-      cellPadding: 3
-    },
-    columnStyles: {
-      0: { cellWidth: 50, fontStyle: 'bold', textColor: [70, 100, 140] },
-      1: { cellWidth: 120 }
-    }
-  });
+  pdf.setFontSize(10);
+  const labelX = margins.left;
+  const valueX = margins.left + 52;
+  const fieldSpacing = 7;
+  let textY = startY;
 
-  startY = (pdf as any).lastAutoTable.finalY + 12;
+  for (const [label, value] of camposDatos) {
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+    pdf.text(label, labelX, textY);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(value, valueX, textY);
+    textY += fieldSpacing;
+  }
+
+  startY = textY + 6;
 
   // ============ NOTAS POR MÓDULO ============
   const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
@@ -959,9 +1181,9 @@ export const exportEscuelaEstudiantePDF = ({
 
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   pdf.text('CALIFICACIONES POR MÓDULO', margins.left, startY);
-  
+
   startY += 8;
 
   const notasData = [
@@ -974,50 +1196,38 @@ export const exportEscuelaEstudiantePDF = ({
     ['Módulo 7', modulo7.toString(), modulo7 >= 51 ? 'Aprobado' : 'Reprobado']
   ];
 
-  // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
+  const notasTableWidth = 160;
+  const notasMarginLeft = (pageWidth - notasTableWidth) / 2;
+
   autoTable(pdf, {
     head: [['Módulo', 'Nota', 'Estado']],
     body: notasData,
     startY: startY,
-    margin: { left: margins.left, right: margins.right },
-    theme: 'striped',
+    margin: { left: notasMarginLeft, right: notasMarginLeft },
+    theme: 'plain',
     headStyles: {
-      fillColor: colors.navyBlue,
-      textColor: colors.white,
+      fillColor: colors.headerGray,
+      textColor: colors.black,
       fontStyle: 'bold',
-      fontSize: 10,
+      fontSize: 9,
       halign: 'center',
-      cellPadding: 5
+      cellPadding: 3
     },
     styles: {
-      fontSize: 9,
-      cellPadding: 4,
+      fontSize: 8.5,
+      cellPadding: 2,
       halign: 'center',
-      textColor: [45, 45, 45],
-      lineColor: [230, 230, 230],
-      lineWidth: 0.1
-    },
-    bodyStyles: {
-      fillColor: colors.white
-    },
-    alternateRowStyles: {
-      fillColor: colors.ultraLightGray
+      textColor: colors.black,
+      fillColor: colors.white,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2,
+      overflow: 'linebreak',
+      valign: 'middle'
     },
     columnStyles: {
       0: { cellWidth: 60, halign: 'left' },
       1: { cellWidth: 40, fontStyle: 'bold' },
       2: { cellWidth: 60 }
-    },
-    // @ts-ignore - didDrawCell es válido pero no está en los tipos de jspdf-autotable
-    didDrawCell: (data: any) => {
-      if (data.section === 'body' && data.column.index === 2) {
-        const estado = data.cell.raw;
-        if (estado === 'Aprobado') {
-          pdf.setTextColor(colors.forestGreen[0], colors.forestGreen[1], colors.forestGreen[2]);
-        } else {
-          pdf.setTextColor(colors.errorRed[0], colors.errorRed[1], colors.errorRed[2]);
-        }
-      }
     }
   });
 
@@ -1027,21 +1237,21 @@ export const exportEscuelaEstudiantePDF = ({
   autoTable(pdf, {
     body: [['PROMEDIO FINAL', promedio.toString(), promedio >= 51 ? 'APROBADO' : 'REPROBADO']],
     startY: startY,
-    margin: { left: margins.left, right: margins.right },
+    margin: { left: notasMarginLeft, right: notasMarginLeft },
     theme: 'plain',
     styles: {
       fontSize: 11,
       cellPadding: 5,
       fontStyle: 'bold',
       halign: 'center',
-      fillColor: colors.ultraLightGray,
-      lineColor: colors.navyBlue,
-      lineWidth: 0.5
+      fillColor: colors.lightGray,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.2
     },
     columnStyles: {
-      0: { cellWidth: 60, halign: 'left', textColor: colors.navyBlue },
-      1: { cellWidth: 40, fontSize: 13, textColor: promedio >= 51 ? colors.forestGreen : colors.errorRed },
-      2: { cellWidth: 60, textColor: promedio >= 51 ? colors.forestGreen : colors.errorRed }
+      0: { cellWidth: 60, halign: 'left', textColor: colors.black },
+      1: { cellWidth: 40, fontSize: 13, textColor: colors.black },
+      2: { cellWidth: 60, textColor: colors.black }
     }
   });
 
@@ -1058,7 +1268,6 @@ export const exportEscuelaEstudiantePDF = ({
     });
 
   if (registrosAsistencia.length > 0) {
-    // Verificar si necesitamos una nueva página
     if (startY > pageHeight - 80) {
       pdf.addPage();
       startY = margins.top + 10;
@@ -1066,9 +1275,9 @@ export const exportEscuelaEstudiantePDF = ({
 
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(colors.navyBlue[0], colors.navyBlue[1], colors.navyBlue[2]);
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text('REGISTRO DE ASISTENCIA', margins.left, startY);
-    
+
     startY += 8;
 
     const asistenciaData = registrosAsistencia.map(registro => [
@@ -1077,75 +1286,75 @@ export const exportEscuelaEstudiantePDF = ({
       registro.observaciones || 'Ninguna'
     ]);
 
-    // @ts-ignore - didDrawCell es soportado por jspdf-autotable pero los tipos TypeScript no están completos
     autoTable(pdf, {
       head: [['Fecha', 'Asistió', 'Observaciones']],
       body: asistenciaData,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
-      theme: 'striped',
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
       headStyles: {
-        fillColor: colors.navyBlue,
-        textColor: colors.white,
+        fillColor: colors.headerGray,
+        textColor: colors.black,
         fontStyle: 'bold',
-        fontSize: 10,
+        fontSize: 9,
         halign: 'center',
         cellPadding: 5
       },
       styles: {
-        fontSize: 9,
+        fontSize: 8.5,
         cellPadding: 4,
-        textColor: [45, 45, 45],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.1
-      },
-      bodyStyles: {
-        fillColor: colors.white
-      },
-      alternateRowStyles: {
-        fillColor: colors.ultraLightGray
+        textColor: colors.black,
+        fillColor: colors.white,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        overflow: 'linebreak',
+        valign: 'middle'
       },
       columnStyles: {
         0: { cellWidth: 35, halign: 'center' },
         1: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
         2: { cellWidth: 100, halign: 'left' }
-      },
-      // @ts-ignore - didDrawCell es válido pero no está en los tipos de jspdf-autotable
-      didDrawCell: (data: any) => {
-        if (data.section === 'body' && data.column.index === 1) {
-          const asistio = data.cell.raw;
-          if (asistio === 'Sí') {
-            pdf.setTextColor(colors.forestGreen[0], colors.forestGreen[1], colors.forestGreen[2]);
-          } else {
-            pdf.setTextColor(colors.errorRed[0], colors.errorRed[1], colors.errorRed[2]);
-          }
-        }
       }
     });
 
-    // Estadísticas de asistencia
     const totalAsistencias = registrosAsistencia.filter(r => r.asistio).length;
     const porcentaje = ((totalAsistencias / registrosAsistencia.length) * 100).toFixed(1);
-    
+
     startY = (pdf as any).lastAutoTable.finalY + 8;
-    
+
     pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
     pdf.text(`Total registros: ${registrosAsistencia.length} | Asistencias: ${totalAsistencias} | Porcentaje: ${porcentaje}%`, margins.left, startY);
   } else {
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
-    pdf.text('No hay registros de asistencia para este estudiante.', margins.left, startY);
+    autoTable(pdf, {
+      body: [['No hay registros de asistencia para este estudiante.']],
+      startY: startY,
+      margin: { left: margins.left, right: margins.right },
+      tableWidth: pageWidth - margins.left - margins.right,
+      theme: 'plain',
+      styles: {
+        fontSize: 9,
+        cellPadding: 10,
+        fontStyle: 'italic',
+        halign: 'center',
+        fillColor: colors.white,
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        overflow: 'linebreak',
+        valign: 'middle'
+      }
+    });
   }
 
   // ============ PIE DE PÁGINA ============
   pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'italic');
-  pdf.setTextColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
   const footerText = `Reporte generado el ${fechaGeneracion}`;
-  pdf.text(footerText, pageWidth / 2, pageHeight - margins.bottom + 5, { align: 'center' });
+  pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir PDF en nueva pestaña
   const pdfBlob = pdf.output('blob');
