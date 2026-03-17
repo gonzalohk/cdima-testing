@@ -33,7 +33,7 @@ interface InfoPrimaria {
   comunidad: string;
   documentoIdentidad: string;
   identidadCultural: string;
-  tipo: 'Docente' | 'Estudiante';
+  tipo: 'Estudiante';
 }
 
 interface AsistenciaEstudiante {
@@ -85,7 +85,6 @@ const EscuelasPage: React.FC = () => {
   
   // Estados para los detalles de la escuela
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [docentes, setDocentes] = useState<AsanaTask[]>([]);
   const [estudiantes, setEstudiantes] = useState<AsanaTask[]>([]);
   const [documentos, setDocumentos] = useState<AsanaTask[]>([]);
   
@@ -168,33 +167,13 @@ const EscuelasPage: React.FC = () => {
       const sectionTasks = await asanaService.getSectionTasks(selectedEscuela.gid);
 
       // Buscar las tareas principales
-      const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
       const tareaEstudiantes = sectionTasks.find(t => t.name === 'Estudiantes');
 
-      if (!tareaDocentes || !tareaEstudiantes) {
-        throw new Error('No se encontraron las tareas de Docentes o Estudiantes');
+      if (!tareaEstudiantes) {
+        throw new Error('No se encontró la tarea de Estudiantes');
       }
 
-      // Obtener subtareas
-      const subtasksDocentes = await asanaService.getSubtasks(tareaDocentes.gid);
       const subtasksEstudiantes = await asanaService.getSubtasks(tareaEstudiantes.gid);
-
-      // Parsear datos de docentes
-      const docentesData = subtasksDocentes.map(subtask => {
-        const data = parseEstudianteData(subtask.notes);
-        return {
-          nombre: subtask.name,
-          genero: data.genero,
-          fechaNacimiento: data.fechaNacimiento || '',
-          cargo: data.especialidad || '',
-          domicilio: data.domicilio || '',
-          telefono: data.telefono || '',
-          lugarNacimiento: data.lugarNacimiento || '',
-          documentoIdentidad: data.documentoIdentidad || '',
-          identidadCultural: data.identidadCultural || '',
-          subtaskGid: subtask.gid
-        };
-      });
 
       // Parsear datos de estudiantes
       const estudiantesData = subtasksEstudiantes.map(subtask => {
@@ -217,9 +196,7 @@ const EscuelasPage: React.FC = () => {
       setEscuelaToEdit({
         gid: selectedEscuela.gid,
         nombre: selectedEscuela.name,
-        docentes: docentesData,
         estudiantes: estudiantesData,
-        docentesTaskGid: tareaDocentes.gid,
         estudiantesTaskGid: tareaEstudiantes.gid
       });
 
@@ -236,7 +213,6 @@ const EscuelasPage: React.FC = () => {
   const handleViewDetails = async (escuela: AsanaSection) => {
     setSelectedEscuela(escuela);
     setLoadingDetails(true);
-    setDocentes([]);
     setEstudiantes([]);
     setDocumentos([]);
 
@@ -245,16 +221,10 @@ const EscuelasPage: React.FC = () => {
       const sectionTasks = await asanaService.getSectionTasks(escuela.gid);
 
       // Buscar las tareas principales
-      const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
       const tareaEstudiantes = sectionTasks.find(t => t.name === 'Estudiantes');
       const tareaDocumentos = sectionTasks.find(t => t.name === 'Documentos');
 
       // Obtener subtareas de cada tarea
-      if (tareaDocentes) {
-        const subtasks = await asanaService.getSubtasks(tareaDocentes.gid);
-        setDocentes(sortByApellidos(subtasks));
-      }
-
       if (tareaEstudiantes) {
         const subtasks = await asanaService.getSubtasks(tareaEstudiantes.gid);
         setEstudiantes(sortByApellidos(subtasks));
@@ -319,7 +289,7 @@ const EscuelasPage: React.FC = () => {
     }
   }; */
 
-  const handleShowInfo = (task: AsanaTask, tipo: 'Docente' | 'Estudiante') => {
+  const handleShowInfo = (task: AsanaTask, tipo: 'Estudiante') => {
     const rawInfo = parseInfoPrimariaLegacy(task);
     const info: InfoPrimaria = {
       ...rawInfo,
@@ -734,7 +704,6 @@ const EscuelasPage: React.FC = () => {
     try {
       await exportEscuelaGeneralPDF({
         escuela: selectedEscuela,
-        docentes,
         estudiantes
       });
     } catch (error) {
@@ -965,7 +934,7 @@ const EscuelasPage: React.FC = () => {
               ) : (
                 <>
                   {/* Botones de acciones de la escuela */}
-                  {(estudiantes.length > 0 || docentes.length > 0) && (
+                  {estudiantes.length > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
                       {estudiantes.length > 0 && (
                         <>
@@ -1048,41 +1017,6 @@ const EscuelasPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Docentes */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '0.5rem', color: '#333' }}>👨‍🏫 Docentes ({docentes.length})</h3>
-                    {docentes.length === 0 ? (
-                      <p style={{ color: '#999' }}>No hay docentes registrados</p>
-                    ) : (
-                      <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '50px' }}>#</th>
-                            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {docentes.map((docente, index) => (
-                            <tr key={docente.gid}>
-                              <td style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
-                              <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(docente.name)}</td>
-                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
-                                <button
-                                  onClick={() => handleShowInfo(docente, 'Docente')}
-                                  className="button-secondary"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                                >
-                                  ℹ️ Info
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-
                   {/* Estudiantes */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 style={{ marginBottom: '0.5rem', color: '#333' }}>👨‍🎓 Estudiantes ({estudiantes.length})</h3>
@@ -1108,27 +1042,33 @@ const EscuelasPage: React.FC = () => {
                                 <button
                                   onClick={() => setEstudianteSeleccionadoNotas(estudiante)}
                                   className="button-secondary"
+                                  title="Ver notas"
+                                  aria-label="Ver notas"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  📊 Ver Notas
+                                  📊
                                 </button>
                               </td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)}
                                   className="button-secondary"
+                                  title="Ver asistencia"
+                                  aria-label="Ver asistencia"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  ✓ Ver Asistencia
+                                  ✓
                                 </button>
                               </td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => handleShowInfo(estudiante, 'Estudiante')}
                                   className="button-secondary"
+                                  title="Ver información"
+                                  aria-label="Ver información"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  ℹ️ Info
+                                  ℹ️
                                 </button>
                               </td>
                             </tr>
@@ -1189,7 +1129,7 @@ const EscuelasPage: React.FC = () => {
                 marginTop: '1.5rem'
               }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#e65100' }}>
-                  <strong>📌 Nota:</strong> Para agregar más docentes, estudiantes o documentos, 
+                  <strong>📌 Nota:</strong> Para agregar más estudiantes o documentos, 
                   vaya a Asana y agregue subtareas a las tareas correspondientes dentro de esta escuela.
                 </p>
               </div>

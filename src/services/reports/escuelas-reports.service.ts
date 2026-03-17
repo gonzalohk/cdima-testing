@@ -28,7 +28,6 @@ interface InfoPrimaria {
 
 export interface ExportEscuelaGeneralParams {
   escuela: AsanaSection;
-  docentes: AsanaTask[];
   estudiantes: AsanaTask[];
 }
 
@@ -65,7 +64,7 @@ export const formatearNombreCompleto = (nombreCompleto: string): string => {
 };
 
 /**
- * Parsea la información primaria de una tarea (docente o estudiante)
+ * Parsea la información primaria de una tarea de estudiante
  */
 export const parseInfoPrimariaLegacy = (task: AsanaTask): InfoPrimaria => {
   // Usa la nueva función helper robusta
@@ -87,11 +86,10 @@ export const parseInfoPrimariaLegacy = (task: AsanaTask): InfoPrimaria => {
 // ============ EXPORT FUNCTIONS ============
 
 /**
- * Genera un reporte PDF general de una escuela con listado de docentes y estudiantes
+ * Genera un reporte PDF general de una escuela con listado de estudiantes
  */
 export const exportEscuelaGeneralPDF = ({
   escuela,
-  docentes,
   estudiantes
 }: ExportEscuelaGeneralParams): void => {
   const colors = {
@@ -150,7 +148,7 @@ export const exportEscuelaGeneralPDF = ({
   pdf.text(`FECHA DE GENERACION: ${fechaGeneracion}`, pageWidth - margins.right, metaY, { align: 'right' });
 
   metaY += 5;
-  pdf.text(`REGISTROS: DOCENTES ${docentes.length} | ESTUDIANTES ${estudiantes.length}`, pageWidth - margins.right, metaY, { align: 'right' });
+  pdf.text(`REGISTROS: ESTUDIANTES ${estudiantes.length}`, pageWidth - margins.right, metaY, { align: 'right' });
   
   // Línea separadora
   pdf.setDrawColor(colors.headerGray[0], colors.headerGray[1], colors.headerGray[2]);
@@ -158,127 +156,6 @@ export const exportEscuelaGeneralPDF = ({
   pdf.line(margins.left, metaY + 6, pageWidth - margins.right, metaY + 6);
 
   let startY = metaY + 22;
-
-  // ============ TABLA DE DOCENTES ============
-  if (startY > pageHeight - 40) {
-    pdf.addPage();
-    startY = margins.top;
-  }
-
-  autoTable(pdf, {
-    body: [[`DOCENTES`]],
-    startY,
-    margin: { left: margins.left, right: margins.right },
-    tableWidth: pageWidth - margins.left - margins.right,
-    theme: 'plain',
-    styles: {
-      fillColor: colors.headerGray,
-      textColor: colors.black,
-      fontStyle: 'bold',
-      fontSize: 9,
-      cellPadding: 3,
-      lineColor: [180, 180, 180],
-      lineWidth: 0.2,
-      overflow: 'linebreak',
-      valign: 'middle',
-      cellWidth: 'wrap'
-    }
-  });
-
-  startY = (pdf as any).lastAutoTable.finalY;
-
-  if (docentes.length > 0) {
-
-    const docentesData = docentes.map((docente, index) => {
-      const info = parseInfoPrimariaLegacy(docente);
-      
-      // Parsear nombre en formato "Nombre, Apellido Paterno, Apellido Materno"
-      const partes = docente.name.split(',').map(p => p.trim());
-      const nombre = partes[0] || '';
-      const apellidoPaterno = partes[1] || '';
-      const apellidoMaterno = partes[2] || '';
-      
-      const nombreCompleto = [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim() || 'N/A';
-      const lugarNacimiento = info.lugarNacimiento || 'N/A';
-      const fechaNacimiento = info.fechaNacimiento || 'N/A';
-      const nacimiento = `${lugarNacimiento} / ${fechaNacimiento}`;
-
-      return [
-        (index + 1).toString(),
-        nombreCompleto,
-        info.documentoIdentidad || 'N/A',
-        info.genero || 'N/A',
-        info.especialidad || 'N/A',
-        nacimiento,
-        info.identidadCultural || 'N/A',
-        info.telefono || 'N/A',
-        info.domicilio || 'N/A'
-      ];
-    });
-
-    autoTable(pdf, {
-      head: [['', 'Nombre', 'Doc. Identidad', 'Genero', 'Cargo', 'Lugar y Fecha de Nacimiento', 'Identidad Cultural', 'Telefono', 'Comunidad']],
-      body: docentesData,
-      startY: startY,
-      margin: { left: margins.left, right: margins.right },
-      tableWidth: pageWidth - margins.left - margins.right,
-      theme: 'plain',
-      headStyles: {
-        fillColor: colors.headerGray,
-        textColor: colors.black,
-        fontStyle: 'bold',
-        fontSize: 9,
-        halign: 'center',
-        cellPadding: 3
-      },
-      styles: {
-        fontSize: 8.5,
-        cellPadding: 2.5,
-        overflow: 'linebreak',
-        valign: 'middle',
-        textColor: colors.black,
-        lineColor: [180, 180, 180],
-        lineWidth: 0.2,
-        cellWidth: 'wrap'
-      },
-      bodyStyles: {
-        fillColor: colors.white
-      },
-      columnStyles: {
-        0: { cellWidth: 7, halign: 'center' },
-        1: { cellWidth: 42 },
-        2: { cellWidth: 22, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 28 },
-        5: { cellWidth: 44 },
-        6: { cellWidth: 30 },
-        7: { cellWidth: 24, halign: 'center' },
-        8: { cellWidth: 40 }
-      }
-    } as any);
-  } else {
-    autoTable(pdf, {
-      body: [['No hay actividades programadas en este periodo']],
-      startY,
-      margin: { left: margins.left, right: margins.right },
-      theme: 'plain',
-      styles: {
-        fillColor: colors.white,
-        textColor: colors.black,
-        fontStyle: 'italic',
-        fontSize: 9,
-        cellPadding: 5,
-        halign: 'center',
-        lineColor: [180, 180, 180],
-        lineWidth: 0.2,
-        overflow: 'linebreak',
-        valign: 'middle',
-        cellWidth: 'wrap'
-      }
-    });
-  }
-
-  startY = (pdf as any).lastAutoTable.finalY + 8;
 
   // ============ TABLA DE ESTUDIANTES ============
   if (startY > pageHeight - 45) {
@@ -403,7 +280,7 @@ export const exportEscuelaGeneralPDF = ({
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-  const footerText = `Total Docentes: ${docentes.length} | Total Estudiantes: ${estudiantes.length}`;
+  const footerText = `Total Estudiantes: ${estudiantes.length}`;
   pdf.text(footerText, pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
   // Abrir PDF en nueva pestaña

@@ -1132,27 +1132,33 @@ const DiplomadosPage: React.FC = () => {
                                 <button
                                   onClick={() => setEstudianteSeleccionadoNotas(estudiante)}
                                   className="button-secondary"
+                                  title="Ver notas"
+                                  aria-label="Ver notas"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  📊 Ver Notas
+                                  📊
                                 </button>
                               </td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)}
                                   className="button-secondary"
+                                  title="Ver asistencia"
+                                  aria-label="Ver asistencia"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  ✓ Ver Asistencia
+                                  ✓
                                 </button>
                               </td>
                               <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                                 <button
                                   onClick={() => handleShowInfo(estudiante, 'Estudiante')}
                                   className="button-secondary"
+                                  title="Ver información"
+                                  aria-label="Ver información"
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                 >
-                                  ℹ️ Info
+                                  ℹ️
                                 </button>
                               </td>
                             </tr>

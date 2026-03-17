@@ -2,16 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
 import { serializeEstudianteData, parseAsistenciaRecords, updateNotasWithAsistencia } from '../utils/asana-helpers';
-import { validateData, EstudianteDataSchema, DocenteDataSchema } from '../schemas/diplomado.schemas';
+import { validateData, EstudianteDataSchema } from '../schemas/diplomado.schemas';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
 
 interface EscuelaEditData {
   gid: string;
   nombre: string;
   tipoEscuela?: string;
-  docentes: Array<PersonaData & { subtaskGid: string }>;
   estudiantes: Array<PersonaData & { subtaskGid: string }>;
-  docentesTaskGid: string;
   estudiantesTaskGid: string;
 }
 
@@ -50,7 +48,6 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 }) => {
   const [nombreEscuela, setNombreEscuela] = useState('');
   const [tipoEscuela, setTipoEscuela] = useState('');
-  const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -72,48 +69,14 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         };
       };
       
-      const docentesParseados = escuelaData.docentes.map(d => {
-        const nombreParts = parseNombreCompleto(d.nombre);
-        return { ...d, ...nombreParts };
-      });
-      
       const estudiantesParseados = escuelaData.estudiantes.map(e => {
         const nombreParts = parseNombreCompleto(e.nombre);
         return { ...e, ...nombreParts };
       });
-      
-      setDocentes(docentesParseados.length > 0 ? docentesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+
       setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
     }
   }, [editMode, escuelaData]);
-
-  const handleAddDocente = () => {
-    setDocentes([...docentes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-  };
-
-  const handleRemoveDocente = (index: number) => {
-    if (docentes.length <= 1) return;
-
-    const docente = docentes[index];
-    const nombre = [docente.nombre, docente.apellidoPaterno, docente.apellidoMaterno]
-      .filter(Boolean)
-      .join(' ')
-      .trim() || `Docente ${index + 1}`;
-
-    const mensaje = docente.subtaskGid
-      ? `⚠️ Esta acción eliminará permanentemente a "${nombre}" de Asana.\n\n¿Deseas continuar?`
-      : `¿Deseas eliminar a "${nombre}" de la lista?`;
-
-    if (!window.confirm(mensaje)) return;
-
-    setDocentes(docentes.filter((_, i) => i !== index));
-  };
-
-  const handleDocenteChange = (index: number, field: keyof PersonaData, value: string) => {
-    const newDocentes = [...docentes];
-    newDocentes[index][field] = value;
-    setDocentes(newDocentes);
-  };
 
   const handleAddEstudiante = () => {
     setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
@@ -158,21 +121,10 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         throw new Error('El tipo de escuela es obligatorio');
       }
 
-      const docentesValidos = docentes.filter(d => d.nombre.trim() && d.apellidoPaterno.trim() && d.apellidoMaterno.trim() && d.genero.trim());
       const estudiantesValidos = estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim());
-
-      if (docentesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un docente con nombre completo (nombre, apellido paterno, apellido materno) y género');
-      }
 
       if (estudiantesValidos.length === 0) {
         throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre, apellido paterno, apellido materno) y género');
-      }
-
-      // Validar que todos los docentes y estudiantes válidos tengan género
-      const docenteSinGenero = docentesValidos.find(d => !d.genero.trim());
-      if (docenteSinGenero) {
-        throw new Error('El género es obligatorio para todos los docentes');
       }
 
       const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
@@ -195,91 +147,22 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           await asanaService.updateSection(escuelaData.gid, nombreEscuela);
         }
 
-        // 2. Actualizar tipo de escuela en las notas de la tarea Docentes
+        // 2. Actualizar tipo de escuela en las notas de la tarea Estudiantes
         if (tipoEscuela !== escuelaData.tipoEscuela) {
-          const tareaDocentes = await asanaService.getTask(escuelaData.docentesTaskGid);
-          const notasActualizadas = tareaDocentes.notes
-            ? tareaDocentes.notes.replace(
+          const tareaEstudiantes = await asanaService.getTask(escuelaData.estudiantesTaskGid);
+          const notasActualizadas = tareaEstudiantes.notes
+            ? tareaEstudiantes.notes.replace(
                 new RegExp(`${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}:.*`),
                 `${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`
               )
-            : `Lista de docentes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`;
+            : `Lista de estudiantes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`;
           
-          await asanaService.updateTask(escuelaData.docentesTaskGid, {
+          await asanaService.updateTask(escuelaData.estudiantesTaskGid, {
             notes: notasActualizadas
           });
         }
 
-        // 3. Actualizar docentes
-        const docentesOriginales = escuelaData.docentes;
-        const docentesActuales = docentesValidos;
-
-        // Actualizar o crear docentes en paralelo
-        await Promise.all(docentesActuales.map(async (docente) => {
-          const validationResult = validateData(DocenteDataSchema, {
-            genero: docente.genero,
-            telefono: docente.telefono,
-            lugarNacimiento: docente.lugarNacimiento,
-            fechaNacimiento: docente.fechaNacimiento,
-            domicilio: docente.domicilio,
-            documentoIdentidad: docente.documentoIdentidad,
-            identidadCultural: docente.identidadCultural,
-            especialidad: docente.cargo,
-            experiencia: ''
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
-            console.warn(`Validación falló para docente ${nombreCompleto}:`, validationResult.error);
-          }
-
-          const notasDocente = serializeEstudianteData({
-            genero: docente.genero,
-            fechaNacimiento: docente.fechaNacimiento || '',
-            especialidad: docente.cargo || '',
-            domicilio: docente.domicilio || '',
-            telefono: docente.telefono || '',
-            lugarNacimiento: docente.lugarNacimiento || '',
-            documentoIdentidad: docente.documentoIdentidad || '',
-            identidadCultural: docente.identidadCultural || ''
-          });
-
-          if (docente.subtaskGid) {
-            // Actualizar existente - PRESERVAR REGISTROS DE ASISTENCIA
-            const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
-            
-            // Obtener la tarea actual para preservar los registros de asistencia
-            const tareaActual = await asanaService.getTask(docente.subtaskGid);
-            const registrosAsistenciaExistentes = parseAsistenciaRecords(tareaActual.notes);
-            
-            // Combinar nueva información primaria con registros de asistencia existentes
-            const notasActualizadas = registrosAsistenciaExistentes.length > 0
-              ? updateNotasWithAsistencia(notasDocente, registrosAsistenciaExistentes)
-              : notasDocente;
-            
-            await asanaService.updateTask(docente.subtaskGid, {
-              name: nombreCompleto,
-              notes: notasActualizadas
-            });
-          } else {
-            // Crear nuevo
-            const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
-            await asanaService.createSubtask(escuelaData.docentesTaskGid, cdima.gid, {
-              name: nombreCompleto,
-              notes: notasDocente
-            });
-          }
-        }));
-
-        // Eliminar docentes que ya no están en paralelo
-        const gidasActuales = new Set(docentesActuales.map(d => d.subtaskGid).filter(Boolean));
-        await Promise.all(docentesOriginales.map(async (original) => {
-          if (original.subtaskGid && !gidasActuales.has(original.subtaskGid)) {
-            await asanaService.deleteTask(original.subtaskGid);
-          }
-        }));
-
-        // 4. Actualizar estudiantes
+        // 3. Actualizar estudiantes
         const estudiantesOriginales = escuelaData.estudiantes;
         const estudiantesActuales = estudiantesValidos;
 
@@ -356,23 +239,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         // 1. Crear la sección (escuela)
         const seccion = await asanaService.createSection(projectGid, nombreEscuela);
 
-        // 2. Crear las tres tareas principales
-        const notasDocentes = `Lista de docentes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`;
-        
-        const tareaDocentes = await asanaService.createTask({
-          name: 'Docentes',
-          projectGid: projectGid,
-          workspaceGid: cdima.gid,
-          sectionGid: seccion.gid,
-          notes: notasDocentes
-        });
-
+        // 2. Crear las tareas principales
         const tareaEstudiantes = await asanaService.createTask({
           name: 'Estudiantes',
           projectGid: projectGid,
           workspaceGid: cdima.gid,
           sectionGid: seccion.gid,
-          notes: 'Lista de estudiantes de la escuela'
+          notes: `Lista de estudiantes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`
         });
 
         const tareaDocumentos = await asanaService.createTask({
@@ -383,46 +256,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           notes: 'Documentos relacionados a la escuela'
         });
 
-        // 3. Crear subtareas de docentes en paralelo
-        await Promise.all(docentesValidos.map(async (docente) => {
-          // Validar datos del docente
-          const validationResult = validateData(DocenteDataSchema, {
-            genero: docente.genero,
-            telefono: docente.telefono,
-            lugarNacimiento: docente.lugarNacimiento,
-            fechaNacimiento: docente.fechaNacimiento,
-            domicilio: docente.domicilio,
-            documentoIdentidad: docente.documentoIdentidad,
-            identidadCultural: docente.identidadCultural,
-            especialidad: docente.cargo,
-            experiencia: ''
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
-            console.warn(`Validación falló para docente ${nombreCompleto}:`, validationResult.error);
-          }
-
-          // Usar el nuevo formato JSON estructurado
-          const notasDocente = serializeEstudianteData({
-            genero: docente.genero,
-            fechaNacimiento: docente.fechaNacimiento || '',
-            especialidad: docente.cargo || '',
-            domicilio: docente.domicilio || '',
-            telefono: docente.telefono || '',
-            lugarNacimiento: docente.lugarNacimiento || '',
-            documentoIdentidad: docente.documentoIdentidad || '',
-            identidadCultural: docente.identidadCultural || ''
-          });
-
-          const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
-          await asanaService.createSubtask(tareaDocentes.gid, cdima.gid, {
-            name: nombreCompleto,
-            notes: notasDocente
-          });
-        }));
-
-        // 4. Crear subtareas de estudiantes en paralelo
+        // 3. Crear subtareas de estudiantes en paralelo
         await Promise.all(estudiantesValidos.map(async (estudiante) => {
           // Validar datos del estudiante
           const validationResult = validateData(EstudianteDataSchema, {
@@ -460,7 +294,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           });
         }));
 
-        // 5. Crear subtareas de documentos
+        // 4. Crear subtareas de documentos
         const documentosTipo = ['Currícula', 'Informe', 'Otros'];
         for (const doc of documentosTipo) {
           await asanaService.createSubtask(tareaDocumentos.gid, cdima.gid, {
@@ -542,198 +376,6 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                   <option value="Liderazgo Social">Liderazgo Social</option>
                   <option value="Liderazgo de Gestión">Liderazgo de Gestión</option>
                 </select>
-              </div>
-
-              {/* Docentes */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  Docentes <span style={{ color: 'red' }}>*</span>
-                </label>
-                {docentes.map((docente, index) => (
-                  <div key={index} style={{ 
-                    padding: '1rem', 
-                    marginBottom: '1rem', 
-                    border: '1px solid #ddd', 
-                    borderRadius: '8px',
-                    backgroundColor: '#fafafa'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#666' }}>
-                        Docente {index + 1}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDocente(index)}
-                        disabled={docentes.length === 1}
-                        className="button-secondary"
-                        style={{ marginLeft: 'auto', padding: '0.5rem', minWidth: '35px', fontSize: '0.9rem' }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Nombre <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.nombre}
-                          onChange={(e) => handleDocenteChange(index, 'nombre', e.target.value)}
-                          placeholder="Ej: Gonzalo"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Paterno <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.apellidoPaterno}
-                          onChange={(e) => handleDocenteChange(index, 'apellidoPaterno', e.target.value)}
-                          placeholder="Ej: Osco"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Materno <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.apellidoMaterno}
-                          onChange={(e) => handleDocenteChange(index, 'apellidoMaterno', e.target.value)}
-                          placeholder="Ej: Hernandez"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.documentoIdentidad}
-                          onChange={(e) => handleDocenteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Género <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <select
-                          value={docente.genero}
-                          onChange={(e) => handleDocenteChange(index, 'genero', e.target.value)}
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        >
-                          <option value="">Seleccione...</option>
-                          <option value="Masculino">Masculino</option>
-                          <option value="Femenino">Femenino</option>
-                          <option value="Otro">Otro</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Cargo
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.cargo}
-                          onChange={(e) => handleDocenteChange(index, 'cargo', e.target.value)}
-                          placeholder="Cargo del participante"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Lugar de Nacimiento
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.lugarNacimiento}
-                          onChange={(e) => handleDocenteChange(index, 'lugarNacimiento', e.target.value)}
-                          placeholder="Ciudad, País"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Fecha de Nacimiento
-                        </label>
-                        <input
-                          type="date"
-                          value={docente.fechaNacimiento}
-                          onChange={(e) => handleDocenteChange(index, 'fechaNacimiento', e.target.value)}
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Identidad Cultural
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.identidadCultural}
-                          onChange={(e) => handleDocenteChange(index, 'identidadCultural', e.target.value)}
-                          placeholder="Ej: Quechua, Aymara, Guaraní, Mestizo, etc."
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Teléfono
-                        </label>
-                        <input
-                          type="tel"
-                          value={docente.telefono}
-                          onChange={(e) => handleDocenteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Comunidad
-                        </label>
-                        <input
-                          type="text"
-                          value={docente.domicilio}
-                          onChange={(e) => handleDocenteChange(index, 'domicilio', e.target.value)}
-                          placeholder="Nombre de comunidad"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-                      
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={handleAddDocente}
-                  className="button-secondary"
-                  style={{ fontSize: '0.9rem' }}
-                >
-                  + Agregar Docente
-                </button>
               </div>
 
               {/* Estudiantes */}
@@ -930,7 +572,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
               <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#1565c0', marginBottom: '0.5rem' }}>
-                  <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Docentes", "Estudiantes" y "Documentos" 
+                  <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Estudiantes" y "Documentos" 
                   con las subtareas correspondientes. Los documentos incluirán: Currícula, Informe y Otros.
                 </p>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#1976d2' }}>

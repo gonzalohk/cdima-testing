@@ -687,7 +687,11 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       // Encontrar el área correspondiente
       const areaData = weekAreas.find(a => a.name === area);
       if (areaData && dayProp) {
-        areaData.days[dayProp].push(task.name);
+        const responsables = getCustomFieldValue(task, 'Responsables de actividad');
+        const activityText = responsables && responsables !== '-'
+          ? `${task.name} (${responsables})`
+          : task.name;
+        areaData.days[dayProp].push(activityText);
       }
     });
 
