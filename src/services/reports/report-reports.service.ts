@@ -9,10 +9,10 @@ import { es } from 'date-fns/locale';
 
 // Paleta de colores profesional
 const PDF_COLORS = {
-  navyBlue: [70, 100, 140] as [number, number, number],      // Títulos principales
-  charcoalGray: [110, 110, 110] as [number, number, number], // Títulos secundarios
-  forestGreen: [46, 125, 50] as [number, number, number],    // Estado: Ejecutado
-  steelBlue: [69, 123, 157] as [number, number, number],     // Estado: En Proceso
+  navyBlue: [55, 55, 55] as [number, number, number],
+  charcoalGray: [90, 90, 90] as [number, number, number],
+  forestGreen: [90, 90, 90] as [number, number, number],
+  steelBlue: [90, 90, 90] as [number, number, number],
   lightGray: [230, 230, 230] as [number, number, number],    // Líneas de tabla
   ultraLightGray: [249, 249, 249] as [number, number, number], // Filas alternadas
   white: [255, 255, 255] as [number, number, number],
@@ -301,15 +301,21 @@ export const exportTaskReportToPDF = (
       startY: yPos,
       head: [['Municipio', 'Total', 'Completadas', 'Pendientes']],
       body: assigneeData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
-        fontSize: 10,
-        cellPadding: 3
+        fontSize: 9,
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       margin: { left: margins.left, right: margins.right },
     });
@@ -367,15 +373,21 @@ export const exportTaskReportToPDF = (
       startY: yPos,
       head: [['Responsable', 'Total', 'Completadas', 'Pendientes', 'Pob. Meta']],
       body: responsableData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
-        fontSize: 10,
-        cellPadding: 3
+        fontSize: 9,
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       margin: { left: margins.left, right: margins.right },
     });
@@ -463,20 +475,29 @@ export const exportTaskReportToPDF = (
         totalSinReplicantes.toString(),
         totalPoblacionMetaSinReplicantes.toString()
       ]],
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       footStyles: {
-        fillColor: [248, 249, 250],
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
         fontSize: 9,
-        cellPadding: 3
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       bodyStyles: {
         fontSize: 9
@@ -545,20 +566,29 @@ export const exportTaskReportToPDF = (
         totalConReplicantes.toString(),
         '-'
       ]],
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       footStyles: {
-        fillColor: [248, 249, 250],
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
         fontSize: 9,
-        cellPadding: 3
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       bodyStyles: {
         fontSize: 9
@@ -569,11 +599,8 @@ export const exportTaskReportToPDF = (
     yPos = (doc as any).lastAutoTable.finalY + 15;
   }
   
-  // Nueva página para subtareas en formato horizontal
-  doc.addPage('a4', 'landscape'); // Orientación horizontal
-  
-  // Recalcular dimensiones para página horizontal
-  const landscapePageHeight = doc.internal.pageSize.getHeight();
+  // Nueva página para subtareas
+  doc.addPage('letter', 'portrait');
   
   yPos = margins.top;
   
@@ -650,17 +677,22 @@ export const exportTaskReportToPDF = (
         'Responsable'
       ]],
       body: overdueData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [251, 228, 213], // #FBE4D5 (Coral Pálido / Salmón)
-        textColor: [123, 43, 30],   // #7B2B1E
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
         fontSize: 9,
-        cellPadding: 3,
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
         overflow: 'linebreak',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2,
       },
       columnStyles: {
         1: { cellWidth: 80 } // Descripción con ancho fijo
@@ -676,9 +708,9 @@ export const exportTaskReportToPDF = (
   // Tabla 2: Tareas EN PROCESO (segundo)
   if (pendingTasks.length > 0) {
     // Verificar si necesitamos una nueva página
-    const availableSpace = landscapePageHeight - margins.bottom;
+    const availableSpace = doc.internal.pageSize.getHeight() - margins.bottom;
     if (yPos > availableSpace - 50) {
-      doc.addPage('a4', 'landscape');
+      doc.addPage('letter', 'portrait');
       yPos = margins.top;
     }
     
@@ -702,17 +734,22 @@ export const exportTaskReportToPDF = (
         'Responsable'
       ]],
       body: pendingData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [255, 242, 204], // #FFF2CC (Crema / Ámbar Claro)
-        textColor: [132, 60, 12],   // #843C0C
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
         fontSize: 9,
-        cellPadding: 3,
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
         overflow: 'linebreak',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2,
       },
       columnStyles: {
         1: { cellWidth: 80 } // Descripción con ancho fijo
@@ -728,9 +765,9 @@ export const exportTaskReportToPDF = (
   // Tabla 3: Tareas EJECUTADAS (tercero)
   if (completedTasks.length > 0) {
     // Verificar si necesitamos una nueva página
-    const availableSpace = landscapePageHeight - margins.bottom;
+    const availableSpace = doc.internal.pageSize.getHeight() - margins.bottom;
     if (yPos > availableSpace - 50) {
-      doc.addPage('a4', 'landscape');
+      doc.addPage('letter', 'portrait');
       yPos = margins.top;
     }
     
@@ -754,17 +791,22 @@ export const exportTaskReportToPDF = (
         'Responsable'
       ]],
       body: completedData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: { 
-        fillColor: [226, 239, 218], // #E2EFDA (Verde Salvia Suave)
-        textColor: [55, 86, 35],    // #375623
-        fontSize: 10,
-        fontStyle: 'bold'
+        fillColor: PDF_COLORS.ultraLightGray,
+        textColor: PDF_COLORS.black,
+        fontSize: 9,
+        fontStyle: 'bold',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2
       },
       styles: { 
         fontSize: 9,
-        cellPadding: 3,
+        textColor: PDF_COLORS.black,
+        cellPadding: 2.5,
         overflow: 'linebreak',
+        lineColor: PDF_COLORS.lightGray,
+        lineWidth: 0.2,
       },
       columnStyles: {
         1: { cellWidth: 80 } // Descripción con ancho fijo
@@ -787,15 +829,13 @@ export const exportDistributionReportToPDF = (
   columnName: string,
   projectName: string
 ) => {
-  const margins = {
-    top: 25,
-    bottom: 25,
-    left: 30,
-    right: 25
-  };
+  const margins = PDF_MARGINS;
+  const pageWidth = 215.9;
   
   const doc = new jsPDF({
-    format: 'a4'
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'letter'
   });
   
   // Logo de la ONG en la cabecera
@@ -808,22 +848,30 @@ export const exportDistributionReportToPDF = (
   }
   
   // Título principal
-  doc.setFontSize(20);
+  doc.setFontSize(PDF_FONT_SIZES.h1);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Reporte - ${title}`, 105, margins.top + 5, { align: 'center' });
+  doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
+  doc.text('REPORTE EJECUTIVO DE AVANCE', pageWidth - margins.right, margins.top + 8, { align: 'right' });
   
-  // Información del proyecto
-  doc.setFontSize(10);
+  // Metadatos
+  doc.setFontSize(PDF_FONT_SIZES.body);
   doc.setFont('helvetica', 'normal');
-  const pageWidth = doc.internal.pageSize.getWidth();
-  doc.text(`Proyecto: ${projectName}`, margins.left, margins.top + 30);
-  doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, margins.left, margins.top + 35);
+  doc.setTextColor(PDF_COLORS.black[0], PDF_COLORS.black[1], PDF_COLORS.black[2]);
+  const metadataX = pageWidth - margins.right;
+  let metadataY = margins.top + 13;
+
+  doc.text(`PROYECTO: ${projectName}`, metadataX, metadataY, { align: 'right' });
+  metadataY += 5;
+  doc.text(`REPORTE: ${title}`, metadataX, metadataY, { align: 'right' });
+  metadataY += 5;
+  doc.text(`FECHA DE GENERACION: ${new Date().toLocaleDateString('es-ES')}`, metadataX, metadataY, { align: 'right' });
   
   // Línea separadora
-  doc.setLineWidth(0.5);
-  doc.line(margins.left, margins.top + 38, pageWidth - margins.right, margins.top + 38);
+  doc.setDrawColor(PDF_COLORS.lightGray[0], PDF_COLORS.lightGray[1], PDF_COLORS.lightGray[2]);
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, margins.top + 30, pageWidth - margins.right, margins.top + 30);
   
-  let yPos = margins.top + 45;
+  let yPos = margins.top + 37;
   
   // Título de la tabla
   doc.setFontSize(14);
@@ -851,15 +899,24 @@ export const exportDistributionReportToPDF = (
     startY: yPos,
     head: [[columnName, 'Total', 'Completadas', 'Pendientes', 'Progreso']],
     body: tableData,
-    theme: 'grid',
+    theme: 'plain',
     headStyles: { 
-      fillColor: [44, 95, 141],
-      fontSize: 10,
-      fontStyle: 'bold'
+      fillColor: PDF_COLORS.ultraLightGray,
+      textColor: PDF_COLORS.black,
+      fontSize: 9,
+      fontStyle: 'bold',
+      lineColor: PDF_COLORS.lightGray,
+      lineWidth: 0.2
     },
     styles: { 
-      fontSize: 10,
-      cellPadding: 3
+      fontSize: 9,
+      textColor: PDF_COLORS.black,
+      cellPadding: 2.5,
+      lineColor: PDF_COLORS.lightGray,
+      lineWidth: 0.2
+    },
+    alternateRowStyles: {
+      fillColor: PDF_COLORS.white
     },
     margin: { left: margins.left, right: margins.right },
   });
@@ -867,8 +924,9 @@ export const exportDistributionReportToPDF = (
   yPos = (doc as any).lastAutoTable.finalY + 10;
   
   // Pie de página
-  doc.setFontSize(8);
+  doc.setFontSize(PDF_FONT_SIZES.footer);
   doc.setFont('helvetica', 'italic');
+  doc.setTextColor(PDF_COLORS.charcoalGray[0], PDF_COLORS.charcoalGray[1], PDF_COLORS.charcoalGray[2]);
   doc.text('Reporte generado automáticamente desde el sistema de reportes CDIMA', margins.left, yPos);
   
   yPos += 4;

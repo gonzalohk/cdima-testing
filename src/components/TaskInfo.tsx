@@ -519,19 +519,19 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                         alignItems: 'center',
                         gap: '0.5rem',
                         backgroundColor: '#fff',
-                        border: '1px solid #2196F3',
-                        color: '#2196F3',
+                        border: '1px solid #626262',
+                        color: '#626262',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#2196F3';
+                        e.currentTarget.style.backgroundColor = '#626262';
                         e.currentTarget.style.color = '#fff';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = '#fff';
-                        e.currentTarget.style.color = '#2196F3';
+                        e.currentTarget.style.color = '#626262';
                       }}
                       title={attachment.name}
                     >
@@ -556,8 +556,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
               )}
             </div>
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
                 <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
               </p>
             </div>
@@ -615,15 +615,15 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                               fontSize: '0.75rem',
                               fontWeight: '500',
                               backgroundColor: 
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#e3f2fd' : 
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#f2f2f2' : 
                                 tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
                                 '#fff3e0',
                               color: 
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#1976d2' : 
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#5a5a5a' : 
                                 tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
                                 '#f57c00',
                               border: `1px solid ${
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#90caf9' : 
+                                tipoSolicitud === 'Solicitud de Fondos' ? '#b5b5b5' : 
                                 tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
                                 '#ffb74d'
                               }`,
@@ -674,8 +674,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
               </table>
             </div>
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
                 <strong>ℹ️ Info:</strong> No hay solicitudes generadas para esta actividad. Use los botones superiores para crear solicitudes de material, fondos o devolución.
               </p>
             </div>
@@ -793,11 +793,11 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                                   borderRadius: '50%',
                                   backgroundColor: 
                                     isCompleted ? '#4caf50' :
-                                    isCurrent ? '#2196F3' :
+                                    isCurrent ? '#626262' :
                                     '#e0e0e0',
                                   border: `2px solid ${
                                     isCompleted ? '#4caf50' :
-                                    isCurrent ? '#2196F3' :
+                                    isCurrent ? '#626262' :
                                     '#e0e0e0'
                                   }`,
                                   display: 'flex',
@@ -817,7 +817,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                                   marginTop: '0.5rem',
                                   fontSize: '0.65rem',
                                   textAlign: 'center',
-                                  color: isCurrent ? '#2196F3' : isCompleted ? '#4caf50' : '#999',
+                                  color: isCurrent ? '#626262' : isCompleted ? '#4caf50' : '#999',
                                   fontWeight: isCurrent ? '600' : '400',
                                   lineHeight: '1.2',
                                   maxWidth: '100px'
@@ -835,11 +835,11 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                         <div style={{
                           marginTop: '1rem',
                           padding: '0.5rem 0.75rem',
-                          backgroundColor: '#e3f2fd',
+                          backgroundColor: '#f2f2f2',
                           borderRadius: '4px',
-                          borderLeft: '3px solid #2196F3'
+                          borderLeft: '3px solid #626262'
                         }}>
-                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#1565c0' }}>
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#4f4f4f' }}>
                             <strong>Estado actual:</strong> {pasos[pasoActualIndex]}
                           </p>
                         </div>
@@ -880,20 +880,20 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                                 alignItems: 'center',
                                 gap: '0.35rem',
                                 backgroundColor: '#fff',
-                                border: '1px solid #2196F3',
-                                color: '#2196F3',
+                                border: '1px solid #626262',
+                                color: '#626262',
                                 borderRadius: '4px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s'
                               }}
                               title={attachment.name}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#2196F3';
+                                e.currentTarget.style.backgroundColor = '#626262';
                                 e.currentTarget.style.color = '#fff';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = '#fff';
-                                e.currentTarget.style.color = '#2196F3';
+                                e.currentTarget.style.color = '#626262';
                               }}
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -919,8 +919,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
               })}
             </div>
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#1565c0' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
                 <strong>ℹ️ Info:</strong> No hay contrataciones registradas para esta actividad. Use el botón "Solicitar Contratación" para crear una nueva.
               </p>
             </div>

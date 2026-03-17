@@ -207,7 +207,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
-            console.warn(`Validación falló para docente ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para docente ${nombreCompleto}: ${validationResult.error}`);
           }
 
           const notasDocente = serializeEstudianteData({
@@ -275,7 +275,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            console.warn(`Validación falló para estudiante ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
           const notasEstudiante = serializeEstudianteData({
@@ -330,6 +330,14 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         });
       } else {
         // MODO CREACIÓN
+        // 0. Verificar duplicados antes de crear
+        const seccionesExistentes = await asanaService.getSections(projectGid);
+        const nombreNormalizado = nombreDiplomado.trim().toLowerCase();
+        const duplicado = seccionesExistentes.find(s => s.name.trim().toLowerCase() === nombreNormalizado);
+        if (duplicado) {
+          throw new Error(`Ya existe un diplomado con el nombre "${duplicado.name}". Por favor usa un nombre diferente.`);
+        }
+
         // 1. Crear la sección (diplomado)
         const seccion = await asanaService.createSection(projectGid, nombreDiplomado);
 
@@ -375,7 +383,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
-            console.warn(`Validación falló para docente ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para docente ${nombreCompleto}: ${validationResult.error}`);
           }
 
           // Usar el nuevo formato JSON estructurado
@@ -413,7 +421,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            console.warn(`Validación falló para estudiante ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
           // Usar el nuevo formato JSON estructurado
@@ -499,6 +507,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   placeholder="Ej: Diplomado en Inteligencia Artificial"
                   style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
                   required
+                  maxLength={120}
                 />
               </div>
 
@@ -581,9 +590,10 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           type="text"
                           value={docente.documentoIdentidad}
                           onChange={(e) => handleDocenteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
+                          placeholder="Ej: 12345678 SC"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                           required
+                          maxLength={20}
                         />
                       </div>
 
@@ -663,8 +673,9 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           type="tel"
                           value={docente.telefono}
                           onChange={(e) => handleDocenteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
+                          placeholder="Ej: 71234567"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          maxLength={15}
                         />
                       </div>
 
@@ -773,9 +784,10 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           type="text"
                           value={estudiante.documentoIdentidad}
                           onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
+                          placeholder="Ej: 12345678 SC"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                           required
+                          maxLength={20}
                         />
                       </div>
 
@@ -855,8 +867,9 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           type="tel"
                           value={estudiante.telefono}
                           onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
+                          placeholder="Ej: 71234567"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          maxLength={15}
                         />
                       </div>
 
@@ -886,12 +899,12 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                 </button>
               </div>
 
-              <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1565c0', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
                   <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Docentes", "Estudiantes" y "Documentos" 
                   con las subtareas correspondientes. Los documentos incluirán: Currícula, Informe y Otros.
                 </p>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#1976d2' }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5a5a' }}>
                   📝 El nombre completo se guardará en formato: <strong>Nombre, Apellido Paterno, Apellido Materno</strong>
                 </p>
               </div>

@@ -74,7 +74,7 @@ const HomePage: React.FC = () => {
             href="https://app.asana.com/0/my-apps" 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ color: '#667eea' }}
+            style={{ color: '#626262' }}
           >
             Asana Developer Console
           </a>

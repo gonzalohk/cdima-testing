@@ -274,8 +274,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     black: [0, 0, 0],
     white: [255, 255, 255],
     lightGray: [245, 245, 245],
-    headerGray: [220, 220, 220],
-    red: [220, 53, 69]  // Rojo para tareas atrasadas
+    headerGray: [220, 220, 220]
   };
 
   const pdf = new jsPDF({
@@ -363,17 +362,6 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       if (inicio) fecha = inicio;
       else if (fin) fecha = fin;
       
-      // Verificar si está atrasada
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let dueDate: Date | null = null;
-      if (task.due_on) {
-        const [year, month, day] = task.due_on.split('-').map(Number);
-        dueDate = new Date(year, month - 1, day);
-        dueDate.setHours(0, 0, 0, 0);
-      }
-      const isOverdue = dueDate && dueDate < today;
-
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
@@ -381,7 +369,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
         {
           content: 'EN PROCESO',
           styles: {
-            textColor: isOverdue ? colors.red : colors.black
+            textColor: colors.black
           }
         }
       ];
@@ -729,13 +717,13 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   const pdf = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
-    format: 'letter'  // Formato carta (Letter)
+    format: 'letter'
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   
   // ============ ENCABEZADO DEL DOCUMENTO ============
-  
+
   // Título único: "Cronograma de {mes} {año}"
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
@@ -839,6 +827,23 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
     });
   });
 
+  if (tableBody.length === 0) {
+    tableBody.push([
+      {
+        content: 'No hay actividades programadas en este período',
+        colSpan: 8,
+        styles: {
+          fillColor: colors.white,
+          textColor: colors.black,
+          fontStyle: 'italic',
+          fontSize: 9,
+          cellPadding: 10,
+          halign: 'center'
+        }
+      }
+    ]);
+  }
+
   // Calcular ancho disponible: pageWidth - márgenes izq y der
   const availableWidth = pageWidth - margins.left - margins.right;
   const areaColumnWidth = 35; // Ancho fijo para columna de área
@@ -851,8 +856,8 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
     startY: currentY,
     margin: { left: margins.left, right: margins.right },
     theme: 'grid',
-    showHead: 'everyPage', // Mostrar cabecera en cada página
-    tableWidth: availableWidth, // Forzar ancho completo
+    showHead: 'everyPage',
+    tableWidth: availableWidth,
     styles: {
       fontSize: 8,
       cellPadding: 2,

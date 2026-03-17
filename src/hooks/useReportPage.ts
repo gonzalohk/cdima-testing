@@ -88,11 +88,10 @@ export const useReportPage = () => {
     try {
       const data = await asanaService.getProjects(workspaceGid);
       
-      // Excluir proyectos internos de la ONG
-      const proyectosInternos = ['comunicación cdima', 'planificación cdima', 'diplomados cdima'];
+      // Mostrar solo proyectos cuyo nombre no contenga "CDIMA"
       const proyectosFiltrados = data.filter(project => {
         const nombreLower = project.name.toLowerCase();
-        return !proyectosInternos.some(interno => nombreLower.includes(interno.toLowerCase()));
+        return !nombreLower.includes('cdima');
       });
       
       setProjects(proyectosFiltrados);

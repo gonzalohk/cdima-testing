@@ -188,9 +188,26 @@ const EscuelasPage: React.FC = () => {
           lugarNacimiento: data.lugarNacimiento || '',
           documentoIdentidad: data.documentoIdentidad || '',
           identidadCultural: data.identidadCultural || '',
-          subtaskGid: subtask.gid
+          subtaskGid: subtask.gid,
+          _parseError: data._parseError
         };
       });
+
+      // Advertir si algún participante tiene datos corruptos
+      const participantesConError = estudiantesData.filter(p => p._parseError);
+      if (participantesConError.length > 0) {
+        const nombres = participantesConError.map(p => p.nombre).join(', ');
+        const continuar = window.confirm(
+          `⚠️ Advertencia: Los datos de los siguientes participantes no se pudieron leer correctamente:\n\n${nombres}\n\n` +
+          `Esto puede ocurrir si la tarea fue editada manualmente en Asana.\n\n` +
+          `Si continúas, los campos vacíos en el formulario sobreescribirán los datos actuales de esos participantes.\n\n` +
+          `¿Deseas continuar de todas formas?`
+        );
+        if (!continuar) {
+          setLoadingDetails(false);
+          return;
+        }
+      }
 
       // Preparar datos para el modal
       setEscuelaToEdit({
@@ -338,6 +355,16 @@ const EscuelasPage: React.FC = () => {
         alert(`❌ Error de validación: ${validationResult.error}`);
         setLoadingAsistencia(false);
         return;
+      }
+
+      // Confirmación previa al guardado masivo
+      if (!soloReintentar) {
+        const [year, month, day] = fechaAsistencia.split('-').map(Number);
+        const fechaPreview = `${String(day).padStart(2,'0')}/${String(month).padStart(2,'0')}/${year}`;
+        if (!window.confirm(`¿Guardar asistencias del ${fechaPreview} para ${asistencias.length} estudiantes?\n\nEsta acción modificará los registros en Asana.`)) {
+          setLoadingAsistencia(false);
+          return;
+        }
       }
 
       // Formatear la fecha seleccionada
@@ -529,6 +556,14 @@ const EscuelasPage: React.FC = () => {
   const handleGuardarNotas = async (soloReintentar: boolean = false) => {
     setLoadingNotas(true);
     try {
+      // Confirmación previa al guardado masivo
+      if (!soloReintentar) {
+        if (!window.confirm(`¿Guardar las notas de ${moduloSeleccionado} para ${notasEstudiantes.length} estudiantes?\n\nEsta acción modificará los registros en Asana.`)) {
+          setLoadingNotas(false);
+          return;
+        }
+      }
+
       console.log(`📝 Guardando notas para ${moduloSeleccionado}...`);
       
       // Obtener el GID del campo personalizado del módulo seleccionado
@@ -828,7 +863,7 @@ const EscuelasPage: React.FC = () => {
                     <tr 
                       key={escuela.gid}
                       style={{
-                        backgroundColor: selectedEscuela?.gid === escuela.gid ? '#e3f2fd' : undefined
+                        backgroundColor: selectedEscuela?.gid === escuela.gid ? '#f2f2f2' : undefined
                       }}
                     >
                       <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
@@ -1093,7 +1128,7 @@ const EscuelasPage: React.FC = () => {
                               padding: '1rem 1.25rem', 
                               backgroundColor: '#f8f9fa',
                               borderRadius: '8px',
-                              borderLeft: '4px solid #2196F3',
+                              borderLeft: '4px solid #626262',
                               boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                               transition: 'transform 0.2s, box-shadow 0.2s',
                               cursor: 'default'
@@ -1226,11 +1261,11 @@ const EscuelasPage: React.FC = () => {
                 fontSize: '0.9rem'
               }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#e3f2fd', color: '#1565c0' }}>
+                  <tr style={{ backgroundColor: '#f2f2f2', color: '#4f4f4f' }}>
                     <th style={{ 
                       padding: '1rem', 
                       textAlign: 'center', 
-                      borderRight: '1px solid #bbdefb',
+                      borderRight: '1px solid #d1d1d1',
                       width: '50px',
                       fontWeight: 600
                     }}>
@@ -1239,42 +1274,42 @@ const EscuelasPage: React.FC = () => {
                     <th style={{ 
                       padding: '1rem', 
                       textAlign: 'left', 
-                      borderRight: '1px solid #bbdefb',
+                      borderRight: '1px solid #d1d1d1',
                       minWidth: '200px',
                       position: 'sticky',
                       left: 0,
-                      backgroundColor: '#e3f2fd',
+                      backgroundColor: '#f2f2f2',
                       zIndex: 2,
                       fontWeight: 600
                     }}>
                       Estudiante
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 1
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 2
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 3
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 4
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 5
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 6
                     </th>
-                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #bbdefb', fontWeight: 600 }}>
+                    <th style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #d1d1d1', fontWeight: 600 }}>
                       Módulo 7
                     </th>
                     <th style={{ 
                       padding: '1rem', 
                       textAlign: 'center', 
                       fontWeight: 700,
-                      backgroundColor: '#bbdefb',
+                      backgroundColor: '#d1d1d1',
                       color: '#0d47a1'
                     }}>
                       PROMEDIO
@@ -1423,52 +1458,52 @@ const EscuelasPage: React.FC = () => {
                         ))}
                         {/* Fila de promedios generales */}
                         <tr style={{ 
-                          backgroundColor: '#e3f2fd',
+                          backgroundColor: '#f2f2f2',
                           fontWeight: 700,
-                          borderTop: '3px solid #90caf9'
+                          borderTop: '3px solid #b5b5b5'
                         }}>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
-                            borderRight: '1px solid #64b5f6'
+                            borderRight: '1px solid #a3a3a3'
                           }}>
                           </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'left',
-                            borderRight: '1px solid #64b5f6',
+                            borderRight: '1px solid #a3a3a3',
                             position: 'sticky',
                             left: 0,
-                            backgroundColor: '#e3f2fd',
+                            backgroundColor: '#f2f2f2',
                             zIndex: 1
                           }}>
                             PROMEDIO GENERAL
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo1')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo2')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo3')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo4')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo5')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo6')}
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #64b5f6' }}>
+                          <td style={{ padding: '1rem', textAlign: 'center', borderRight: '1px solid #a3a3a3' }}>
                             {calcularPromedioModulo('modulo7')}
                           </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
-                            backgroundColor: '#90caf9',
+                            backgroundColor: '#b5b5b5',
                             color: '#0d47a1',
                             fontSize: '1.1rem'
                           }}>
@@ -1703,7 +1738,7 @@ const EscuelasPage: React.FC = () => {
             </div>
 
             <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1}}>
-              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#1565c0', fontSize: '1.2rem', wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#4f4f4f', fontSize: '1.2rem', wordWrap: 'break-word', overflowWrap: 'break-word' }}>
                 {formatearNombreCompleto(estudianteSeleccionadoNotas.name)}
               </h3>
 
@@ -1722,14 +1757,14 @@ const EscuelasPage: React.FC = () => {
                   <div>
                     <table style={{ minWidth: '600px',width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: '#e3f2fd', color: '#1565c0' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #90caf9', width: '45%' }}>
+                        <tr style={{ backgroundColor: '#f2f2f2', color: '#4f4f4f' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #b5b5b5', width: '45%' }}>
                             Módulo
                           </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '20%' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #b5b5b5', width: '20%' }}>
                             Nota
                           </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #90caf9', width: '35%' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #b5b5b5', width: '35%' }}>
                             Estado
                           </th>
                         </tr>
@@ -1771,9 +1806,9 @@ const EscuelasPage: React.FC = () => {
                           </tr>
                         ))}
                         <tr style={{ 
-                          backgroundColor: '#e3f2fd',
+                          backgroundColor: '#f2f2f2',
                           fontWeight: 700,
-                          borderTop: '3px solid #90caf9'
+                          borderTop: '3px solid #b5b5b5'
                         }}>
                           <td style={{ padding: '1rem', fontSize: '1.05rem' }}>
                             PROMEDIO FINAL
@@ -1897,14 +1932,14 @@ const EscuelasPage: React.FC = () => {
                     }}>
                       <div style={{ 
                         padding: '1rem', 
-                        backgroundColor: '#e3f2fd', 
+                        backgroundColor: '#f2f2f2', 
                         borderRadius: '6px',
                         textAlign: 'center'
                       }}>
                         <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
                           Total Registros
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#1565c0' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#4f4f4f' }}>
                           {registros.length}
                         </div>
                       </div>
@@ -2323,9 +2358,9 @@ const EscuelasPage: React.FC = () => {
               <div style={{ 
                 marginBottom: '1.5rem',
                 padding: '1rem',
-                backgroundColor: '#e3f2fd',
+                backgroundColor: '#f2f2f2',
                 borderRadius: '6px',
-                borderLeft: '4px solid #2196f3'
+                borderLeft: '4px solid #626262'
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -2336,7 +2371,7 @@ const EscuelasPage: React.FC = () => {
                   <label style={{ 
                     fontSize: '0.9rem', 
                     fontWeight: 'bold', 
-                    color: '#1565c0',
+                    color: '#4f4f4f',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
@@ -2350,7 +2385,7 @@ const EscuelasPage: React.FC = () => {
                     style={{
                       padding: '0.5rem',
                       fontSize: '0.9rem',
-                      border: '2px solid #2196f3',
+                      border: '2px solid #626262',
                       borderRadius: '4px',
                       backgroundColor: 'white',
                       cursor: 'pointer',

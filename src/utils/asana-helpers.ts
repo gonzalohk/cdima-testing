@@ -60,6 +60,14 @@ export function getCustomFieldValueSafe<T = any>(
 }
 
 /**
+ * Sanitiza un valor de texto para evitar que backticks (`) rompan los bloques
+ * de código markdown usados para almacenar JSON en Asana.
+ */
+function sanitizeJsonValue(value: string): string {
+  return value.replace(/`/g, "'");
+}
+
+/**
  * Estructura de datos para Estudiante/Docente
  */
 export interface EstudianteData {
@@ -75,6 +83,8 @@ export interface EstudianteData {
   especialidad?: string;
   // Campo legacy de docentes
   experiencia?: string;
+  /** true cuando el JSON no pudo parsearse o validarse correctamente */
+  _parseError?: boolean;
 }
 
 /**
@@ -139,9 +149,16 @@ export function parseEstudianteData(notes: string | undefined | null): Estudiant
     if (jsonMatch && jsonMatch[1]) {
       try {
         const parsed = JSON.parse(jsonMatch[1]);
-        return { ...defaultData, ...parsed };
+        // Verificar que el objeto tiene al menos una clave esperada
+        if (typeof parsed === 'object' && parsed !== null && 'genero' in parsed) {
+          return { ...defaultData, ...parsed };
+        }
+        // Estructura inesperada — datos posiblemente editados manualmente en Asana
+        console.warn('JSON parseado pero estructura inesperada:', parsed);
+        return { ...defaultData, _parseError: true };
       } catch (jsonError) {
         console.warn('Error parseando JSON de estudiante:', jsonError);
+        return { ...defaultData, _parseError: true };
       }
     }
     
@@ -150,9 +167,14 @@ export function parseEstudianteData(notes: string | undefined | null): Estudiant
     if (datosMatch && datosMatch[1]) {
       try {
         const parsed = JSON.parse(datosMatch[1]);
-        return { ...defaultData, ...parsed };
+        if (typeof parsed === 'object' && parsed !== null && 'genero' in parsed) {
+          return { ...defaultData, ...parsed };
+        }
+        console.warn('JSON de sección DATOS ESTUDIANTE con estructura inesperada:', parsed);
+        return { ...defaultData, _parseError: true };
       } catch (jsonError) {
         console.warn('Error parseando JSON de sección DATOS ESTUDIANTE:', jsonError);
+        return { ...defaultData, _parseError: true };
       }
     }
     
@@ -161,7 +183,7 @@ export function parseEstudianteData(notes: string | undefined | null): Estudiant
     
   } catch (error) {
     console.error('Error parseando datos de estudiante:', error);
-    return defaultData;
+    return { ...defaultData, _parseError: true };
   }
 }
 
@@ -220,8 +242,11 @@ function parseLegacyFormat(notes: string, defaultData: EstudianteData): Estudian
  * ```
  */
 export function serializeEstudianteData(data: EstudianteData): string {
+  // Excluir la flag interna _parseError y sanitizar valores con backticks
   const cleanData = Object.fromEntries(
-    Object.entries(data).filter(([_, value]) => value !== undefined && value !== '')
+    Object.entries(data)
+      .filter(([key, value]) => key !== '_parseError' && value !== undefined && value !== '')
+      .map(([key, value]) => [key, typeof value === 'string' ? sanitizeJsonValue(value) : value])
   );
   
   return `=== DATOS ESTUDIANTE ===

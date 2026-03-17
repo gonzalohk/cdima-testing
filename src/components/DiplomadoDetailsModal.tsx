@@ -78,7 +78,7 @@ const DiplomadoDetailsModal: React.FC<DiplomadoDetailsModalProps> = ({
               marginBottom: '0.5rem',
               backgroundColor: '#f8f9fa',
               borderRadius: '6px',
-              borderLeft: '3px solid #2196F3',
+              borderLeft: '3px solid #626262',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem'

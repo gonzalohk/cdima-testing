@@ -181,7 +181,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            console.warn(`Validación falló para estudiante ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
           const notasEstudiante = serializeEstudianteData({
@@ -236,6 +236,14 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         });
       } else {
         // MODO CREACIÓN
+        // 0. Verificar duplicados antes de crear
+        const seccionesExistentes = await asanaService.getSections(projectGid);
+        const nombreNormalizado = nombreEscuela.trim().toLowerCase();
+        const duplicado = seccionesExistentes.find(s => s.name.trim().toLowerCase() === nombreNormalizado);
+        if (duplicado) {
+          throw new Error(`Ya existe una escuela con el nombre "${duplicado.name}". Por favor usa un nombre diferente.`);
+        }
+
         // 1. Crear la sección (escuela)
         const seccion = await asanaService.createSection(projectGid, nombreEscuela);
 
@@ -272,7 +280,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
           if (!validationResult.success) {
             const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            console.warn(`Validación falló para estudiante ${nombreCompleto}:`, validationResult.error);
+            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
           // Usar el nuevo formato JSON estructurado
@@ -358,6 +366,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                   placeholder="Ej: Escuela de Liderazgo Comunitario"
                   style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
                   required
+                  maxLength={120}
                 />
               </div>
 
@@ -457,9 +466,10 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           type="text"
                           value={estudiante.documentoIdentidad}
                           onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="CI, DNI, Pasaporte"
+                          placeholder="Ej: 12345678 SC"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                           required
+                          maxLength={20}
                         />
                       </div>
 
@@ -539,8 +549,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           type="tel"
                           value={estudiante.telefono}
                           onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
-                          placeholder="Número de teléfono"
+                          placeholder="Ej: 71234567"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                          maxLength={15}
                         />
                       </div>
 
@@ -570,12 +581,12 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                 </button>
               </div>
 
-              <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1565c0', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
                   <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Estudiantes" y "Documentos" 
                   con las subtareas correspondientes. Los documentos incluirán: Currícula, Informe y Otros.
                 </p>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#1976d2' }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5a5a' }}>
                   📝 El nombre completo se guardará en formato: <strong>Nombre, Apellido Paterno, Apellido Materno</strong>
                 </p>
               </div>

@@ -514,19 +514,15 @@ const PlanningPage: React.FC = () => {
             disabled={exportingCalendar || events.length === 0}
             title="Exportar vista de calendario a PDF (lista por día)"
           >
-            {exportingCalendar ? 'Exportando...' : '� Exportar Actividades'}
+            {exportingCalendar ? 'Exportando...' : '📅 Lista de Actividades'}
           </button>
           <button
             className="btn-export"
             onClick={handleExportSchedule}
             disabled={exportingSchedule || currentMonthTasks.length === 0}
             title="Exportar cronograma mensual (tabla semanal por área)"
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none'
-            }}
           >
-            {exportingSchedule ? 'Exportando...' : '📋 Exportar Cronograma Mensual'}
+            {exportingSchedule ? 'Exportando...' : '📋 Cronograma Mensual'}
           </button>
         </div>
         

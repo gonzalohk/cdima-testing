@@ -286,15 +286,15 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
                         fontSize: '0.875rem',
                         fontWeight: '500',
                         backgroundColor: 
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#e3f2fd' : 
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#f2f2f2' : 
                           tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
                           '#fff3e0',
                         color: 
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#1976d2' : 
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#5a5a5a' : 
                           tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
                           '#f57c00',
                         border: `1px solid ${
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#90caf9' : 
+                          tipoSolicitud === 'Solicitud de Fondos' ? '#b5b5b5' : 
                           tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
                           '#ffb74d'
                         }`,

@@ -116,12 +116,12 @@ const ConfiguracionPage: React.FC = () => {
           {/* Información del workspace */}
           <div style={{ 
             padding: '1rem', 
-            backgroundColor: '#e3f2fd', 
+            backgroundColor: '#f2f2f2', 
             borderRadius: '6px',
-            borderLeft: '4px solid #2196f3',
+            borderLeft: '4px solid #626262',
             marginBottom: '1.5rem'
           }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#1565c0', marginBottom: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
               <strong>📌 Workspace configurado:</strong>
             </p>
             <p style={{ margin: 0, fontSize: '0.85rem', color: '#424242', fontFamily: 'monospace' }}>
@@ -196,14 +196,14 @@ const ConfiguracionPage: React.FC = () => {
             }}>
               <div style={{
                 padding: '1rem',
-                backgroundColor: '#e3f2fd',
+                backgroundColor: '#f2f2f2',
                 borderRadius: '6px',
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
                   Total Proyectos
                 </div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1565c0' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#4f4f4f' }}>
                   {stats.total}
                 </div>
               </div>

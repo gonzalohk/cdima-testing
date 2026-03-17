@@ -27,6 +27,16 @@ const ContratacionModal: React.FC<ContratacionModalProps> = ({ task, onClose, on
         throw new Error('El nombre del subárea es obligatorio');
       }
 
+      // Evitar entradas con solo espacios o caracteres especiales
+      if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(subarea)) {
+        throw new Error('El nombre del subárea debe contener texto válido');
+      }
+
+      if (!window.confirm(`¿Crear solicitud de contratación para el subárea "${subarea.trim()}"?\n\nEsta acción creará una subtarea en Asana.`)) {
+        setLoading(false);
+        return;
+      }
+
       // Construir el nombre de la subtarea
       const subtaskName = `CONTRATACION - ${subarea.trim()}`;
 
@@ -95,8 +105,8 @@ Generado el: ${fechaGeneracion}`;
 
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1565c0' }}>
+              <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f' }}>
                   <strong>📋 Actividad:</strong> {task.name}
                 </p>
               </div>

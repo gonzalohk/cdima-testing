@@ -111,8 +111,8 @@ Subtarea generada automáticamente desde el sistema de reportes CDIMA`;
                 <strong>Actividad:</strong> {task.name}
               </div>
 
-              <div style={{ padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '4px', marginBottom: '1rem' }}>
-                <h4 style={{ marginTop: 0, color: '#1976d2' }}>ℹ️ Información</h4>
+              <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px', marginBottom: '1rem' }}>
+                <h4 style={{ marginTop: 0, color: '#5a5a5a' }}>ℹ️ Información</h4>
                 <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
                   Se creará una subtarea llamada <strong>"FUENTES DE VERIFICACION"</strong> donde podrá adjuntar:
                 </p>

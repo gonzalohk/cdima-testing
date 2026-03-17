@@ -1,15 +1,32 @@
 :root {
   /* Paleta de colores profesional para ONG */
-  --primary-blue: #2C5F8D;
+  --primary-blue: #626262;
   --success-green: #27AE60;
   --warning-orange: #E67E22;
-  --light-blue: #5DADE2;
+  --light-blue: #7a7a7a;
   --mint-green: #A8E6CF;
   --slate-gray: #34495E;
   --light-gray: #ECF0F1;
   --dark-gray: #2C3E50;
   --error-red: #E74C3C;
   --amber-yellow: #F39C12;
+
+  /* Paleta de botones institucional */
+  --btn-primary-bg: #626262;
+  --btn-primary-hover: #4a4a4a;
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-border: #626262;
+  --btn-secondary-hover: #f0f0f0;
+  --btn-success-bg: #2E7D32;
+  --btn-success-hover: #1B5E20;
+  --btn-danger-bg: #C62828;
+  --btn-danger-hover: #8E000D;
+  --btn-warning-bg: #E65100;
+  --btn-warning-hover: #BF360C;
+  --btn-accent-bg: #37474F;
+  --btn-accent-hover: #263238;
+  --btn-disabled-bg: #BDBDBD;
+  --btn-disabled-text: #757575;
   
   /* Alias para compatibilidad */
   --ash-grey: var(--light-gray);
@@ -26,9 +43,9 @@
 }
 
 .header {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-gray) 100%);
+  background: #626262;
   color: white;
-  padding: 1.5rem 2rem;
+  padding: 0 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -62,6 +79,23 @@
   height: 10px;
   object-fit: cover;
   border-radius: 2px;
+}
+
+.header-divider-line {
+  width: 100%;
+  height: 16px;
+  background-image: url('./assets/lineaaguayo.jpg');
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: auto 100%;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 0.6rem 1rem;
+  font-size: 0.78rem;
+  color: #fff;
+  background-color: #626262;
 }
 
 .nav {
@@ -279,7 +313,7 @@
 }
 
 .button-primary {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-gray) 100%);
+  background: var(--btn-primary-bg);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -291,37 +325,59 @@
 
 .button-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(44, 95, 141, 0.4);
+  background: var(--btn-primary-hover);
+  box-shadow: 0 4px 12px rgba(98, 98, 98, 0.35);
 }
 
 .button-primary:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
-  background: linear-gradient(135deg, #999 0%, #777 100%);
+  background: var(--btn-disabled-bg);
+  color: var(--btn-disabled-text);
 }
 
 .button-secondary {
-  background-color: var(--light-blue);
-  color: white;
-  border: none;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-border);
+  border: 1px solid var(--btn-secondary-border);
 }
 
 .button-secondary:hover:not(:disabled) {
-  background-color: #3498DB;
+  background: var(--btn-secondary-hover);
 }
 
 .button-success {
-  background-color: var(--success-green);
+  background: var(--btn-success-bg);
   color: white;
   border: none;
 }
 
 .button-success:hover:not(:disabled) {
-  background-color: #229954;
+  background: var(--btn-success-hover);
+}
+
+.button-danger {
+  background: var(--btn-danger-bg);
+  color: white;
+  border: none;
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--btn-danger-hover);
+}
+
+.button-warning {
+  background: var(--btn-warning-bg);
+  color: white;
+  border: none;
+}
+
+.button-warning:hover:not(:disabled) {
+  background: var(--btn-warning-hover);
 }
 
 .btn-export {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-gray) 100%);
+  background: var(--btn-accent-bg);
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;
@@ -336,7 +392,8 @@
 
 .btn-export:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(44, 95, 141, 0.4);
+  background: var(--btn-accent-hover);
+  box-shadow: 0 4px 12px rgba(38, 50, 56, 0.3);
 }
 
 .alert {
@@ -919,7 +976,7 @@ tbody tr:hover {
 .form-input:focus {
   outline: none;
   border-color: var(--primary-blue);
-  box-shadow: 0 0 0 0.2rem rgba(44, 95, 141, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(98, 98, 98, 0.25);
 }
 
 select.form-input {
@@ -1168,7 +1225,7 @@ select.form-input {
 .rl-search-input:focus {
   outline: none;
   border-color: var(--primary-blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(98, 98, 98, 0.1);
 }
 
 /* Layout Container */
@@ -1224,9 +1281,9 @@ select.form-input {
 }
 
 .section-card.active {
-  background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #ececec 100%);
   border-color: var(--primary-blue);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 2px 12px rgba(98, 98, 98, 0.15);
 }
 
 .section-card-header {
@@ -1508,7 +1565,7 @@ select.form-input {
   background: var(--primary-blue);
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 4px 12px rgba(98, 98, 98, 0.25);
 }
 
 .drive-link-download {
@@ -1802,7 +1859,7 @@ select.form-input {
 .view-btn.active {
   background: var(--primary-blue);
   color: white;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 2px 8px rgba(98, 98, 98, 0.25);
 }
 
 .view-btn svg {
@@ -1920,7 +1977,7 @@ select.form-input {
 }
 
 .rbc-today {
-  background-color: #f0f7ff;
+  background-color: #f5f5f5;
 }
 
 .rbc-toolbar {
@@ -1944,7 +2001,7 @@ select.form-input {
 .rbc-toolbar button:hover {
   border-color: var(--primary-blue);
   color: var(--primary-blue);
-  background: #f0f7ff;
+  background: #f5f5f5;
 }
 
 .rbc-toolbar button:active,
@@ -1952,7 +2009,7 @@ select.form-input {
   background: var(--primary-blue);
   color: white;
   border-color: var(--primary-blue);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 2px 8px rgba(98, 98, 98, 0.25);
 }
 
 .rbc-month-view,

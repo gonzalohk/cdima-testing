@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection } from '../types/asana.types';
+import logoCdima from '../assets/logocdima.png';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -74,12 +75,15 @@ const Layout: React.FC = () => {
     <div className="app-container">
       <header className="header">
         <div className="header-content">
+          <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
           <div className="header-text">
             <h1>CDIMA - Reportes de Asana</h1>
             <p>Sistema de generación de reportes</p>
           </div>
         </div>
       </header>
+
+      <div className="header-divider-line" aria-hidden="true"></div>
       
       <nav className="nav">
         <ul className="nav-links">
@@ -217,6 +221,11 @@ const Layout: React.FC = () => {
       <main className="main-content">
         <Outlet />
       </main>
+
+      <div className="header-divider-line" aria-hidden="true"></div>
+      <footer className="app-footer">
+        <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
+      </footer>
     </div>
   );
 };

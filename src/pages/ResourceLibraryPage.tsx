@@ -33,39 +33,6 @@ interface Section {
   tasks: Task[];
 }
 
-// Funciones helper para Google Drive
-const getGoogleDriveFileId = (url: string): string | null => {
-  const patterns = [
-    /\/d\/([a-zA-Z0-9_-]+)/, // https://drive.google.com/file/d/ID/view
-    /id=([a-zA-Z0-9_-]+)/,   // https://drive.google.com/open?id=ID
-    /\/folders\/([a-zA-Z0-9_-]+)/ // https://drive.google.com/drive/folders/ID
-  ];
-  
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) {
-      return match[1];
-    }
-  }
-  
-  return null;
-};
-
-const getGoogleDrivePreviewUrl = (url: string): string | null => {
-  const fileId = getGoogleDriveFileId(url);
-  if (!fileId) return null;
-  return `https://drive.google.com/file/d/${fileId}/preview`;
-};
-
-// Función para obtener thumbnail de Google Drive (disponible para uso futuro)
-/* 
-const getGoogleDriveThumbnail = (url: string): string | null => {
-  const fileId = getGoogleDriveFileId(url);
-  if (!fileId) return null;
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400-h300`;
-};
-*/
-
 // Detectar tipo de archivo
 const detectFileType = (url: string, label: string): string => {
   const urlLower = url.toLowerCase();
@@ -200,16 +167,11 @@ const convertAsanaTaskToTask = (asanaTask: AsanaTask): Task => {
 
 // Componente para enlaces de Google Drive mejorado
 const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
-  const [showPreview, setShowPreview] = useState(false);
   const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
   const fileIcon = getFileTypeIcon(fileType);
-  const previewUrl = link.viewUrl ? getGoogleDrivePreviewUrl(link.viewUrl) : null;
-  // const thumbnail = link.viewUrl ? getGoogleDriveThumbnail(link.viewUrl) : null;
-  const isGoogleDrive = (link.viewUrl || '').includes('drive.google.com');
 
   return (
-    <>
-      <div className="drive-link-container" style={{
+    <div className="drive-link-container" style={{
         background: 'white',
         border: '1px solid #e5e7eb',
         borderRadius: '8px',
@@ -239,30 +201,6 @@ const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accent
           }}>{link.label}</span>
         </div>
         <div className="drive-link-actions" style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-          {previewUrl && isGoogleDrive && (
-            <button
-              onClick={() => setShowPreview(true)}
-              className="drive-link-btn"
-              title="Vista previa"
-              style={{
-                padding: '0.375rem 0.75rem',
-                backgroundColor: `${accentColor}15`,
-                color: accentColor,
-                border: `1px solid ${accentColor}30`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span>👁️</span>
-              <span>Preview</span>
-            </button>
-          )}
           {link.viewUrl && (
             <a
               href={link.viewUrl}
@@ -295,94 +233,6 @@ const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accent
           )}
         </div>
       </div>
-
-      {/* Modal de Preview */}
-      {showPreview && previewUrl && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem',
-            animation: 'fadeIn 0.2s ease'
-          }}
-          onClick={() => setShowPreview(false)}
-        >
-          <div 
-            style={{
-              width: '100%',
-              maxWidth: '1200px',
-              height: '85vh',
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header del modal */}
-            <div style={{
-              padding: '1rem 1.5rem',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: '#f9fafb'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: '1.25rem' }}>{fileIcon}</span>
-                <span style={{ 
-                  fontWeight: 600, 
-                  fontSize: '0.95rem',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>{link.label}</span>
-              </div>
-              <button
-                onClick={() => setShowPreview(false)}
-                style={{
-                  padding: '0.5rem',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1.5rem',
-                  color: '#6b7280',
-                  borderRadius: '6px',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ×
-              </button>
-            </div>
-            {/* Iframe del preview */}
-            <iframe
-              src={previewUrl}
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                border: 'none',
-                flex: 1
-              }}
-              title={link.label}
-              allow="autoplay"
-            />
-          </div>
-        </div>
-      )}
-    </>
   );
 };
 
