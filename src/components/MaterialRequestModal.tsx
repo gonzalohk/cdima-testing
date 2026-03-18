@@ -20,6 +20,7 @@ interface MaterialRequestModalProps {
 
 const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
+  const [titulo, setTitulo] = useState(task.name);
   const [lugar, setLugar] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFinalizacion, setFechaFinalizacion] = useState('');
@@ -77,7 +78,7 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `SOLICITUD DE MATERIAL - ${task.name}`;
+      const subtaskName = `SOLICITUD DE MATERIAL - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -96,22 +97,46 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
    Observaciones: ${m.observaciones || '-'}`
       ).join('\n\n');
 
+      const fechaInicioStr = new Date(fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
+      const fechaFinalizacionStr = new Date(fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
+
+      const jsonData = {
+        tipo: 'Solicitud de Material',
+        titulo,
+        area,
+        lugar,
+        fechaInicio: fechaInicioStr,
+        fechaFinalizacion: fechaFinalizacionStr,
+        fechaSolicitud,
+        fechaAprobacion: '',
+        materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
+          id, detalle,
+          cantidad: cantidad || '-',
+          unidad: unidad || '-',
+          observaciones: observaciones || '-',
+        })),
+      };
+
       const notes = `SOLICITUD DE MATERIAL
 
-Actividad: ${task.name}
+Actividad: ${titulo}
 
 INFORMACIÓN GENERAL:
 • Área: ${area}
 • Lugar de entrega: ${lugar}
-• Fecha de inicio: ${new Date(fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}
-• Fecha de finalización: ${new Date(fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}
+• Fecha de inicio: ${fechaInicioStr}
+• Fecha de finalización: ${fechaFinalizacionStr}
 • Fecha de solicitud: ${fechaSolicitud}
 
 MATERIALES SOLICITADOS:
 ${materialesTexto}
 
 ---
-Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
+Solicitud generada automáticamente desde el sistema de reportes CDIMA
+
+===DATOS_JSON===
+${JSON.stringify(jsonData, null, 2)}
+===FIN_DATOS_JSON===`;
 
       // Obtener el workspace del primer proyecto de la tarea
       const workspaceGid = task.projects?.[0]?.workspace?.gid;
@@ -150,7 +175,7 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
       // Generar PDF automáticamente
       setTimeout(() => {
         exportMaterialRequestToPDF({
-          taskName: task.name,
+          taskName: titulo,
           area,
           lugar,
           fechaInicio,
@@ -195,7 +220,15 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-              <strong>Actividad:</strong> {task.name}
+              <label className="form-label" style={{ display: 'block', marginBottom: '0.4rem' }}><strong>Título de la solicitud</strong></label>
+              <input
+                className="form-input"
+                type="text"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                maxLength={200}
+                required
+              />
             </div>
 
             <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Información General</h3>
@@ -218,7 +251,7 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Lugar de entrega *</label>
+              <label className="form-label">Lugar del Evento *</label>
               <input
                 type="text"
                 className="form-input"

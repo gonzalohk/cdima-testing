@@ -20,6 +20,7 @@ interface MaterialReturnModalProps {
 
 const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
+  const [titulo, setTitulo] = useState(task.name);
   const [lugar, setLugar] = useState('');
   const [materiales, setMateriales] = useState<MaterialItem[]>([
     { id: 1, detalle: '', cantidad: '', unidad: '', observaciones: '' }
@@ -66,7 +67,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `SOLICITUD DE DEVOLUCION - ${task.name}`;
+      const subtaskName = `SOLICITUD DE DEVOLUCION - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -85,9 +86,24 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
    Observaciones: ${m.observaciones || '-'}`
       ).join('\n\n');
 
+      const jsonData = {
+        tipo: 'Solicitud de Devolucion',
+        titulo,
+        area,
+        lugar,
+        fechaSolicitud,
+        fechaAprobacion: '',
+        materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
+          id, detalle,
+          cantidad: cantidad || '-',
+          unidad: unidad || '-',
+          observaciones: observaciones || '-',
+        })),
+      };
+
       const notes = `SOLICITUD DE DEVOLUCION
 
-Actividad: ${task.name}
+Actividad: ${titulo}
 
 INFORMACIÓN GENERAL:
 • Área: ${area}
@@ -98,7 +114,11 @@ MATERIALES A DEVOLVER:
 ${materialesTexto}
 
 ---
-Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
+Solicitud generada automáticamente desde el sistema de reportes CDIMA
+
+===DATOS_JSON===
+${JSON.stringify(jsonData, null, 2)}
+===FIN_DATOS_JSON===`;
 
       // Obtener el workspace del primer proyecto de la tarea
       const workspaceGid = task.projects?.[0]?.workspace?.gid;
@@ -136,7 +156,7 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
       // Generar PDF automáticamente
       setTimeout(() => {
         exportMaterialReturnToPDF({
-          taskName: task.name,
+          taskName: titulo,
           area,
           lugar,
           materiales: materialesValidos
@@ -179,7 +199,15 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA`;
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-              <strong>Actividad:</strong> {task.name}
+              <label className="form-label" style={{ display: 'block', marginBottom: '0.4rem' }}><strong>Título de la solicitud</strong></label>
+              <input
+                className="form-input"
+                type="text"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                maxLength={200}
+                required
+              />
             </div>
 
             <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Información General</h3>

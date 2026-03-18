@@ -314,6 +314,7 @@ class AsanaService {
     data: { 
       name?: string; 
       notes?: string;
+      completed?: boolean;
       custom_fields?: { [fieldGid: string]: string | number | null };
     }
   ): Promise<AsanaTask> {

@@ -6,6 +6,7 @@ import StatisticsSection from '../components/StatisticsSection';
 import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
 // import RequestsTable from '../components/RequestsTable';
+import RequestsTable from '../components/RequestsTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { exportDistributionReportToPDF } from '../services/reports/report-reports.service';
@@ -39,6 +40,8 @@ const ReportPage: React.FC = () => {
     setStatusFilter,
     setLugarFilter,
     setResponsableFilter,
+    setSubtasks,
+    loadTaskDetails,
   } = useReportPage();
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
@@ -102,7 +105,13 @@ const ReportPage: React.FC = () => {
 
       {selectedTask && (
         <>
-          <TaskInfo task={selectedTask} subtasksCount={subtasks.filter(t => !t.name.startsWith('FUENTES DE VERIFICACION')).length} subtasks={subtasks} />
+          <TaskInfo
+            task={selectedTask}
+            subtasksCount={subtasks.filter(t => !t.name.startsWith('FUENTES DE VERIFICACION')).length}
+            subtasks={subtasks}
+            onSubtaskDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
+            onSubtaskCreated={() => loadTaskDetails(selectedMainTask)}
+          />
           
           <StatisticsSection statistics={statistics} />
           
@@ -127,6 +136,10 @@ const ReportPage: React.FC = () => {
           />
           
           {/* <RequestsTable subtasks={subtasks} /> */}
+          <RequestsTable
+            subtasks={subtasks}
+            onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
+          />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
@@ -178,6 +191,10 @@ const ReportPage: React.FC = () => {
           />
           
           {/* <RequestsTable subtasks={filteredSubtasks} /> */}
+          <RequestsTable
+            subtasks={filteredSubtasks}
+            onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
+          />
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}

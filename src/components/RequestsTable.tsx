@@ -1,9 +1,11 @@
 import React from 'react';
 import { AsanaTask } from '../types/asana.types';
+import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
 
 interface RequestsTableProps {
   subtasks: AsanaTask[];
+  onDeleted?: (taskGid: string) => void;
 }
 
 interface FundItem {
@@ -20,7 +22,7 @@ interface MaterialItem {
   observaciones: string;
 }
 
-const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
+const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) => {
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -217,6 +219,19 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
     };
   };
 
+  // Manejar clic en botón eliminar
+  const handleDelete = async (task: AsanaTask) => {
+    const confirmed = window.confirm(`¿Eliminar la solicitud "${task.name}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    try {
+      await asanaService.deleteTask(task.gid);
+      onDeleted?.(task.gid);
+    } catch (err) {
+      alert('Error al eliminar la solicitud. Por favor, intenta de nuevo.');
+      console.error('Error deleting task:', err);
+    }
+  };
+
   // Manejar clic en botón imprimir
   const handlePrint = (task: AsanaTask) => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
@@ -243,10 +258,10 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
     }
   };
 
-  // Filtrar solo las subtareas que tienen "Tipo de Solicitud"
+  // Filtrar solo solicitudes de Fondos y Devolución
   const solicitudes = subtasks.filter(task => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
-    return tipoSolicitud !== '-';
+    return tipoSolicitud === 'Solicitud de Fondos' || tipoSolicitud === 'Solicitud de Devolucion';
   });
 
   if (solicitudes.length === 0) {
@@ -321,17 +336,34 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks }) => {
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <button
-                      onClick={() => handlePrint(task)}
-                      className="button-primary"
-                      style={{
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🖨️ Imprimir
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handlePrint(task)}
+                        className="button-primary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                      >
+                        🖨️ Imprimir
+                      </button>
+                      <button
+                        onClick={() => handleDelete(task)}
+                        title="Eliminar solicitud"
+                        style={{
+                          background: 'none',
+                          border: '1px solid #f5c6cb',
+                          borderRadius: '6px',
+                          padding: '0.45rem 0.6rem',
+                          cursor: 'pointer',
+                          color: '#c0392b',
+                          fontSize: '1rem',
+                          lineHeight: 1,
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -458,5 +458,7 @@ export const useReportPage = () => {
     setAssigneeFilter,
     setLugarFilter,
     setResponsableFilter,
+    setSubtasks,
+    loadTaskDetails,
   };
 };

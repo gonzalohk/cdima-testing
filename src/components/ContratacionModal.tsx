@@ -50,13 +50,28 @@ const ContratacionModal: React.FC<ContratacionModalProps> = ({ task, onClose, on
 
       // Preparar las notas con la información
       const fechaGeneracion = new Date().toLocaleDateString('es-ES');
+
+      const jsonData = {
+        tipo: 'Contratacion',
+        actividad: task.name,
+        subarea: subarea.trim(),
+        descripcion: descripcion.trim() || null,
+        fechaGeneracion,
+        estadoActual: '',
+        historialEstados: [],
+      };
+
       const notes = `Solicitud de Contratación
 Actividad: ${task.name}
 • Subárea: ${subarea}
 ${descripcion ? `• Descripción: ${descripcion}` : ''}
 
 ---
-Generado el: ${fechaGeneracion}`;
+Generado el: ${fechaGeneracion}
+
+===DATOS_JSON===
+${JSON.stringify(jsonData, null, 2)}
+===FIN_DATOS_JSON===`;
 
       // Crear la subtarea en Asana
       await asanaService.createSubtask(task.gid, cdima.gid, {

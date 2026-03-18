@@ -1231,7 +1231,7 @@ select.form-input {
 /* Layout Container */
 .rl-layout {
   display: flex;
-  flex: 1;
+  align-items: flex-start;
   overflow: visible;
 }
 
@@ -1780,7 +1780,6 @@ select.form-input {
 .planning-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   background-color: #fafafa;
   overflow: visible;
   padding: 2rem;

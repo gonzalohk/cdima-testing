@@ -222,10 +222,14 @@ const Layout: React.FC = () => {
         <Outlet />
       </main>
 
-      <div className="header-divider-line" aria-hidden="true"></div>
-      <footer className="app-footer">
-        <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
-      </footer>
+      {location.pathname !== '/biblioteca' && (
+        <>
+          <div className="header-divider-line" aria-hidden="true"></div>
+          <footer className="app-footer">
+            <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
+          </footer>
+        </>
+      )}
     </div>
   );
 };

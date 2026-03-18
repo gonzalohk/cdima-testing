@@ -7,27 +7,32 @@ import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
 import VerificationSourcesModal from './VerificationSourcesModal';
 import ContratacionModal from './ContratacionModal';
+import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 
 interface TaskInfoProps {
   task: AsanaTask;
   subtasksCount: number;
   subtasks: AsanaTask[];
+  onSubtaskDeleted?: (gid: string) => void;
+  onSubtaskCreated?: () => void;
 }
 
-const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) => {
+const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSubtaskDeleted, onSubtaskCreated }) => {
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showContratacionModal, setShowContratacionModal] = useState(false);
+  const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
-  const [contratacionesAttachments, setContratacionesAttachments] = useState<Map<string, AsanaAttachment[]>>(new Map());
+
   
   // Estados para expandir/colapsar secciones (por defecto colapsadas)
   const [showFuentesVerificacion, setShowFuentesVerificacion] = useState(false);
   const [showSolicitudes, setShowSolicitudes] = useState(false);
   const [showContrataciones, setShowContrataciones] = useState(false);
+  const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
 
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
@@ -135,130 +140,98 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     observaciones: string;
   }
 
+  // Extraer datos JSON embebidos en las notas
+  const extractJsonData = (notes: string | undefined): Record<string, unknown> | null => {
+    if (!notes) return null;
+    const match = notes.match(/===DATOS_JSON===\s*([\s\S]+?)\s*===FIN_DATOS_JSON===/);
+    if (!match) return null;
+    try { return JSON.parse(match[1]); } catch { return null; }
+  };
+
+  // Extraer la fecha de aprobacion de las notas
+  const extractFechaAprobacion = (notes: string | undefined): string => {
+    const data = extractJsonData(notes);
+    if (data?.fechaAprobacion) return data.fechaAprobacion as string;
+    return '';
+  };
+
+  // Aprobar solicitud: marcar como completada y guardar fechaAprobacion en JSON
+  const handleApproveRequest = async (solicitud: AsanaTask) => {
+    const confirmed = window.confirm(`¿Aprobar la solicitud "${solicitud.name}"? Se marcará como EJECUTADA.`);
+    if (!confirmed) return;
+    try {
+      const fechaAprobacion = new Date().toLocaleString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/La_Paz',
+      });
+      const data = extractJsonData(solicitud.notes) ?? {};
+      const updatedData = { ...data, fechaAprobacion };
+      const notasBase = (solicitud.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(solicitud.gid, { completed: true, notes: newNotes });
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al aprobar la solicitud.');
+      console.error(err);
+    }
+  };
+
   // Extraer la fecha de generación de las notas
   const extractFechaSolicitud = (notes: string | undefined): string => {
-    if (!notes) return '-';
-    const regex = /Fecha de solicitud:\s*(\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2})/;
-    const match = notes.match(regex);
-    return match && match[1] ? match[1] : '-';
+    const data = extractJsonData(notes);
+    if (data?.fechaSolicitud) return data.fechaSolicitud as string;
+    return '-';
   };
 
   // Parsear información de solicitud de fondos
   const parseFundsRequest = (task: AsanaTask) => {
-    const notes = task.notes || '';
-    const activityMatch = notes.match(/Actividad:\s*(.+)/);
-    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
-    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
-    const area = areaMatch ? areaMatch[1].trim() : '';
-    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
-    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
-    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
-    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
-    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
-    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
-    
-    const fondos: FundItem[] = [];
-    const fondosSection = notes.match(/FONDOS SOLICITADOS:\s*([\s\S]+?)(?=\n\nTOTAL:|\n\n---)/);
-    
-    if (fondosSection) {
-      const fondosText = fondosSection[1];
-      const fondosItems = fondosText.split(/\n\n(?=\d+\.)/);
-      
-      fondosItems.forEach((item, index) => {
-        const descMatch = item.match(/\d+\.\s*(.+)/);
-        const importeMatch = item.match(/Importe:\s*Bs\.\s*([\d.]+)/);
-        
-        if (descMatch) {
-          fondos.push({
-            id: index + 1,
-            descripcion: descMatch[1].trim(),
-            importeBolivianos: importeMatch ? importeMatch[1] : '0'
-          });
-        }
-      });
-    }
-    
-    return { taskName, area, lugar, fechaInicio, fechaFinalizacion, fondos };
+    const data = extractJsonData(task.notes);
+    return {
+      taskName: (data?.titulo as string) ?? task.name,
+      area: (data?.area as string) ?? '',
+      lugar: (data?.lugar as string) ?? '',
+      fechaInicio: (data?.fechaInicio as string) ?? '',
+      fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
+      fondos: (data?.fondos as FundItem[]) ?? [],
+    };
   };
 
   // Parsear información de solicitud de material
   const parseMaterialRequest = (task: AsanaTask) => {
-    const notes = task.notes || '';
-    const activityMatch = notes.match(/Actividad:\s*(.+)/);
-    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
-    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
-    const area = areaMatch ? areaMatch[1].trim() : '';
-    const lugarMatch = notes.match(/•\s*Lugar de entrega:\s*(.+)/);
-    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
-    const fechaInicioMatch = notes.match(/•\s*Fecha de inicio:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
-    const fechaInicio = fechaInicioMatch ? fechaInicioMatch[1] : '';
-    const fechaFinMatch = notes.match(/•\s*Fecha de finalización:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
-    const fechaFinalizacion = fechaFinMatch ? fechaFinMatch[1] : '';
-    
-    const materiales: MaterialItem[] = [];
-    const materialesSection = notes.match(/MATERIALES SOLICITADOS:\s*([\s\S]+?)(?=\n\n---)/);
-    
-    if (materialesSection) {
-      const materialesText = materialesSection[1];
-      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);
-      
-      materialesItems.forEach((item, index) => {
-        const detalleMatch = item.match(/\d+\.\s*(.+)/);
-        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
-        const unidadMatch = item.match(/Unidad:\s*(.+)/);
-        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
-        
-        if (detalleMatch) {
-          materiales.push({
-            id: index + 1,
-            detalle: detalleMatch[1].trim(),
-            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
-            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
-            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
-          });
-        }
-      });
-    }
-    
-    return { taskName, area, lugar, fechaInicio, fechaFinalizacion, materiales };
+    const data = extractJsonData(task.notes);
+    return {
+      taskName: (data?.titulo as string) ?? task.name,
+      area: (data?.area as string) ?? '',
+      lugar: (data?.lugar as string) ?? '',
+      fechaInicio: (data?.fechaInicio as string) ?? '',
+      fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
+      materiales: (data?.materiales as MaterialItem[]) ?? [],
+    };
   };
 
   // Parsear información de solicitud de devolución
   const parseMaterialReturn = (task: AsanaTask) => {
-    const notes = task.notes || '';
-    const activityMatch = notes.match(/Actividad:\s*(.+)/);
-    const taskName = activityMatch ? activityMatch[1].trim() : task.name;
-    const areaMatch = notes.match(/•\s*Área:\s*(.+)/);
-    const area = areaMatch ? areaMatch[1].trim() : '';
-    const lugarMatch = notes.match(/•\s*Lugar de devolución:\s*(.+)/);
-    const lugar = lugarMatch ? lugarMatch[1].trim() : '';
-    
-    const materiales: MaterialItem[] = [];
-    const materialesSection = notes.match(/MATERIALES A DEVOLVER:\s*([\s\S]+?)(?=\n\n---)/);
-    
-    if (materialesSection) {
-      const materialesText = materialesSection[1];
-      const materialesItems = materialesText.split(/\n\n(?=\d+\.)/);
-      
-      materialesItems.forEach((item, index) => {
-        const detalleMatch = item.match(/\d+\.\s*(.+)/);
-        const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
-        const unidadMatch = item.match(/Unidad:\s*(.+)/);
-        const observacionesMatch = item.match(/Observaciones:\s*(.+)/);
-        
-        if (detalleMatch) {
-          materiales.push({
-            id: index + 1,
-            detalle: detalleMatch[1].trim(),
-            cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-',
-            unidad: unidadMatch ? unidadMatch[1].trim() : '-',
-            observaciones: observacionesMatch ? observacionesMatch[1].trim() : '-'
-          });
-        }
-      });
+    const data = extractJsonData(task.notes);
+    return {
+      taskName: (data?.titulo as string) ?? task.name,
+      area: (data?.area as string) ?? '',
+      lugar: (data?.lugar as string) ?? '',
+      materiales: (data?.materiales as MaterialItem[]) ?? [],
+    };
+  };
+
+  // Manejar eliminación de solicitudes
+  const handleDeleteRequest = async (solicitud: AsanaTask) => {
+    const confirmed = window.confirm(`¿Eliminar la solicitud "${solicitud.name}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    try {
+      await asanaService.deleteTask(solicitud.gid);
+      onSubtaskDeleted?.(solicitud.gid);
+    } catch (err) {
+      alert('Error al eliminar la solicitud. Por favor, intenta de nuevo.');
+      console.error('Error deleting task:', err);
     }
-    
-    return { taskName, area, lugar, materiales };
   };
 
   // Manejar impresión de solicitudes
@@ -287,10 +260,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     }
   };
 
-  // Filtrar solicitudes de las subtareas
+  // Filtrar solicitudes de las subtareas (solo Fondos y Devolución)
   const solicitudes = subtasks.filter(taskItem => {
     const tipoSolicitud = getCustomFieldValue(taskItem, 'Tipo de Solicitud');
-    return tipoSolicitud !== '-';
+    return tipoSolicitud === 'Solicitud de Fondos' ||tipoSolicitud === 'Solicitud de Material' || tipoSolicitud === 'Solicitud de Devolucion';
   });
 
   // Filtrar contrataciones de las subtareas
@@ -298,28 +271,31 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
     return taskItem.name.startsWith('CONTRATACION - ');
   });
 
-  // Cargar attachments de las contrataciones
-  useEffect(() => {
-    const loadContratacionesAttachments = async () => {
-      if (contrataciones.length > 0) {
-        const newAttachments = new Map<string, AsanaAttachment[]>();
-        
-        for (const contratacion of contrataciones) {
-          try {
-            const attachments = await asanaService.getTaskAttachments(contratacion.gid);
-            newAttachments.set(contratacion.gid, attachments);
-          } catch (error) {
-            console.error(`Error al cargar attachments de contratación ${contratacion.gid}:`, error);
-            newAttachments.set(contratacion.gid, []);
-          }
-        }
-        
-        setContratacionesAttachments(newAttachments);
-      }
+  // Eliminar una entrada del historial de una contratación
+  const handleDeleteHistorialEntry = async (contratacion: AsanaTask, entryFecha: string, entryEstado: string) => {
+    const confirmed = window.confirm(`¿Eliminar la actualización "${entryEstado}" (${entryFecha})? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    const data = extractJsonData(contratacion.notes) as ContratacionJsonData | null;
+    if (!data) return;
+    const remaining = (data.historialEstados ?? []).filter(
+      (e) => !(e.fecha === entryFecha && e.estado === entryEstado)
+    );
+    const latest = remaining.length > 0 ? remaining[remaining.length - 1] : null;
+    const updated: ContratacionJsonData = {
+      ...data,
+      estadoActual: latest ? latest.estado : '',
+      historialEstados: remaining,
     };
-
-    loadContratacionesAttachments();
-  }, [contrataciones.length]);
+    const notasBase = (contratacion.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+    const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updated, null, 2)}\n===FIN_DATOS_JSON===`;
+    try {
+      await asanaService.updateTask(contratacion.gid, { notes: newNotes });
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al eliminar la entrada del historial.');
+      console.error(err);
+    }
+  };
 
   // Calcular valores agregados de las subtareas (excluyendo FUENTES DE VERIFICACION)
   const calculateAggregatedValues = () => {
@@ -590,7 +566,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                   <tr style={{ backgroundColor: '#e9ecef', borderBottom: '2px solid #dee2e6' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Nombre</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Tipo</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha Solicitud</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha Aprobación</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Estado</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Acción</th>
                   </tr>
@@ -599,6 +576,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                   {solicitudes.map((solicitud) => {
                     const tipoSolicitud = getCustomFieldValue(solicitud, 'Tipo de Solicitud');
                     const fechaGeneracion = extractFechaSolicitud(solicitud.notes);
+                    const fechaAprobacion = extractFechaAprobacion(solicitud.notes);
                     const esFinalizada = solicitud.completed;
 
                     return (
@@ -635,6 +613,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: '#666' }}>{fechaGeneracion}</td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: fechaAprobacion ? '#2e7d32' : '#bbb' }}>{fechaAprobacion || '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span
                             style={{
@@ -652,20 +631,43 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <button
-                            onClick={() => handlePrintRequest(solicitud)}
-                            className="button-primary"
-                            style={{
-                              padding: '0.4rem 0.75rem',
-                              fontSize: '0.75rem',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            🖨️ Imprimir
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                            {!esFinalizada && (
+                              <button
+                                onClick={() => handleApproveRequest(solicitud)}
+                                className="button-primary"
+                                style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#2e7d32', borderColor: '#2e7d32' }}
+                              >
+                                ✅ Aprobar
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handlePrintRequest(solicitud)}
+                              className="button-primary"
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              🖨️ Imprimir
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRequest(solicitud)}
+                              title="Eliminar solicitud"
+                              style={{
+                                background: 'none',
+                                border: '1px solid #f5c6cb',
+                                borderRadius: '6px',
+                                padding: '0.35rem 0.5rem',
+                                cursor: 'pointer',
+                                color: '#c0392b',
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                                transition: 'background 0.15s'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -704,9 +706,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           {showContrataciones && (contrataciones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {contrataciones.map((contratacion) => {
-                const estadoContratacion = getCustomFieldValue(contratacion, 'Estado de Contratación');
-                const attachments = contratacionesAttachments.get(contratacion.gid) || [];
                 const nombreContratacion = contratacion.name.replace('CONTRATACION - ', '');
+                const contratacionData = extractJsonData(contratacion.notes) as ContratacionJsonData | null;
+                const descripcionContratacion = contratacionData?.descripcion as string | null;
+                const estadoContratacion = (contratacionData?.estadoActual as string) || getCustomFieldValue(contratacion, 'Estado de Contratación');
 
                 // Definir los pasos del stepper
                 const pasos = [
@@ -733,10 +736,35 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                     }}
                   >
                     <div style={{ marginBottom: '1rem' }}>
-                      <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
-                        {nombreContratacion}
-                      </h4>
-                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: descripcionContratacion ? '0.35rem' : '1rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
+                          {nombreContratacion}
+                        </h4>
+                        <button
+                          onClick={() => setUpdateContratacion({
+                            task: contratacion,
+                            data: contratacionData ?? {
+                              tipo: 'Contratacion',
+                              actividad: task.name,
+                              subarea: nombreContratacion,
+                              descripcion: null,
+                              fechaGeneracion: '',
+                              estadoActual: '',
+                              historialEstados: [],
+                            },
+                          })}
+                          className="button-secondary"
+                          style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap' }}
+                        >
+                          ✏️ Actualizar estado
+                        </button>
+                      </div>
+                      {descripcionContratacion && (
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#666' }}>
+                          {descripcionContratacion}
+                        </p>
+                      )}
+
                       {/* Progress Stepper */}
                       <div style={{ position: 'relative', paddingTop: '0.5rem' }}>
                         {/* Línea de fondo */}
@@ -860,60 +888,82 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
                       )}
                     </div>
 
-                    {attachments.length > 0 ? (
-                      <div>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#666', fontWeight: 500 }}>
-                          📎 Archivos adjuntos ({attachments.length})
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {attachments.map((attachment) => (
-                            <a
-                              key={attachment.gid}
-                              href={attachment.view_url || attachment.download_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                fontSize: '0.75rem',
-                                padding: '0.4rem 0.75rem',
-                                textDecoration: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.35rem',
-                                backgroundColor: '#fff',
-                                border: '1px solid #626262',
-                                color: '#626262',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                              title={attachment.name}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#626262';
-                                e.currentTarget.style.color = '#fff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#fff';
-                                e.currentTarget.style.color = '#626262';
-                              }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                              </svg>
-                              <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {attachment.name}
-                              </span>
-                            </a>
-                          ))}
+                    {/* Historial de actualizaciones */}
+                    {(() => {
+                      type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[] };
+                      const parseFecha = (f: string) => {
+                        const clean = f.replace(',', '').trim();
+                        const [datePart, timePart = '00:00'] = clean.split(/\s+/);
+                        const [d, m, y] = datePart.split('/');
+                        return new Date(`${y}-${m}-${d}T${timePart}`).getTime();
+                      };
+                      const historial = ([...(contratacionData?.historialEstados as HistorialEntry[] ?? [])])
+                        .sort((a, b) => parseFecha(b.fecha) - parseFecha(a.fecha));
+                      const historialKey = contratacion.gid;
+                      const historialExpanded = expandedHistoriales.has(historialKey);
+                      const toggleHistorial = () => setExpandedHistoriales(prev => {
+                        const next = new Set(prev);
+                        next.has(historialKey) ? next.delete(historialKey) : next.add(historialKey);
+                        return next;
+                      });
+                      return (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: historial.length > 0 ? 'pointer' : 'default', marginBottom: historialExpanded ? '0.5rem' : 0 }}
+                            onClick={() => historial.length > 0 && toggleHistorial()}
+                          >
+                            {historial.length > 0 && (
+                              <span style={{ fontSize: '0.7rem', color: '#888', transition: 'transform 0.2s', display: 'inline-block', transform: historialExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                            )}
+                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600, color: '#555' }}>
+                              📋 Historial de actualizaciones {historial.length > 0 ? `(${historial.length})` : ''}
+                            </p>
+                          </div>
+                          {historialExpanded && historial.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              {historial.map((entry, i) => (
+                                <div key={i} style={{ backgroundColor: '#f8f9fa', borderRadius: '4px', borderLeft: '3px solid #626262', fontSize: '0.8rem', padding: '0.55rem 0.75rem' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (entry.observaciones || entry.archivos?.length > 0) ? '0.35rem' : 0 }}>
+                                    <span style={{ fontWeight: 600, color: '#333' }}>{entry.estado}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteHistorialEntry(contratacion, entry.fecha, entry.estado); }}
+                                        title="Eliminar esta actualización"
+                                        style={{ background: 'none', border: '1px solid #f5c6cb', borderRadius: '4px', padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#c0392b', fontSize: '0.75rem', lineHeight: 1 }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                      >🗑️</button>
+                                    </div>
+                                  </div>
+                                  {entry.observaciones && (
+                                    <p style={{ margin: '0 0 0.25rem', color: '#555', lineHeight: '1.4' }}>{entry.observaciones}</p>
+                                  )}
+                                  {entry.archivos?.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                      {entry.archivos.map((archivo, j) => (
+                                        <a
+                                          key={j}
+                                          href={archivo.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ fontSize: '0.72rem', color: '#1a73e8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                                        >
+                                          📎 {archivo.nombre}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {historial.length === 0 && (
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#999', fontStyle: 'italic' }}>Sin actualizaciones aún.</p>
+                          )}
                         </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#999', fontStyle: 'italic' }}>
-                          Sin archivos adjuntos. Agregue documentos en Asana.
-                        </p>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -934,6 +984,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowMaterialModal(false)}
           onSuccess={() => {
             setShowMaterialModal(false);
+            onSubtaskCreated?.();
           }}
         />
       )}
@@ -944,6 +995,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowFundsModal(false)}
           onSuccess={() => {
             setShowFundsModal(false);
+            onSubtaskCreated?.();
           }}
         />
       )}
@@ -954,6 +1006,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowReturnModal(false)}
           onSuccess={() => {
             setShowReturnModal(false);
+            onSubtaskCreated?.();
           }}
         />
       )}
@@ -976,8 +1029,19 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks }) =>
           onClose={() => setShowContratacionModal(false)}
           onSuccess={() => {
             setShowContratacionModal(false);
-            // Recargar la página para mostrar la nueva contratación
             window.location.reload();
+          }}
+        />
+      )}
+
+      {updateContratacion && (
+        <ContratacionUpdateModal
+          contratacion={updateContratacion.task}
+          currentData={updateContratacion.data}
+          onClose={() => setUpdateContratacion(null)}
+          onSuccess={() => {
+            setUpdateContratacion(null);
+            onSubtaskCreated?.();
           }}
         />
       )}
