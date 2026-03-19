@@ -315,7 +315,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
                         }`,
                       }}
                     >
-                      {tipoSolicitud}
+                      {tipoSolicitud === 'Solicitud de Devolucion' ? 'Devolución de Material' : tipoSolicitud}
                     </span>
                   </td>
                   <td>{fechaGeneracion}</td>

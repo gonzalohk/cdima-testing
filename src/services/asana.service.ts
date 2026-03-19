@@ -11,6 +11,8 @@ const BASE_URL = 'https://app.asana.com/api/1.0';
 
 class AsanaService {
   private token: string = '';
+  private workspacesCache: AsanaWorkspace[] | null = null;
+  private workspacesCachePromise: Promise<AsanaWorkspace[]> | null = null;
 
   setToken(token: string) {
     this.token = token;
@@ -30,6 +32,8 @@ class AsanaService {
 
   clearToken() {
     this.token = '';
+    this.workspacesCache = null;
+    this.workspacesCachePromise = null;
     localStorage.removeItem('asana_token');
   }
 
@@ -62,7 +66,18 @@ class AsanaService {
   }
 
   async getWorkspaces(): Promise<AsanaWorkspace[]> {
-    return this.fetchAsana<AsanaWorkspace[]>('/workspaces');
+    if (this.workspacesCache) {
+      return this.workspacesCache;
+    }
+    if (this.workspacesCachePromise) {
+      return this.workspacesCachePromise;
+    }
+    this.workspacesCachePromise = this.fetchAsana<AsanaWorkspace[]>('/workspaces').then(data => {
+      this.workspacesCache = data;
+      this.workspacesCachePromise = null;
+      return data;
+    });
+    return this.workspacesCachePromise;
   }
 
   async getProjects(workspaceGid: string): Promise<AsanaProject[]> {
@@ -98,9 +113,10 @@ class AsanaService {
   }
 
   async getSections(projectGid: string): Promise<AsanaSection[]> {
-    return this.fetchAsana<AsanaSection[]>(
+    const data = await this.fetchAsana<AsanaSection[]>(
       `/projects/${projectGid}/sections`
     );
+    return data.filter(s => s.name !== 'Sección sin nombre');
   }
 
   // Método para obtener tareas con fechas para calendario

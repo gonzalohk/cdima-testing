@@ -5,8 +5,7 @@ import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
 import ResponsibleDistribution from '../components/ResponsibleDistribution';
 import SubtasksTable from '../components/SubtasksTable';
-// import RequestsTable from '../components/RequestsTable';
-import RequestsTable from '../components/RequestsTable';
+// import RequestsTable from '../components/RequestsTable'; // Comentado: tabla duplicada, info disponible en TaskInfo
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { exportDistributionReportToPDF } from '../services/reports/report-reports.service';
@@ -107,7 +106,13 @@ const ReportPage: React.FC = () => {
         <>
           <TaskInfo
             task={selectedTask}
-            subtasksCount={subtasks.filter(t => !t.name.startsWith('FUENTES DE VERIFICACION')).length}
+            subtasksCount={subtasks.filter(t =>
+              !t.name.startsWith('FUENTES DE VERIFICACION') &&
+              !t.name.startsWith('SFON') &&
+              !t.name.startsWith('SMAT') &&
+              !t.name.startsWith('DMAT') &&
+              !t.name.startsWith('CPER')
+            ).length}
             subtasks={subtasks}
             onSubtaskDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
             onSubtaskCreated={() => loadTaskDetails(selectedMainTask)}
@@ -136,10 +141,11 @@ const ReportPage: React.FC = () => {
           />
           
           {/* <RequestsTable subtasks={subtasks} /> */}
-          <RequestsTable
+          {/* Comentado: información duplicada, ya visible en la ficha de actividad (TaskInfo) */}
+          {/* <RequestsTable
             subtasks={subtasks}
             onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
-          />
+          /> */}
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}
@@ -191,10 +197,11 @@ const ReportPage: React.FC = () => {
           />
           
           {/* <RequestsTable subtasks={filteredSubtasks} /> */}
-          <RequestsTable
+          {/* Comentado: información duplicada, ya visible en la ficha de actividad (TaskInfo) */}
+          {/* <RequestsTable
             subtasks={filteredSubtasks}
             onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
-          />
+          /> */}
           
           <SubtasksTable
             filteredSubtasks={filteredSubtasks}

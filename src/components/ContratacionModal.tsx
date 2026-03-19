@@ -38,7 +38,7 @@ const ContratacionModal: React.FC<ContratacionModalProps> = ({ task, onClose, on
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `CONTRATACION - ${subarea.trim()}`;
+      const subtaskName = `CPER - ${subarea.trim()}`;
 
       // Obtener workspaces
       const workspaces = await asanaService.getWorkspaces();
@@ -73,10 +73,36 @@ Generado el: ${fechaGeneracion}
 ${JSON.stringify(jsonData, null, 2)}
 ===FIN_DATOS_JSON===`;
 
+      // Preparar custom_fields si existe el campo "Tipo de Solicitud" y/o "Estado"
+      const tipoSolicitudField = task.custom_fields?.find(
+        field => field.name === 'Tipo de Solicitud'
+      );
+      const estadoField = task.custom_fields?.find(
+        field => field.name === 'Estado'
+      );
+      const customFields: Record<string, string> = {};
+      if (tipoSolicitudField?.gid) {
+        const solicitudContratacionValue = tipoSolicitudField.enum_options?.find(
+          option => option.name === 'Solicitar Contratacion'
+        );
+        if (solicitudContratacionValue?.gid) {
+          customFields[tipoSolicitudField.gid] = solicitudContratacionValue.gid;
+        }
+      }
+      if (estadoField?.gid) {
+        const enProcesoValue = estadoField.enum_options?.find(
+          option => option.name === 'EN PROCESO'
+        );
+        if (enProcesoValue?.gid) {
+          customFields[estadoField.gid] = enProcesoValue.gid;
+        }
+      }
+
       // Crear la subtarea en Asana
       await asanaService.createSubtask(task.gid, cdima.gid, {
         name: subtaskName,
-        notes: notes
+        notes: notes,
+        custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 
       // Mostrar notificación de éxito
@@ -140,7 +166,7 @@ ${JSON.stringify(jsonData, null, 2)}
                   disabled={loading}
                 />
                 <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  La subtarea se creará como: "CONTRATACION - {subarea || '[nombre]'}"
+                  La subtarea se creará como: "CPER - {subarea || '[nombre]'}"
                 </small>
               </div>
 

@@ -633,33 +633,31 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       }
     }));
 
-    // Filtrar tareas de esta semana que estén dentro del mes actual
+    // Filtrar tareas que se solapan con esta semana y tienen al menos un día en el mes actual
     const weekTasks = tasks.filter(task => {
-      const taskDate = task.start_on 
-        ? moment(task.start_on) 
-        : task.due_on ? moment(task.due_on) : null;
-      
-      if (!taskDate) return false;
-      
-      // Solo incluir tareas del mes actual
-      return taskDate.month() === currentMonth && 
-             taskDate.isBetween(currentWeekStart, currentWeekEnd, null, '[]');
+      const taskStart = task.start_on ? moment(task.start_on) : task.due_on ? moment(task.due_on) : null;
+      const taskEnd = task.due_on ? moment(task.due_on) : task.start_on ? moment(task.start_on) : null;
+
+      if (!taskStart || !taskEnd) return false;
+
+      const overlapsWeek = taskStart.isSameOrBefore(currentWeekEnd) && taskEnd.isSameOrAfter(currentWeekStart);
+      const monthStart = moment(date).startOf('month');
+      const monthEnd = moment(date).endOf('month');
+      const hasCurrentMonthDay = taskStart.isSameOrBefore(monthEnd) && taskEnd.isSameOrAfter(monthStart);
+
+      return overlapsWeek && hasCurrentMonthDay;
     });
 
-    // Agrupar tareas por área y día
+    // Agrupar tareas por área y día (las tareas multi-día se repiten en cada día del rango)
     weekTasks.forEach(task => {
       const taskArea = getCustomFieldValue(task, 'Area');
       const area = taskArea && taskArea !== '-' ? taskArea : '';
-      
-      const taskDate = task.start_on 
-        ? moment(task.start_on) 
-        : task.due_on ? moment(task.due_on) : null;
-      
-      if (!taskDate) return;
-      
-      const dayOfWeek = taskDate.day(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
-      
-      // Mapear día de la semana a propiedad
+
+      const taskStart = task.start_on ? moment(task.start_on) : task.due_on ? moment(task.due_on) : null;
+      const taskEnd = task.due_on ? moment(task.due_on) : task.start_on ? moment(task.start_on) : null;
+
+      if (!taskStart || !taskEnd) return;
+
       const dayMap: { [key: number]: keyof AreaData['days'] } = {
         1: 'monday',
         2: 'tuesday',
@@ -669,17 +667,24 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
         6: 'saturday',
         0: 'sunday'
       };
-      
-      const dayProp = dayMap[dayOfWeek];
-      
-      // Encontrar el área correspondiente
+
       const areaData = weekAreas.find(a => a.name === area);
-      if (areaData && dayProp) {
-        const responsables = getCustomFieldValue(task, 'Responsables de actividad');
-        const activityText = responsables && responsables !== '-'
-          ? `${task.name} (${responsables})`
-          : task.name;
-        areaData.days[dayProp].push(activityText);
+      if (!areaData) return;
+
+      const responsables = getCustomFieldValue(task, 'Responsables de actividad');
+      const activityText = responsables && responsables !== '-'
+        ? `${task.name} (${responsables})`
+        : task.name;
+
+      // Agregar a cada día de la semana que caiga dentro del rango de la tarea y pertenezca al mes actual
+      for (let i = 0; i < 7; i++) {
+        const dayDate = moment(currentWeekStart).add(i, 'days');
+        if (dayDate.month() === currentMonth && dayDate.isBetween(taskStart, taskEnd, 'day', '[]')) {
+          const dayProp = dayMap[dayDate.day()];
+          if (dayProp) {
+            areaData.days[dayProp].push(activityText);
+          }
+        }
       }
     });
 

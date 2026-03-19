@@ -77,8 +77,8 @@ const Layout: React.FC = () => {
         <div className="header-content">
           <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
           <div className="header-text">
-            <h1>CDIMA - Reportes de Asana</h1>
-            <p>Sistema de generación de reportes</p>
+            <h1>CDIMA Amta</h1>
+            <p>Sistema de Gestión de Proyectos y Control Académico</p>
           </div>
         </div>
       </header>
@@ -100,7 +100,7 @@ const Layout: React.FC = () => {
               to="/report" 
               className={`nav-link ${location.pathname === '/report' ? 'active' : ''}`}
             >
-              📊 Reportes
+              📊 Proyectos
             </Link>
           </li>
           <li>

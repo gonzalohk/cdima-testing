@@ -189,18 +189,27 @@ const PlanningPage: React.FC = () => {
 
   // Convertir tareas de Asana a eventos del calendario
   const events: CalendarEvent[] = useMemo(() => {
+    // Parsea un string YYYY-MM-DD como fecha local (Bolivia UTC-4).
+    // Usar new Date(y, m, d) en vez de moment/Date(string) evita que el
+    // navegador interprete la fecha en UTC y la desplace un día atrás.
+    const parseLocalDate = (dateStr: string, dayOffset = 0): Date => {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d + dayOffset);
+    };
+
     return tasks
       .filter(task => task.start_on || task.due_on) // Solo tareas con fechas
       .map(task => {
         // Usar start_on si existe, si no usar due_on
-        const startDate = task.start_on 
-          ? moment(task.start_on).toDate()
-          : moment(task.due_on).toDate();
-        
-        // Usar due_on como fecha fin, si no existe usar start_on
-        const endDate = task.due_on 
-          ? moment(task.due_on).toDate()
-          : moment(task.start_on).toDate();
+        const startDate = task.start_on
+          ? parseLocalDate(task.start_on)
+          : parseLocalDate(task.due_on!);
+
+        // react-big-calendar trata end como exclusivo en eventos multi-día:
+        // end = medianoche del día siguiente para que el último día se pinte completo.
+        const endDate = task.due_on
+          ? parseLocalDate(task.due_on, 1)
+          : parseLocalDate(task.start_on!, 1);
 
         // Agregar responsables al título si existe
         const responsables = getCustomFieldValue(task, 'Responsables de actividad');

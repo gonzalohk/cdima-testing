@@ -78,7 +78,7 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `SOLICITUD DE MATERIAL - ${titulo}`;
+      const subtaskName = `SMAT - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -117,7 +117,7 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
         })),
       };
 
-      const notes = `SOLICITUD DE MATERIAL
+      const notes = `SMAT
 
 Actividad: ${titulo}
 
@@ -207,7 +207,7 @@ ${JSON.stringify(jsonData, null, 2)}
       <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>Solicitud de Material</h2>
+          <h2>📦 Solicitud de Material</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 

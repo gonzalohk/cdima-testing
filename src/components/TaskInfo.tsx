@@ -268,7 +268,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
 
   // Filtrar contrataciones de las subtareas
   const contrataciones = subtasks.filter(taskItem => {
-    return taskItem.name.startsWith('CONTRATACION - ');
+    return taskItem.name.startsWith('CPER - ');
   });
 
   // Eliminar una entrada del historial de una contratación
@@ -352,7 +352,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
               className="button-primary"
               style={{ fontSize: '0.9rem' }}
             >
-              🔄 Solicitud de Devolución
+              🔄 Devolución de Material
             </button>
             <button
               onClick={() => setShowContratacionModal(true)}
@@ -608,7 +608,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                             }}
                           >
                             {tipoSolicitud === 'Solicitud de Fondos' ? '💰 Fondos' : 
-                             tipoSolicitud === 'Solicitud de Devolucion' ? '🔄 Devolución' : 
+                             tipoSolicitud === 'Solicitud de Devolucion' ? '🔄 Dev. Material' : 
                              '📋 Material'}
                           </span>
                         </td>
@@ -706,7 +706,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
           {showContrataciones && (contrataciones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {contrataciones.map((contratacion) => {
-                const nombreContratacion = contratacion.name.replace('CONTRATACION - ', '');
+                const nombreContratacion = contratacion.name.replace('CPER - ', '');
                 const contratacionData = extractJsonData(contratacion.notes) as ContratacionJsonData | null;
                 const descripcionContratacion = contratacionData?.descripcion as string | null;
                 const estadoContratacion = (contratacionData?.estadoActual as string) || getCustomFieldValue(contratacion, 'Estado de Contratación');

@@ -76,7 +76,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `SOLICITUD DE FONDOS - ${titulo}`;
+      const subtaskName = `SFON - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -118,7 +118,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         })),
       };
 
-      const notes = `SOLICITUD DE FONDOS
+      const notes = `SFON
 
 Actividad: ${titulo}
 
@@ -210,7 +210,7 @@ ${JSON.stringify(jsonData, null, 2)}
       <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>Solicitud de Fondos</h2>
+          <h2>💰 Solicitud de Fondos</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 

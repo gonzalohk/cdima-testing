@@ -67,7 +67,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
       }
 
       // Construir el nombre de la subtarea
-      const subtaskName = `SOLICITUD DE DEVOLUCION - ${titulo}`;
+      const subtaskName = `DMAT - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -87,7 +87,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
       ).join('\n\n');
 
       const jsonData = {
-        tipo: 'Solicitud de Devolucion',
+        tipo: 'Devolucion de Material',
         titulo,
         area,
         lugar,
@@ -101,7 +101,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         })),
       };
 
-      const notes = `SOLICITUD DE DEVOLUCION
+      const notes = `DMAT
 
 Actividad: ${titulo}
 
@@ -151,7 +151,7 @@ ${JSON.stringify(jsonData, null, 2)}
         custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 
-      setNotification({ message: '¡Solicitud de devolución creada exitosamente!', type: 'success' });
+      setNotification({ message: '¡Devolución de Material creada exitosamente!', type: 'success' });
       
       // Generar PDF automáticamente
       setTimeout(() => {
@@ -186,7 +186,7 @@ ${JSON.stringify(jsonData, null, 2)}
       <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>Solicitud de Devolución</h2>
+          <h2>🔄 Devolución de Material</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 
