@@ -1255,6 +1255,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (entry.observaciones || entry.archivos?.length > 0) ? '0.35rem' : 0 }}>
                                     <span style={{ fontWeight: 600, color: '#333' }}>{entry.estado}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <span style={{ fontSize: '0.72rem', color: '#999' }}>👤 Administrador del sistema</span>
+                                      <span style={{ fontSize: '0.72rem', color: '#ccc' }}>·</span>
                                       <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteHistorialEntry(contratacion, entry.fecha, entry.estado); }}
