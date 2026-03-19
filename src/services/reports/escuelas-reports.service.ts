@@ -243,11 +243,11 @@ export const exportEscuelaGeneralPDF = ({
         fillColor: colors.white
       },
       columnStyles: {
-        0: { cellWidth: 7, halign: 'center' },
+        0: { cellWidth: 8, halign: 'center' },
         1: { cellWidth: 42 },
-        2: { cellWidth: 22, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 28 },
+        2: { cellWidth: 21, halign: 'center' },
+        3: { cellWidth: 19, halign: 'center' },
+        4: { cellWidth: 27 },
         5: { cellWidth: 44 },
         6: { cellWidth: 30 },
         7: { cellWidth: 24, halign: 'center' },
