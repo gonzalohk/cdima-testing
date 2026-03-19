@@ -9,6 +9,7 @@ import SubtasksTable from '../components/SubtasksTable';
 import BeneficiariesSummary from '../components/BeneficiariesSummary';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { exportDistributionReportToPDF } from '../services/reports/report-reports.service';
+import { exportDistributionReportToWord } from '../services/reports/report-word.service';
 
 const ReportPage: React.FC = () => {
   const {
@@ -35,6 +36,7 @@ const ReportPage: React.FC = () => {
     handleSectionChange,
     handleMainTaskChange,
     handleExportPDF,
+    handleExportWord,
     setSearchTerm,
     setStatusFilter,
     setLugarFilter,
@@ -54,8 +56,26 @@ const ReportPage: React.FC = () => {
     );
   };
 
+  const handleExportMunicipiosWord = () => {
+    exportDistributionReportToWord(
+      statistics.byAssignee,
+      'Distribución por Municipio',
+      'Municipio',
+      projectName
+    );
+  };
+
   const handleExportResponsables = () => {
     exportDistributionReportToPDF(
+      statistics.byResponsable,
+      'Distribución por Responsable',
+      'Responsable',
+      projectName
+    );
+  };
+
+  const handleExportResponsablesWord = () => {
+    exportDistributionReportToWord(
       statistics.byResponsable,
       'Distribución por Responsable',
       'Responsable',
@@ -125,6 +145,7 @@ const ReportPage: React.FC = () => {
             columnName="Municipio"
             byAssignee={statistics.byAssignee}
             onExport={handleExportMunicipios}
+            onExportWord={handleExportMunicipiosWord}
           />
           
           <ResponsibleDistribution 
@@ -132,6 +153,7 @@ const ReportPage: React.FC = () => {
             columnName="Responsable"
             byAssignee={statistics.byResponsable}
             onExport={handleExportResponsables}
+            onExportWord={handleExportResponsablesWord}
           />
           
           <BeneficiariesSummary 
@@ -160,6 +182,7 @@ const ReportPage: React.FC = () => {
             onLugarFilterChange={setLugarFilter}
             onResponsableFilterChange={setResponsableFilter}
             onExportPDF={handleExportPDF}
+            onExportWord={handleExportWord}
           />
         </>
       )}
@@ -182,6 +205,7 @@ const ReportPage: React.FC = () => {
             columnName="Municipio"
             byAssignee={statistics.byAssignee}
             onExport={handleExportMunicipios}
+            onExportWord={handleExportMunicipiosWord}
           />
           
           <ResponsibleDistribution 
@@ -189,6 +213,7 @@ const ReportPage: React.FC = () => {
             columnName="Responsable"
             byAssignee={statistics.byResponsable}
             onExport={handleExportResponsables}
+            onExportWord={handleExportResponsablesWord}
           />
           
           <BeneficiariesSummary 
@@ -216,6 +241,7 @@ const ReportPage: React.FC = () => {
             onLugarFilterChange={setLugarFilter}
             onResponsableFilterChange={setResponsableFilter}
             onExportPDF={handleExportPDF}
+            onExportWord={handleExportWord}
           />
         </>
       )}

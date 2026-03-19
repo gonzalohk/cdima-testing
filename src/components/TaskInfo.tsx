@@ -26,6 +26,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [observeTarget, setObserveTarget] = useState<AsanaTask | null>(null);
+  const [observeMotivo, setObserveMotivo] = useState('');
+  const [observeLoading, setObserveLoading] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<AsanaTask | null>(null);
 
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
@@ -168,6 +172,16 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
     return '';
   };
 
+  // Extraer estado de observación de las notas
+  const extractObservacion = (notes: string | undefined): { observado: boolean; motivo: string; fecha: string } => {
+    const data = extractJsonData(notes);
+    return {
+      observado: !!(data?.observado),
+      motivo: (data?.motivoObservacion as string) ?? '',
+      fecha: (data?.fechaObservacion as string) ?? '',
+    };
+  };
+
   // Aprobar solicitud: marcar como completada y guardar fechaAprobacion en JSON
   const handleApproveRequest = async (solicitud: AsanaTask) => {
     const confirmed = window.confirm(`¿Aprobar la solicitud "${solicitud.name}"? Se marcará como EJECUTADA.`);
@@ -187,6 +201,39 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
     } catch (err) {
       alert('Error al aprobar la solicitud.');
       console.error(err);
+    }
+  };
+
+  // Marcar solicitud como observada/rechazada
+  const handleObserveRequest = (solicitud: AsanaTask) => {
+    const obs = extractObservacion(solicitud.notes);
+    setObserveMotivo(obs.motivo);
+    setObserveTarget(solicitud);
+  };
+
+  const submitObservacion = async () => {
+    if (!observeTarget) return;
+    if (!observeMotivo.trim()) return;
+    setObserveLoading(true);
+    try {
+      const fechaObservacion = new Date().toLocaleString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/La_Paz',
+      });
+      const data = extractJsonData(observeTarget.notes) ?? {};
+      const updatedData = { ...data, observado: true, motivoObservacion: observeMotivo.trim(), fechaObservacion };
+      const notasBase = (observeTarget.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(observeTarget.gid, { notes: newNotes });
+      setObserveTarget(null);
+      setObserveMotivo('');
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al observar la solicitud.');
+      console.error(err);
+    } finally {
+      setObserveLoading(false);
     }
   };
 
@@ -230,6 +277,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
       taskName: (data?.titulo as string) ?? task.name,
       area: (data?.area as string) ?? '',
       lugar: (data?.lugar as string) ?? '',
+      fechaDevolucion: (data?.fechaDevolucion as string) ?? '-',
       materiales: (data?.materiales as MaterialItem[]) ?? [],
     };
   };
@@ -342,6 +390,177 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
 
   return (
     <>
+      {/* Modal de detalle de solicitud */}
+      {detailTarget && (() => {
+        const tipoDetalle = getCustomFieldValue(detailTarget, 'Tipo de Solicitud');
+        const obsDetalle = extractObservacion(detailTarget.notes);
+        const fechaSolicitudDetalle = extractFechaSolicitud(detailTarget.notes);
+        const fechaAprobacionDetalle = extractFechaAprobacion(detailTarget.notes);
+        const isFondos = tipoDetalle === 'Solicitud de Fondos';
+        const isMaterial = tipoDetalle === 'Solicitud de Material';
+        const isDevolucion = tipoDetalle === 'Solicitud de Devolucion';
+        const fondosData = isFondos ? parseFundsRequest(detailTarget) : null;
+        const materialData = isMaterial ? parseMaterialRequest(detailTarget) : null;
+        const devolucionData = isDevolucion ? parseMaterialReturn(detailTarget) : null;
+        const total = fondosData ? fondosData.fondos.reduce((acc, f) => acc + (parseFloat(f.importeBolivianos) || 0), 0) : 0;
+        return (
+          <div className="modal-overlay" onClick={() => setDetailTarget(null)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="modal-header">
+                <h2>
+                  {isFondos ? '💰 Solicitud de Fondos' : isDevolucion ? '🔄 Devolución de Material' : '📋 Solicitud de Material'}
+                </h2>
+                <button className="modal-close" onClick={() => setDetailTarget(null)}>&times;</button>
+              </div>
+              <div className="modal-body">
+                {/* Info general */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Título</span>
+                    <p style={{ margin: '0.15rem 0 0', fontWeight: 600, fontSize: '0.95rem' }}>{detailTarget.name}</p>
+                  </div>
+                  {(fondosData || materialData || devolucionData) && [
+                    { label: 'Área', value: (fondosData || materialData || devolucionData)?.area },
+                    { label: 'Lugar', value: (fondosData || materialData || devolucionData)?.lugar },
+                    !isDevolucion && { label: 'Fecha inicio', value: (fondosData || materialData)?.fechaInicio },
+                    !isDevolucion && { label: 'Fecha fin', value: (fondosData || materialData)?.fechaFinalizacion },
+                    isDevolucion && { label: 'Fecha devolución', value: devolucionData?.fechaDevolucion },
+                    { label: 'Fecha solicitud', value: fechaSolicitudDetalle },
+                    fechaAprobacionDetalle && { label: 'Fecha aprobación', value: fechaAprobacionDetalle },
+                  ].filter(Boolean).map((item, i) => item && (
+                    <div key={i}>
+                      <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
+                      <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{item.value || '—'}</p>
+                    </div>
+                  ))}
+                  {obsDetalle.observado && (
+                    <div style={{ gridColumn: '1 / -1', backgroundColor: '#fdecea', borderRadius: '6px', padding: '0.6rem 0.75rem', border: '1px solid #f5c6cb' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#c0392b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>⚠ Observación</span>
+                      <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: '#c0392b' }}>{obsDetalle.motivo}</p>
+                      {obsDetalle.fecha && <p style={{ margin: '0.1rem 0 0', fontSize: '0.75rem', color: '#999' }}>{obsDetalle.fecha}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tabla de ítems */}
+                {isFondos && fondosData && fondosData.fondos.length > 0 && (
+                  <>
+                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#555' }}>Detalle de fondos</h4>
+                    <div style={{ overflowX: 'auto', maxHeight: '260px', overflowY: 'auto', border: '1px solid #dee2e6', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginBottom: '0' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                        <tr style={{ backgroundColor: '#e9ecef' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>#</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Descripción</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>Importe (Bs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fondosData.fondos.map((f, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
+                            <td style={{ padding: '0.4rem 0.75rem', color: '#888' }}>{i + 1}</td>
+                            <td style={{ padding: '0.4rem 0.75rem' }}>{f.descripcion}</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{parseFloat(f.importeBolivianos).toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ backgroundColor: '#f8f9fa', fontWeight: 700 }}>
+                          <td colSpan={2} style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total:</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Bs. {total.toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    </div>
+                  </>
+                )}
+
+                {(isMaterial || isDevolucion) && (materialData || devolucionData) && (
+                  (() => {
+                    const items = (materialData?.materiales || devolucionData?.materiales) ?? [];
+                    return items.length > 0 ? (
+                      <>  
+                        <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#555' }}>Detalle de materiales</h4>
+                        <div style={{ overflowX: 'auto', maxHeight: '260px', overflowY: 'auto', border: '1px solid #dee2e6', borderRadius: '6px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                          <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                            <tr style={{ backgroundColor: '#e9ecef' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>#</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Detalle</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Cant.</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Unidad</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Obs.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((m, i) => (
+                              <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
+                                <td style={{ padding: '0.4rem 0.75rem', color: '#888' }}>{i + 1}</td>
+                                <td style={{ padding: '0.4rem 0.75rem' }}>{m.detalle}</td>
+                                <td style={{ padding: '0.4rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>{m.cantidad}</td>
+                                <td style={{ padding: '0.4rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>{m.unidad}</td>
+                                <td style={{ padding: '0.4rem 0.75rem', color: '#888', fontSize: '0.78rem' }}>{m.observaciones || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        </div>
+                      </>
+                    ) : null;
+                  })()
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="button-secondary" onClick={() => setDetailTarget(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Modal de observación */}
+      {observeTarget && (
+        <div className="modal-overlay" onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h2>⚠️ {extractObservacion(observeTarget.notes).observado ? 'Actualizar observación' : 'Observar solicitud'}</h2>
+              <button className="modal-close" onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#555' }}>
+                <strong>{observeTarget.name}</strong>
+              </p>
+              <div style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Motivo de observación *</label>
+                <textarea
+                  className="form-input"
+                  rows={4}
+                  placeholder="Describa el motivo por el que se observa esta solicitud..."
+                  value={observeMotivo}
+                  onChange={e => setObserveMotivo(e.target.value)}
+                  autoFocus
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="button-secondary"
+                onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}
+                disabled={observeLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                className="button-primary"
+                onClick={submitObservacion}
+                disabled={observeLoading || !observeMotivo.trim()}
+                style={{ backgroundColor: '#c0392b', borderColor: '#c0392b' }}
+              >
+                {observeLoading ? 'Guardando...' : '⚠️ Guardar observación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
@@ -626,16 +845,31 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                   </tr>
                 </thead>
                 <tbody>
-                  {solicitudes.map((solicitud) => {
+                  {[...solicitudes].sort((a, b) => {
+                    const statusOrder = (t: AsanaTask) => {
+                      if (t.completed) return 1;
+                      const obs = extractObservacion(t.notes);
+                      if (obs.observado) return 2;
+                      return 0;
+                    };
+                    return statusOrder(a) - statusOrder(b);
+                  }).map((solicitud) => {
                     const tipoSolicitud = getCustomFieldValue(solicitud, 'Tipo de Solicitud');
                     const fechaGeneracion = extractFechaSolicitud(solicitud.notes);
                     const fechaAprobacion = extractFechaAprobacion(solicitud.notes);
                     const esFinalizada = solicitud.completed;
+                    const observacion = extractObservacion(solicitud.notes);
 
                     return (
-                      <tr key={solicitud.gid} style={{ borderBottom: '1px solid #dee2e6' }}>
-                        <td style={{ padding: '0.75rem', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {solicitud.name}
+                      <tr key={solicitud.gid} style={{ borderBottom: '1px solid #dee2e6', backgroundColor: observacion.observado ? '#fff5f5' : esFinalizada ? '#f0faf0' : undefined }}>
+                        <td style={{ padding: '0.75rem', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{solicitud.name}</div>
+                          {observacion.observado && (
+                            <div style={{ fontSize: '0.75rem', color: '#c0392b', marginTop: '0.25rem', fontStyle: 'italic', whiteSpace: 'normal' }}>
+                              ⚠ {observacion.motivo}
+                              {observacion.fecha && <span style={{ color: '#999', marginLeft: '0.4rem' }}>({observacion.fecha})</span>}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '0.75rem' }}>
                           <span
@@ -675,17 +909,17 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                               borderRadius: '6px',
                               fontSize: '0.75rem',
                               fontWeight: '500',
-                              backgroundColor: esFinalizada ? '#e8f5e9' : '#fff3e0',
-                              color: esFinalizada ? '#2e7d32' : '#f57c00',
-                              border: `1px solid ${esFinalizada ? '#81c784' : '#ffb74d'}`,
+                              backgroundColor: esFinalizada ? '#e8f5e9' : observacion.observado ? '#fdecea' : '#fff3e0',
+                              color: esFinalizada ? '#2e7d32' : observacion.observado ? '#c0392b' : '#f57c00',
+                              border: `1px solid ${esFinalizada ? '#81c784' : observacion.observado ? '#f5c6cb' : '#ffb74d'}`,
                             }}
                           >
-                            {esFinalizada ? '✓ Finalizada' : '⏸ Pendiente'}
+                            {esFinalizada ? '✓ Aprobada' : observacion.observado ? '⚠ Observada' : '⏸ Pendiente'}
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                            {!esFinalizada && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                            {!esFinalizada && !observacion.observado && (
                               <button
                                 onClick={() => handleApproveRequest(solicitud)}
                                 className="button-primary"
@@ -694,12 +928,54 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                                 ✅ Aprobar
                               </button>
                             )}
+                            {!esFinalizada && (
+                              <button
+                                onClick={() => handleObserveRequest(solicitud)}
+                                title={observacion.observado ? 'Actualizar observación' : 'Observar solicitud'}
+                                style={{
+                                  background: observacion.observado ? '#fdecea' : 'none',
+                                  border: '1px solid #f5c6cb',
+                                  borderRadius: '6px',
+                                  padding: '0.35rem 0.6rem',
+                                  cursor: 'pointer',
+                                  color: '#c0392b',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  lineHeight: 1,
+                                  transition: 'background 0.15s'
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
+                                onMouseLeave={e => (e.currentTarget.style.background = observacion.observado ? '#fdecea' : 'none')}
+                              >
+                                ⚠️
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setDetailTarget(solicitud)}
+                              title="Ver detalle"
+                              style={{
+                                background: 'none',
+                                border: '1px solid #b3c6e0',
+                                borderRadius: '6px',
+                                padding: '0.35rem 0.55rem',
+                                cursor: 'pointer',
+                                color: '#1a5fa8',
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                                transition: 'background 0.15s'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#e8f0fb')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              📓
+                            </button>
                             <button
                               onClick={() => handlePrintRequest(solicitud)}
                               className="button-primary"
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                              title="Imprimir"
+                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', cursor: 'pointer', lineHeight: 1 }}
                             >
-                              🖨️ Imprimir
+                              🖨️
                             </button>
                             <button
                               onClick={() => handleDeleteRequest(solicitud)}

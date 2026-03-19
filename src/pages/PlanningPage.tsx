@@ -14,7 +14,7 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import { getTaskColor } from '../utils/colors';
-import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule } from '../services/reports/planning-reports.service';
+import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule, exportMonthlyCalendarScheduleWord } from '../services/reports/planning-reports.service';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -104,6 +104,7 @@ const PlanningPage: React.FC = () => {
   const [exportingTables, setExportingTables] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
+  const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
 
   // Forzar locale español cada vez que el componente se monta o actualiza
   useEffect(() => {
@@ -409,6 +410,22 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  const handleExportScheduleWord = async () => {
+    setExportingScheduleWord(true);
+    try {
+      await exportMonthlyCalendarScheduleWord({
+        tasks: currentMonthTasks,
+        date,
+        projectName
+      });
+    } catch (error) {
+      console.error('Error al exportar cronograma Word:', error);
+      alert('Error al generar el documento Word. Por favor, intenta de nuevo.');
+    } finally {
+      setExportingScheduleWord(false);
+    }
+  };
+
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isEjecutado = event.resource.estado === 'Ejecutado';
@@ -533,6 +550,14 @@ const PlanningPage: React.FC = () => {
             title="Exportar cronograma mensual (tabla semanal por área)"
           >
             {exportingSchedule ? 'Exportando...' : '📋 Cronograma Mensual'}
+          </button>
+          <button
+            className="btn-export"
+            onClick={handleExportScheduleWord}
+            disabled={exportingScheduleWord || currentMonthTasks.length === 0}
+            title="Exportar cronograma mensual a Word"
+          >
+            {exportingScheduleWord ? 'Exportando...' : '📄'}
           </button>
         </div>
         

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AsanaTask } from '../types/asana.types';
 import { exportBeneficiariesToPDF } from '../services/pdf.service';
+import { exportBeneficiariesToWord } from '../services/reports/report-word.service';
 
 interface BeneficiariesSummaryProps {
   subtasks: AsanaTask[];
@@ -103,6 +104,19 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
     );
   };
 
+  const handleExportWord = () => {
+    exportBeneficiariesToWord(
+      tasksWithoutReplicantes,
+      tasksWithReplicantes,
+      totalsWithoutReplicantes,
+      totalsWithReplicantes,
+      totalWithoutReplicantes,
+      totalWithReplicantes,
+      totalsWithoutReplicantes.poblacionMeta,
+      projectName || 'Proyecto'
+    );
+  };
+
   if (tasksWithoutReplicantes.length === 0 && tasksWithReplicantes.length === 0) {
     return null;
   }
@@ -111,12 +125,10 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0 }}>Resumen de Beneficiarios</h2>
-        <button
-          onClick={handleExportPDF}
-          className="btn-export"
-        >
-          🖨️
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={handleExportWord} className="btn-export" title="Exportar a Word">📄</button>
+          <button onClick={handleExportPDF} className="btn-export" title="Exportar a PDF">🖨️</button>
+        </div>
       </div>
       
       {tasksWithoutReplicantes.length > 0 && (

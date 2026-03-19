@@ -6,9 +6,10 @@ interface ResponsibleDistributionProps {
   columnName: string;
   byAssignee: TaskStatistics['byAssignee'];
   onExport?: () => void;
+  onExportWord?: () => void;
 }
 
-const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title, columnName, byAssignee, onExport }) => {
+const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title, columnName, byAssignee, onExport, onExportWord }) => {
   if (Object.keys(byAssignee).length === 0) {
     return null;
   }
@@ -17,11 +18,14 @@ const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0 }}>{title}</h2>
-        {onExport && (
-          <button onClick={onExport} className="btn-export">
-            🖨️
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {onExportWord && (
+            <button onClick={onExportWord} className="btn-export" title="Exportar a Word">📄</button>
+          )}
+          {onExport && (
+            <button onClick={onExport} className="btn-export" title="Exportar a PDF">🖨️</button>
+          )}
+        </div>
       </div>
       
       <div className="table-container">

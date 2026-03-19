@@ -186,6 +186,10 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
     // Extraer lugar de devolución
     const lugarMatch = notes.match(/•\s*Lugar de devolución:\s*(.+)/);
     const lugar = lugarMatch ? lugarMatch[1].trim() : '';
+
+    // Extraer fecha de devolución
+    const fechaDevolucionMatch = notes.match(/•\s*Fecha de devolución:\s*(.+)/);
+    const fechaDevolucion = fechaDevolucionMatch ? fechaDevolucionMatch[1].trim() : '-';
     
     // Extraer materiales a devolver
     const materiales: MaterialItem[] = [];
@@ -215,6 +219,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
       taskName,
       area,
       lugar,
+      fechaDevolucion,
       materiales
     };
   };
@@ -340,9 +345,10 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
                       <button
                         onClick={() => handlePrint(task)}
                         className="button-primary"
-                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                        title="Imprimir"
+                        style={{ padding: '0.5rem 0.65rem', fontSize: '1rem', cursor: 'pointer', lineHeight: 1 }}
                       >
-                        🖨️ Imprimir
+                        🖨️
                       </button>
                       <button
                         onClick={() => handleDelete(task)}

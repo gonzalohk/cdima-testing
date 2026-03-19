@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { exportTaskReportToPDF } from '../services/reports/report-reports.service';
+import { exportTaskReportToWord } from '../services/reports/report-word.service';
 import {
   AsanaWorkspace,
   AsanaProject,
@@ -419,6 +420,17 @@ export const useReportPage = () => {
     exportTaskReportToPDF(taskForPDF, displayTasks, projectName);
   };
 
+  const handleExportWord = () => {
+    if (!selectedTask && !selectedProject) return;
+    const projectName = projects.find((p) => p.gid === selectedProject)?.name || 'Proyecto';
+    const taskForWord = selectedTask || {
+      name: projectName,
+      notes: 'Reporte de todas las tareas del proyecto',
+      completed: false,
+    } as AsanaTask;
+    exportTaskReportToWord(taskForWord, displayTasks, projectName);
+  };
+
   return {
     // Estado
     workspaces,
@@ -453,6 +465,7 @@ export const useReportPage = () => {
     handleSectionChange,
     handleMainTaskChange,
     handleExportPDF,
+    handleExportWord,
     setSearchTerm,
     setStatusFilter,
     setAssigneeFilter,

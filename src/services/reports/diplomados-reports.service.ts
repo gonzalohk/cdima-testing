@@ -679,7 +679,7 @@ export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }:
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-  pdf.text('Nómina Oficial de Aprobados/os', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  pdf.text('Nómina Oficial de Aprobados/as', pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos
   pdf.setFontSize(9);

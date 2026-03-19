@@ -1029,200 +1029,185 @@ interface MaterialRequestData {
 }
 
 export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
-  // ============ CONFIGURACIÓN PDF - ESTÁNDAR CDIMA ============
-  const margins = PDF_MARGINS;
-  const pageWidth = 215.9;
+  const margins = { top: 20, bottom: 20, left: 20, right: 20 };
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'letter'
-  });
-
-  // ============ ENCABEZADO ============
+  // ============ ENCABEZADO - ESTILO PLANNING ============
   try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, PDF_LOGO.width, PDF_LOGO.height);
+    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
   } catch (error) {
     console.error('Error al cargar logo:', error);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
+    doc.setTextColor(0, 0, 0);
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  doc.setFontSize(PDF_FONT_SIZES.h1);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
-  doc.text('SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+  doc.text('SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
 
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(PDF_COLORS.black[0], PDF_COLORS.black[1], PDF_COLORS.black[2]);
-  
-  const metadataX = pageWidth - margins.right;
-  let metadataY = margins.top + 13;
-  
-  // Parsear fecha de generación en zona horaria local si existe
-  let today: Date;
-  if (data.fechaGeneracion && data.fechaGeneracion.includes('-')) {
-    const [year, month, day] = data.fechaGeneracion.split('-').map(Number);
-    today = new Date(year, month - 1, day);
-  } else {
-    today = new Date();
-  }
-  const dayNumber = format(today, 'd', { locale: es });
-  const monthName = format(today, 'MMMM', { locale: es });
-  const yearNumber = format(today, 'yyyy', { locale: es });
-  const timeStr = format(today, 'HH:mm', { locale: es });
-  doc.text(`FECHA: ${dayNumber} de ${monthName} de ${yearNumber} - ${timeStr}`, metadataX, metadataY, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+  const metaX1 = pageWidth - margins.right;
+  let metaY1 = margins.top + 12;
 
-  let currentY = margins.top + 30;
-  doc.setDrawColor(PDF_COLORS.lightGray[0], PDF_COLORS.lightGray[1], PDF_COLORS.lightGray[2]);
+  const actividadLabel1 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`ACTIVIDAD: ${actividadLabel1}`, metaX1, metaY1, { align: 'right' });
+  metaY1 += 5;
+  doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
+  metaY1 += 5;
+  doc.text(`LUGAR: ${data.lugar}`, metaX1, metaY1, { align: 'right' });
+
+  doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, currentY, pageWidth - margins.right, currentY);
-  currentY += 7;
+  doc.line(margins.left, metaY1 + 6, pageWidth - margins.right, metaY1 + 6);
+  let yPos1 = metaY1 + 16;
   // ============ FIN ENCABEZADO ============
 
-  // Información general
-  let yPos = margins.top + 40;
-  doc.setFontSize(14);
+  // ---- INFORMACIÓN GENERAL ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
-
-  yPos += 8;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  
-  const textWidth = pageWidth - margins.left - margins.right;
-  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
-  doc.text(activityText, margins.left, yPos);
-  yPos += activityText.length * 5 + 2;
-
-  doc.text(`Área: ${data.area}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
-  yPos += 10;
-
-  // Materiales solicitados
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MATERIALES SOLICITADOS', margins.left, yPos);
-  yPos += 7;
-
-  // Tabla de materiales
-  const materialesData = data.materiales.map((m, index) => [
-    (index + 1).toString(),
-    m.detalle,
-    m.cantidad || '-',
-    m.unidad || '-',
-    m.observaciones || '-'
-  ]);
+  doc.setTextColor(0, 0, 0);
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos1);
+  yPos1 += 6;
 
   autoTable(doc, {
-    startY: yPos,
-    head: [['#', 'Detalle', 'Cantidad', 'Unidad', 'Observaciones']],
-    body: materialesData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [44, 95, 141],
-      fontSize: 10,
-      fontStyle: 'bold'
-    },
+    startY: yPos1,
+    body: [
+      ['Actividad', data.taskName],
+      ['Área', data.area],
+      ['Lugar del evento', data.lugar],
+      ['Fecha de inicio', data.fechaInicio],
+      ['Fecha de finalización', data.fechaFinalizacion],
+    ],
+    theme: 'plain',
     styles: {
-      fontSize: 9,
+      fontSize: 8.5,
       cellPadding: 3,
-      overflow: 'linebreak',
+      overflow: 'linebreak' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
     },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 25 },
-      4: { cellWidth: 'auto' }
+      0: { fontStyle: 'bold' as const, cellWidth: 50 },
+      1: { cellWidth: 'auto' as const },
     },
     margin: { left: margins.left, right: margins.right },
   });
 
-  // Sección de firmas
-  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
-  signaturesY += 15;
+  yPos1 = (doc as any).lastAutoTable.finalY + 10;
 
-  // Verificar si hay espacio suficiente, si no, agregar nueva página
-  const pageHeight = doc.internal.pageSize.getHeight();
-  if (signaturesY > pageHeight - 60) {
-    doc.addPage();
-    signaturesY = margins.top;
-  }
-
-  // Título de la sección de firmas
-  doc.setFontSize(12);
+  // ---- MATERIALES SOLICITADOS ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
-  signaturesY += 2;
+  doc.setTextColor(0, 0, 0);
+  doc.text('MATERIALES SOLICITADOS', margins.left, yPos1);
+  yPos1 += 6;
 
-  // Línea separadora
+  autoTable(doc, {
+    startY: yPos1,
+    head: [['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES']],
+    body: data.materiales.map((m, i) => [
+      (i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-',
+    ]),
+    theme: 'plain',
+    headStyles: {
+      fillColor: [220, 220, 220] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+      fontStyle: 'bold' as const,
+      halign: 'left' as const,
+      fontSize: 8.5,
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+    },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      overflow: 'linebreak' as const,
+      valign: 'middle' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' as const },
+      1: { cellWidth: 'auto' as const },
+      2: { cellWidth: 18, halign: 'center' as const },
+      3: { cellWidth: 20, halign: 'center' as const },
+      4: { cellWidth: 'auto' as const },
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  let signaturesY1 = (doc as any).lastAutoTable.finalY + 12;
+
+  // ---- FIRMAS Y AUTORIZACIONES ----
+  if (signaturesY1 > pageHeight - 75) { doc.addPage(); signaturesY1 = margins.top + 10; }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY1);
+  signaturesY1 += 2;
+  doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY, pageWidth - margins.right, signaturesY);
-  signaturesY += 15;
+  doc.line(margins.left, signaturesY1, pageWidth - margins.right, signaturesY1);
+  signaturesY1 += 10;
 
-  // Configurar las tres columnas para firmas
-  const columnWidth = (pageWidth - margins.left - margins.right) / 3;
-  const col1X = margins.left;
-  const col2X = margins.left + columnWidth;
-  const col3X = margins.left + columnWidth * 2;
+  const colW1 = (pageWidth - margins.left - margins.right) / 3;
+  const c1a = margins.left;
+  const c1b = margins.left + colW1;
+  const c1c = margins.left + colW1 * 2;
+  const slw1 = colW1 - 8;
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  
-  // Primera columna: Solicitado por
-  doc.text('Solicitado por:', col1X, signaturesY);
-  
-  // Segunda columna: Vo. Bo.
-  doc.text('Vo. Bo.:', col2X, signaturesY);
-  
-  // Tercera columna: Entregado por
-  doc.text('Entregado por:', col3X, signaturesY);
-  
-  signaturesY += 15;
-  
-  // Líneas para las firmas
-  doc.setLineWidth(0.5);
-  const lineWidth = columnWidth - 10;
-  doc.line(col1X, signaturesY, col1X + lineWidth, signaturesY);
-  doc.line(col2X, signaturesY, col2X + lineWidth, signaturesY);
-  doc.line(col3X, signaturesY, col3X + lineWidth, signaturesY);
-  
-  signaturesY += 5;
-  
-  // Texto "Firma" debajo de cada línea
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Firma', col1X + lineWidth / 2, signaturesY, { align: 'center' });
-  doc.text('Firma', col2X + lineWidth / 2, signaturesY, { align: 'center' });
-  doc.text('Firma', col3X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('SOLICITADO POR:', c1a, signaturesY1);
+  doc.text('Vo. Bo.:', c1b, signaturesY1);
+  doc.text('APROBADO POR:', c1c, signaturesY1);
+  signaturesY1 += 28;
 
-  // Pie de página
-  let finalY = signaturesY + 10;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(c1a, signaturesY1, c1a + slw1, signaturesY1);
+  doc.line(c1b, signaturesY1, c1b + slw1, signaturesY1);
+  doc.line(c1c, signaturesY1, c1c + slw1, signaturesY1);
+  signaturesY1 += 4;
+
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  
-  const fechaSolicitud = data.fechaGeneracion || format(new Date(), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
-  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
-  
-  finalY += 4;
-  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Nombre y Firma', c1a, signaturesY1);
+  doc.text('Nombre y Firma', c1b, signaturesY1);
+  doc.text('Nombre y Firma', c1c, signaturesY1);
+  signaturesY1 += 5;
+  doc.text('Cargo: ................................', c1a, signaturesY1);
+  doc.text('Cargo: ................................', c1b, signaturesY1);
+  doc.text('Cargo: ................................', c1c, signaturesY1);
+  signaturesY1 += 5;
+  doc.text('Fecha: __/__/____', c1a, signaturesY1);
+  doc.text('Fecha: __/__/____', c1b, signaturesY1);
+  doc.text('Fecha: __/__/____', c1c, signaturesY1);
 
-  // Generar nombre de archivo descriptivo
-  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
-  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-  const filename = `Solicitud_Material_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
-  
-  // Descargar PDF con nombre descriptivo
-  doc.save(filename);
+  // ---- PIE DE PÁGINA ----
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const now1 = new Date();
+  const footerDateTime1 = `${format(now1, 'dd/MM/yyyy', { locale: es })} ${format(now1, 'HH:mm', { locale: es })}`;
+  doc.text(`Generación de reporte: ${footerDateTime1}`, margins.left, pageHeight - margins.bottom + 10);
+  doc.text('CDIMA - Solicitud de Material', pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
+
+  const pdfBlob1 = doc.output('blob');
+  const url1 = URL.createObjectURL(pdfBlob1);
+  window.open(url1, '_blank');
 };
 
 // Interfaz para datos de solicitud de devolución
@@ -1230,198 +1215,190 @@ interface MaterialReturnData {
   taskName: string;
   area: string;
   lugar: string;
+  fechaDevolucion: string;
   materiales: MaterialItem[];
   fechaGeneracion?: string;
 }
 
 export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
-  // ============ CONFIGURACIÓN PDF - ESTÁNDAR CDIMA ============
-  const margins = PDF_MARGINS;
-  const pdfPageWidth = 215.9; // Letter width in mm
-  
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'letter'
-  });
+  const margins = { top: 20, bottom: 20, left: 20, right: 20 };
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-  // ============ ENCABEZADO ============
-  // Logo CDIMA (lado izquierdo)
+  // ============ ENCABEZADO - ESTILO PLANNING ============
   try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, PDF_LOGO.width, PDF_LOGO.height);
+    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
   } catch (error) {
     console.error('Error al cargar logo:', error);
-    // Fallback: texto
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
+    doc.setTextColor(0, 0, 0);
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
-  
-  // Título Principal (lado derecho)
-  doc.setFontSize(PDF_FONT_SIZES.h1);
+
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
-  doc.text('DEVOLUCIÓN DE MATERIAL', pdfPageWidth - margins.right, margins.top + 8, { align: 'right' });
-  
-  // Metadatos (lado derecho, debajo del título)
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  doc.setTextColor(0, 0, 0);
+  doc.text('DEVOLUCIÓN DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(PDF_COLORS.black[0], PDF_COLORS.black[1], PDF_COLORS.black[2]);
-  
-  const metadataX = pdfPageWidth - margins.right;
-  let metadataY = margins.top + 13;
-  
-  const fechaSolicitud = data.fechaGeneracion || format(new Date(), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
-  doc.text(`FECHA: ${fechaSolicitud}`, metadataX, metadataY, { align: 'right' });
-  
-  // Línea separadora
-  let currentY = margins.top + 30;
-  doc.setDrawColor(PDF_COLORS.lightGray[0], PDF_COLORS.lightGray[1], PDF_COLORS.lightGray[2]);
+  doc.setTextColor(0, 0, 0);
+  const metaX2 = pageWidth - margins.right;
+  let metaY2 = margins.top + 12;
+
+  const actividadLabel2 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`ACTIVIDAD: ${actividadLabel2}`, metaX2, metaY2, { align: 'right' });
+  metaY2 += 5;
+  doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
+  metaY2 += 5;
+  doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
+
+  doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, currentY, pdfPageWidth - margins.right, currentY);
-  
-  currentY += 7;
+  doc.line(margins.left, metaY2 + 6, pageWidth - margins.right, metaY2 + 6);
+  let yPos2 = metaY2 + 16;
   // ============ FIN ENCABEZADO ============
 
-  // Información general
-  let yPos = currentY;
-  doc.setFontSize(PDF_FONT_SIZES.h2);
+  // ---- INFORMACIÓN GENERAL ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(PDF_COLORS.charcoalGray[0], PDF_COLORS.charcoalGray[1], PDF_COLORS.charcoalGray[2]);
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
-
-  yPos += 8;
-  doc.setFontSize(PDF_FONT_SIZES.body);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(PDF_COLORS.black[0], PDF_COLORS.black[1], PDF_COLORS.black[2]);
-  
-  const textWidth = pdfPageWidth - margins.left - margins.right;
-  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
-  doc.text(activityText, margins.left, yPos);
-  yPos += activityText.length * 5 + 2;
-
-  doc.text(`Área: ${data.area}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Lugar de devolución: ${data.lugar}`, margins.left, yPos);
-  yPos += 10;
-
-  // Materiales a devolver
-  doc.setFontSize(PDF_FONT_SIZES.h2);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(PDF_COLORS.charcoalGray[0], PDF_COLORS.charcoalGray[1], PDF_COLORS.charcoalGray[2]);
-  doc.text('MATERIALES A DEVOLVER', margins.left, yPos);
-  yPos += 7;
-
-  // Tabla de materiales
-  const materialesData = data.materiales.map((m, index) => [
-    (index + 1).toString(),
-    m.detalle,
-    m.cantidad || '-',
-    m.unidad || '-',
-    m.observaciones || '-'
-  ]);
+  doc.setTextColor(0, 0, 0);
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos2);
+  yPos2 += 6;
 
   autoTable(doc, {
-    startY: yPos,
-    head: [['#', 'Detalle', 'Cantidad', 'Unidad', 'Observaciones']],
-    body: materialesData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: PDF_COLORS.navyBlue,
-      fontSize: PDF_FONT_SIZES.body,
-      fontStyle: 'bold'
-    },
+    startY: yPos2,
+    body: [
+      ['Actividad', data.taskName],
+      ['Área', data.area],
+      ['Lugar de devolución', data.lugar],
+      ['Fecha de devolución', data.fechaDevolucion],
+    ],
+    theme: 'plain',
     styles: {
-      fontSize: PDF_FONT_SIZES.body,
+      fontSize: 8.5,
       cellPadding: 3,
-      overflow: 'linebreak',
+      overflow: 'linebreak' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
     },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 25 },
-      4: { cellWidth: 'auto' }
+      0: { fontStyle: 'bold' as const, cellWidth: 50 },
+      1: { cellWidth: 'auto' as const },
     },
     margin: { left: margins.left, right: margins.right },
   });
 
-  // Sección de firmas
-  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
-  signaturesY += 15;
+  yPos2 = (doc as any).lastAutoTable.finalY + 10;
 
-  // Verificar si hay espacio suficiente, si no, agregar nueva página
-  const pdfPageHeight = doc.internal.pageSize.getHeight();
-  if (signaturesY > pdfPageHeight - 60) {
-    doc.addPage();
-    signaturesY = margins.top;
-  }
-
-  // Título de la sección de firmas
-  doc.setFontSize(PDF_FONT_SIZES.h2);
+  // ---- MATERIALES A DEVOLVER ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
-  signaturesY += 2;
+  doc.setTextColor(0, 0, 0);
+  doc.text('MATERIALES A DEVOLVER', margins.left, yPos2);
+  yPos2 += 6;
 
-  // Línea separadora
+  autoTable(doc, {
+    startY: yPos2,
+    head: [['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES']],
+    body: data.materiales.map((m, i) => [
+      (i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-',
+    ]),
+    theme: 'plain',
+    headStyles: {
+      fillColor: [220, 220, 220] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+      fontStyle: 'bold' as const,
+      halign: 'left' as const,
+      fontSize: 8.5,
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+    },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      overflow: 'linebreak' as const,
+      valign: 'middle' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' as const },
+      1: { cellWidth: 'auto' as const },
+      2: { cellWidth: 18, halign: 'center' as const },
+      3: { cellWidth: 20, halign: 'center' as const },
+      4: { cellWidth: 'auto' as const },
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  let signaturesY2 = (doc as any).lastAutoTable.finalY + 12;
+
+  // ---- FIRMAS Y AUTORIZACIONES ----
+  if (signaturesY2 > pageHeight - 75) { doc.addPage(); signaturesY2 = margins.top + 10; }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY2);
+  signaturesY2 += 2;
+  doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY, pdfPageWidth - margins.right, signaturesY);
-  signaturesY += 15;
+  doc.line(margins.left, signaturesY2, pageWidth - margins.right, signaturesY2);
+  signaturesY2 += 10;
 
-  // Configurar las tres columnas para firmas
-  const columnWidth = (pdfPageWidth - margins.left - margins.right) / 3;
-  const col1X = margins.left;
-  const col2X = margins.left + columnWidth;
-  const col3X = margins.left + columnWidth * 2;
+  const colW2 = (pageWidth - margins.left - margins.right) / 3;
+  const c2a = margins.left;
+  const c2b = margins.left + colW2;
+  const c2c = margins.left + colW2 * 2;
+  const slw2 = colW2 - 8;
 
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('SOLICITADO POR:', c2a, signaturesY2);
+  doc.text('Vo. Bo.:', c2b, signaturesY2);
+  doc.text('APROBADO POR:', c2c, signaturesY2);
+  signaturesY2 += 28;
 
-  // Columna 1: Solicitado por
-  doc.text('SOLICITADO POR:', col1X, signaturesY);
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(c2a, signaturesY2, c2a + slw2, signaturesY2);
+  doc.line(c2b, signaturesY2, c2b + slw2, signaturesY2);
+  doc.line(c2c, signaturesY2, c2c + slw2, signaturesY2);
+  signaturesY2 += 4;
+
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.line(col1X, signaturesY + 20, col1X + columnWidth - 5, signaturesY + 20);
-  doc.text('Nombre y firma', col1X, signaturesY + 25);
-  doc.text(`Fecha: __/__/____`, col1X, signaturesY + 30);
+  doc.text('Nombre y Firma', c2a, signaturesY2);
+  doc.text('Nombre y Firma', c2b, signaturesY2);
+  doc.text('Nombre y Firma', c2c, signaturesY2);
+  signaturesY2 += 5;
+  doc.text('Cargo: ................................', c2a, signaturesY2);
+  doc.text('Cargo: ................................', c2b, signaturesY2);
+  doc.text('Cargo: ................................', c2c, signaturesY2);
+  signaturesY2 += 5;
+  doc.text('Fecha: __/__/____', c2a, signaturesY2);
+  doc.text('Fecha: __/__/____', c2b, signaturesY2);
+  doc.text('Fecha: __/__/____', c2c, signaturesY2);
 
-  // Columna 2: Revisado por
-  doc.setFontSize(PDF_FONT_SIZES.body);
-  doc.setFont('helvetica', 'bold');
-  doc.text('REVISADO POR:', col2X, signaturesY);
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  // ---- PIE DE PÁGINA ----
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.line(col2X, signaturesY + 20, col2X + columnWidth - 5, signaturesY + 20);
-  doc.text('Nombre y firma', col2X, signaturesY + 25);
-  doc.text(`Fecha: __/__/____`, col2X, signaturesY + 30);
+  doc.setTextColor(0, 0, 0);
+  const now2 = new Date();
+  const footerDateTime2 = `${format(now2, 'dd/MM/yyyy', { locale: es })} ${format(now2, 'HH:mm', { locale: es })}`;
+  doc.text(`Generación de reporte: ${footerDateTime2}`, margins.left, pageHeight - margins.bottom + 10);
+  doc.text('CDIMA - Devolución de Material', pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
 
-  // Columna 3: Aprobado por
-  doc.setFontSize(PDF_FONT_SIZES.body);
-  doc.setFont('helvetica', 'bold');
-  doc.text('APROBADO POR:', col3X, signaturesY);
-  doc.setFontSize(PDF_FONT_SIZES.body);
-  doc.setFont('helvetica', 'normal');
-  doc.line(col3X, signaturesY + 20, col3X + columnWidth - 5, signaturesY + 20);
-  doc.text('Nombre y firma', col3X, signaturesY + 25);
-  doc.text(`Fecha: __/__/____`, col3X, signaturesY + 30);
-
-  // Pie de página
-  let finalY = signaturesY + 40;
-  doc.setFontSize(PDF_FONT_SIZES.footer);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
-  
-  finalY += 4;
-  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
-
-  // Generar nombre de archivo descriptivo
-  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
-  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-  const filename = `Devolucion_Material_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
-  
-  // Descargar PDF con nombre descriptivo
-  doc.save(filename);
+  const pdfBlob2 = doc.output('blob');
+  const url2 = URL.createObjectURL(pdfBlob2);
+  window.open(url2, '_blank');
 };
 
 // Interfaz para items de fondos
@@ -1441,193 +1418,193 @@ interface FundsRequestData {
 }
 
 export const exportFundsRequestToPDF = (data: FundsRequestData) => {
-  const margins = {
-    top: 25,
-    bottom: 25,
-    left: 30,
-    right: 25
-  };
+  const margins = { top: 20, bottom: 20, left: 20, right: 20 };
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-  const doc = new jsPDF({
-    format: 'a4'
-  });
-
-  // Logo de la ONG
-  const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZ0AAAGdCAIAAABGvTn1AAAAY3pUWHRSYXcgcHJvZmlsZSB0eXBlIGlwdGMAAHjaPcG5DYBADATA3FVQwvq8/srhOSQyAvoXEgEzct3PLsvHSqw42DxAED9t3TEiAaUlZ8yEMxiT5Jbla5p3qldGurdT4gTkBaIiE+28t0FhAAAgAElEQVR4Xuydd3wURf/Hv7vXS3qjcwkhCSRAaEGC9CIoHQlN0UeKnWZ7BPXhseCjP4qogAIKioqggkCUEgUB6YSShNACORLSc7lc7nJty/z+mLAcKbd3l0sIcd+vecHe7Ozs5G7vc9+Z+c53CIQQCAgICDQjSL4CAgICAg8Ygq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND0DUBAYHmhqBrAgICzQ1B1wQEBJobgq4JCAg0NwRdExAQaG4IuiYgINDcEHRNQECguSHomoCAQHND5isgINDcoGkaJpORoaikSZNWrly1Zs2a9u3b83UEBJobgr32j2Ljxo1Dhw317+IbFxfXsmXLP/7447HHHvNM1BiGwasQBeC++wCBEPw/AAD8JfDP/wMOwP8P/gf/EP///8Y/+u/+3/wP/qf/N//Of9X/29/4H/y//h//lftlZ+dh63zmxFqqCp3TdQQ="
-
+  // ============ ENCABEZADO - ESTILO PLANNING ============
   try {
-    doc.addImage(logoBase64, 'PNG', margins.left, margins.top - 15, 35, 35);
+    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
   } catch (error) {
-    console.warn('No se pudo cargar el logo:', error);
+    console.error('Error al cargar logo:', error);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  // Título principal
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SOLICITUD DE FONDOS', 105, margins.top + 5, { align: 'center' });
-
-  // Fecha de solicitud
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const fechaSolicitud = data.fechaGeneracion || new Date().toLocaleString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/La_Paz'
-  });
-  doc.text(`Fecha de solicitud: ${fechaSolicitud}`, margins.left, margins.top + 30);
-
-  // Línea separadora
-  const pageWidth = doc.internal.pageSize.getWidth();
-  doc.setLineWidth(0.5);
-  doc.line(margins.left, margins.top + 33, pageWidth - margins.right, margins.top + 33);
-
-  // Información general
-  let yPos = margins.top + 40;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text('SOLICITUD DE FONDOS', pageWidth - margins.right, margins.top + 5, { align: 'right' });
 
-  yPos += 8;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  
-  const textWidth = pageWidth - margins.left - margins.right;
-  const activityText = doc.splitTextToSize(`Actividad: ${data.taskName}`, textWidth);
-  doc.text(activityText, margins.left, yPos);
-  yPos += activityText.length * 5 + 2;
+  doc.setTextColor(0, 0, 0);
+  const metaX3 = pageWidth - margins.right;
+  let metaY3 = margins.top + 12;
 
-  doc.text(`Área: ${data.area}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Lugar: ${data.lugar}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Fecha de inicio: ${new Date(data.fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
-  yPos += 5;
-  doc.text(`Fecha de finalización: ${new Date(data.fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' })}`, margins.left, yPos);
-  yPos += 10;
+  const actividadLabel3 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`ACTIVIDAD: ${actividadLabel3}`, metaX3, metaY3, { align: 'right' });
+  metaY3 += 5;
+  doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
+  metaY3 += 5;
+  doc.text(`LUGAR: ${data.lugar}`, metaX3, metaY3, { align: 'right' });
 
-  // Fondos solicitados
-  doc.setFontSize(14);
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, metaY3 + 6, pageWidth - margins.right, metaY3 + 6);
+  let yPos3 = metaY3 + 16;
+  // ============ FIN ENCABEZADO ============
+
+  // ---- INFORMACIÓN GENERAL ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('FONDOS SOLICITADOS', margins.left, yPos);
-  yPos += 7;
-
-  // Calcular total
-  const total = data.fondos.reduce((sum, f) => sum + (parseFloat(f.importeBolivianos) || 0), 0);
-
-  // Tabla de fondos
-  const fondosData = data.fondos.map((f, index) => [
-    (index + 1).toString(),
-    f.descripcion,
-    `Bs. ${parseFloat(f.importeBolivianos).toFixed(2)}`
-  ]);
+  doc.setTextColor(0, 0, 0);
+  doc.text('INFORMACIÓN GENERAL', margins.left, yPos3);
+  yPos3 += 6;
 
   autoTable(doc, {
-    startY: yPos,
-    head: [['#', 'Descripción', 'Importe']],
-    body: fondosData,
-    foot: [['', 'TOTAL', `Bs. ${total.toFixed(2)}`]],
-    theme: 'grid',
-    headStyles: {
-      fillColor: [44, 95, 141],
-      fontSize: 10,
-      fontStyle: 'bold'
-    },
-    footStyles: {
-      fillColor: [248, 249, 250],
-      textColor: [0, 0, 0],
-      fontStyle: 'bold',
-      fontSize: 10
-    },
+    startY: yPos3,
+    body: [
+      ['Actividad', data.taskName],
+      ['Área', data.area],
+      ['Lugar', data.lugar],
+      ['Fecha de inicio', data.fechaInicio],
+      ['Fecha de finalización', data.fechaFinalizacion],
+    ],
+    theme: 'plain',
     styles: {
-      fontSize: 9,
+      fontSize: 8.5,
       cellPadding: 3,
-      overflow: 'linebreak',
+      overflow: 'linebreak' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
     },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 30, halign: 'right' }
+      0: { fontStyle: 'bold' as const, cellWidth: 50 },
+      1: { cellWidth: 'auto' as const },
     },
     margin: { left: margins.left, right: margins.right },
   });
 
-  // Sección de firmas
-  let signaturesY = (doc as any).lastAutoTable.finalY || yPos;
-  signaturesY += 15;
+  yPos3 = (doc as any).lastAutoTable.finalY + 10;
 
-  // Verificar si hay espacio suficiente, si no, agregar nueva página
-  const pageHeight = doc.internal.pageSize.getHeight();
-  if (signaturesY > pageHeight - 60) {
-    doc.addPage();
-    signaturesY = margins.top;
-  }
-
-  // Título de la sección de firmas
-  doc.setFontSize(12);
+  // ---- FONDOS SOLICITADOS ----
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY);
-  signaturesY += 2;
+  doc.setTextColor(0, 0, 0);
+  doc.text('FONDOS SOLICITADOS', margins.left, yPos3);
+  yPos3 += 6;
 
-  // Línea separadora
+  const total3 = data.fondos.reduce((sum, f) => sum + (parseFloat(f.importeBolivianos) || 0), 0);
+
+  autoTable(doc, {
+    startY: yPos3,
+    head: [['#', 'DESCRIPCIÓN', 'IMPORTE (Bs.)']],
+    body: data.fondos.map((f, i) => [
+      (i + 1).toString(), f.descripcion, `Bs. ${parseFloat(f.importeBolivianos).toFixed(2)}`,
+    ]),
+    foot: [['', 'TOTAL', `Bs. ${total3.toFixed(2)}`]],
+    theme: 'plain',
+    headStyles: {
+      fillColor: [220, 220, 220] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+      fontStyle: 'bold' as const,
+      halign: 'left' as const,
+      fontSize: 8.5,
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+    },
+    footStyles: {
+      fillColor: [220, 220, 220] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+      fontStyle: 'bold' as const,
+      fontSize: 8.5,
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+    },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      overflow: 'linebreak' as const,
+      valign: 'middle' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' as const },
+      1: { cellWidth: 'auto' as const },
+      2: { cellWidth: 35, halign: 'right' as const },
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  let signaturesY3 = (doc as any).lastAutoTable.finalY + 12;
+
+  // ---- FIRMAS Y AUTORIZACIONES ----
+  if (signaturesY3 > pageHeight - 75) { doc.addPage(); signaturesY3 = margins.top + 10; }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY3);
+  signaturesY3 += 2;
+  doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY, pageWidth - margins.right, signaturesY);
-  signaturesY += 15;
+  doc.line(margins.left, signaturesY3, pageWidth - margins.right, signaturesY3);
+  signaturesY3 += 10;
 
-  // Configurar las tres columnas para firmas
-  const columnWidth = (pageWidth - margins.left - margins.right) / 3;
-  const col1X = margins.left;
-  const col2X = margins.left + columnWidth;
-  const col3X = margins.left + columnWidth * 2;
+  const colW3 = (pageWidth - margins.left - margins.right) / 3;
+  const c3a = margins.left;
+  const c3b = margins.left + colW3;
+  const c3c = margins.left + colW3 * 2;
+  const slw3 = colW3 - 8;
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  
-  // Primera columna: Solicitado por
-  doc.text('Solicitado por:', col1X, signaturesY);
-  
-  // Segunda columna: Vo. Bo.
-  doc.text('Vo. Bo.:', col2X, signaturesY);
-  
-  // Tercera columna: Entregado por
-  doc.text('Entregado por:', col3X, signaturesY);
-  
-  signaturesY += 15;
-  
-  // Líneas para las firmas
-  doc.setLineWidth(0.5);
-  const lineWidth = columnWidth - 10;
-  doc.line(col1X, signaturesY, col1X + lineWidth, signaturesY);
-  doc.line(col2X, signaturesY, col2X + lineWidth, signaturesY);
-  doc.line(col3X, signaturesY, col3X + lineWidth, signaturesY);
-  
-  signaturesY += 5;
-  
-  // Texto "Firma" debajo de cada línea
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Firma', col1X + lineWidth / 2, signaturesY, { align: 'center' });
-  doc.text('Firma', col2X + lineWidth / 2, signaturesY, { align: 'center' });
-  doc.text('Firma', col3X + lineWidth / 2, signaturesY, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('SOLICITADO POR:', c3a, signaturesY3);
+  doc.text('Vo. Bo.:', c3b, signaturesY3);
+  doc.text('APROBADO POR:', c3c, signaturesY3);
+  signaturesY3 += 28;
 
-  // Pie de página
-  let finalY = signaturesY + 10;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(c3a, signaturesY3, c3a + slw3, signaturesY3);
+  doc.line(c3b, signaturesY3, c3b + slw3, signaturesY3);
+  doc.line(c3c, signaturesY3, c3c + slw3, signaturesY3);
+  signaturesY3 += 4;
+
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Solicitud generada automáticamente desde el sistema de reportes CDIMA', margins.left, finalY);
-  
-  finalY += 4;
-  doc.text(`Fecha y hora de generación: ${fechaSolicitud}`, margins.left, finalY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Nombre y Firma', c3a, signaturesY3);
+  doc.text('Nombre y Firma', c3b, signaturesY3);
+  doc.text('Nombre y Firma', c3c, signaturesY3);
+  signaturesY3 += 5;
+  doc.text('Cargo: ................................', c3a, signaturesY3);
+  doc.text('Cargo: ................................', c3b, signaturesY3);
+  doc.text('Cargo: ................................', c3c, signaturesY3);
+  signaturesY3 += 5;
+  doc.text('Fecha: __/__/____', c3a, signaturesY3);
+  doc.text('Fecha: __/__/____', c3b, signaturesY3);
+  doc.text('Fecha: __/__/____', c3c, signaturesY3);
 
-  // Generar nombre de archivo descriptivo
-  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
-  const nombreTareaLimpio = data.taskName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-  const filename = `Solicitud_Fondos_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
-  
-  // Descargar PDF con nombre descriptivo
-  doc.save(filename);
+  // ---- PIE DE PÁGINA ----
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const now3 = new Date();
+  const footerDateTime3 = `${format(now3, 'dd/MM/yyyy', { locale: es })} ${format(now3, 'HH:mm', { locale: es })}`;
+  doc.text(`Generación de reporte: ${footerDateTime3}`, margins.left, pageHeight - margins.bottom + 10);
+  doc.text('CDIMA - Solicitud de Fondos', pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
+
+  const pdfBlob3 = doc.output('blob');
+  const url3 = URL.createObjectURL(pdfBlob3);
+  window.open(url3, '_blank');
 };
 
 // Exportar distribución por municipios o responsables a PDF

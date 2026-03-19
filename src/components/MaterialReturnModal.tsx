@@ -22,6 +22,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
   const [area, setArea] = useState('');
   const [titulo, setTitulo] = useState(task.name);
   const [lugar, setLugar] = useState('');
+  const [fechaDevolucion, setFechaDevolucion] = useState('');
   const [materiales, setMateriales] = useState<MaterialItem[]>([
     { id: 1, detalle: '', cantidad: '', unidad: '', observaciones: '' }
   ]);
@@ -59,6 +60,9 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
       if (!lugar.trim()) {
         throw new Error('El lugar es obligatorio');
       }
+      if (!fechaDevolucion) {
+        throw new Error('La fecha de devolución es obligatoria');
+      }
 
       // Validar que haya al menos un material con detalle
       const materialesValidos = materiales.filter(m => m.detalle.trim());
@@ -91,6 +95,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         titulo,
         area,
         lugar,
+        fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
         fechaSolicitud,
         fechaAprobacion: '',
         materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
@@ -108,6 +113,7 @@ Actividad: ${titulo}
 INFORMACIÓN GENERAL:
 • Área: ${area}
 • Lugar de devolución: ${lugar}
+• Fecha de devolución: ${new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES')}
 • Fecha de solicitud: ${fechaSolicitud}
 
 MATERIALES A DEVOLVER:
@@ -159,6 +165,7 @@ ${JSON.stringify(jsonData, null, 2)}
           taskName: titulo,
           area,
           lugar,
+          fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
           materiales: materialesValidos
         });
       }, 500);
@@ -238,6 +245,17 @@ ${JSON.stringify(jsonData, null, 2)}
                 onChange={(e) => setLugar(e.target.value)}
                 required
                 placeholder="Ej: Oficina principal"
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Fecha de devolución *</label>
+              <input
+                type="date"
+                className="form-input"
+                value={fechaDevolucion}
+                onChange={(e) => setFechaDevolucion(e.target.value)}
+                required
               />
             </div>
 

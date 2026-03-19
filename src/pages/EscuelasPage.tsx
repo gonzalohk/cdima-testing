@@ -5,7 +5,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateEscuelaModal from '../components/CreateEscuelaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
-import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaCentralizadorNotasWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
+import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaCentralizadorNotasWord, exportEscuelaActaCalificacionesWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
@@ -773,7 +773,7 @@ const EscuelasPage: React.FC = () => {
     }
   };
 
-  const handleExportCentralizadorNotasWord = async () => {
+  const _handleExportCentralizadorNotasWord = async () => {
     if (!selectedEscuela || estudiantes.length === 0) return;
     try {
       await exportEscuelaCentralizadorNotasWord({
@@ -783,6 +783,19 @@ const EscuelasPage: React.FC = () => {
     } catch (error) {
       console.error('Error al exportar documento WORD:', error);
       alert('Error al generar el documento WORD. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const handleExportActaCalificacionesWord = async () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
+    try {
+      exportEscuelaActaCalificacionesWord({
+        escuela: selectedEscuela,
+        estudiantes
+      });
+    } catch (error) {
+      console.error('Error al exportar acta de calificaciones:', error);
+      alert('Error al generar el acta. Por favor, intenta de nuevo.');
     }
   };
 
@@ -1237,7 +1250,7 @@ const EscuelasPage: React.FC = () => {
               >
                 📄 Exportar Notas
               </button>
-              <button
+              {/* <button
                 onClick={handleExportCentralizadorNotasWord}
                 className="button-secondary"
                 style={{ 
@@ -1249,6 +1262,27 @@ const EscuelasPage: React.FC = () => {
                 }}
               >
                 📄 Exportar Notas a Documento
+              </button> */}
+              <button
+                onClick={handleExportActaCalificacionesWord}
+                title="Exportar Acta de Calificaciones"
+                style={{
+                  background: 'none',
+                  border: '1px solid #90caf9',
+                  borderRadius: '6px',
+                  padding: '0.5rem 0.65rem',
+                  cursor: 'pointer',
+                  color: '#1565c0',
+                  fontSize: '1.1rem',
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#e3f2fd')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              >
+                📝
               </button>
             </div>
           </div>

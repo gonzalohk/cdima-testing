@@ -14,6 +14,7 @@ interface SubtasksTableProps {
   onLugarFilterChange: (value: string) => void;
   onResponsableFilterChange: (value: string) => void;
   onExportPDF: () => void;
+  onExportWord?: () => void;
 }
 
 const SubtasksTable: React.FC<SubtasksTableProps> = ({
@@ -29,6 +30,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   onLugarFilterChange,
   onResponsableFilterChange,
   onExportPDF,
+  onExportWord,
 }) => {
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -73,12 +75,12 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0 }}>Sub Actividades ({subtasksWithoutRequests.length})</h2>
-        <button
-          onClick={onExportPDF}
-          className="btn-export"
-        >
-          🖨️
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {onExportWord && (
+            <button onClick={onExportWord} className="btn-export" title="Exportar a Word">📄</button>
+          )}
+          <button onClick={onExportPDF} className="btn-export" title="Exportar a PDF">🖨️</button>
+        </div>
       </div>
 
       <div className="search-filter">

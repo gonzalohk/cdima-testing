@@ -987,3 +987,268 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');
 };
+
+/**
+ * Exporta el cronograma mensual en formato Word (.doc)
+ * Mismo contenido y estilos que exportMonthlyCalendarSchedule (PDF)
+ */
+export const exportMonthlyCalendarScheduleWord = async (params: ExportMonthlyScheduleParams): Promise<void> => {
+  const { tasks, date } = params;
+
+  moment.locale('es');
+
+  // ============ PREPARAR DATOS (idéntico a exportMonthlyCalendarSchedule) ============
+
+  const areasSet = new Set<string>();
+  let hasTasksWithoutArea = false;
+
+  tasks.forEach(task => {
+    const area = getCustomFieldValue(task, 'Area');
+    if (area && area !== '-') {
+      areasSet.add(area);
+    } else {
+      hasTasksWithoutArea = true;
+    }
+  });
+
+  const areas = Array.from(areasSet).sort();
+  if (hasTasksWithoutArea || areas.length === 0) {
+    areas.push('');
+  }
+
+  const startOfMonth = moment(date).startOf('month');
+  const endOfMonth = moment(date).endOf('month');
+  const currentMonth = moment(date).month();
+
+  const weeks: WeekData[] = [];
+  let currentWeekStart = moment(startOfMonth).startOf('isoWeek');
+
+  while (currentWeekStart.isSameOrBefore(endOfMonth)) {
+    const currentWeekEnd = moment(currentWeekStart).endOf('isoWeek');
+
+    let hasCurrentMonthDay = false;
+    for (let i = 0; i < 7; i++) {
+      const checkDay = moment(currentWeekStart).add(i, 'days');
+      if (checkDay.month() === currentMonth) {
+        hasCurrentMonthDay = true;
+        break;
+      }
+    }
+
+    if (!hasCurrentMonthDay) {
+      currentWeekStart.add(1, 'week');
+      continue;
+    }
+
+    const weekTitle = `Semana ${weeks.length + 1} (${currentWeekStart.locale('es').format('D')} - ${currentWeekEnd.locale('es').format('D MMM')})`;
+
+    const weekAreas: AreaData[] = areas.map(area => ({
+      name: area,
+      days: {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      }
+    }));
+
+    const weekTasks = tasks.filter(task => {
+      const taskStart = task.start_on ? moment(task.start_on) : task.due_on ? moment(task.due_on) : null;
+      const taskEnd = task.due_on ? moment(task.due_on) : task.start_on ? moment(task.start_on) : null;
+      if (!taskStart || !taskEnd) return false;
+      const overlapsWeek = taskStart.isSameOrBefore(currentWeekEnd) && taskEnd.isSameOrAfter(currentWeekStart);
+      const monthStart = moment(date).startOf('month');
+      const monthEnd = moment(date).endOf('month');
+      const hasCurrentMonthDayFlag = taskStart.isSameOrBefore(monthEnd) && taskEnd.isSameOrAfter(monthStart);
+      return overlapsWeek && hasCurrentMonthDayFlag;
+    });
+
+    weekTasks.forEach(task => {
+      const taskArea = getCustomFieldValue(task, 'Area');
+      const area = taskArea && taskArea !== '-' ? taskArea : '';
+      const taskStart = task.start_on ? moment(task.start_on) : task.due_on ? moment(task.due_on) : null;
+      const taskEnd = task.due_on ? moment(task.due_on) : task.start_on ? moment(task.start_on) : null;
+      if (!taskStart || !taskEnd) return;
+
+      const dayMap: { [key: number]: keyof AreaData['days'] } = {
+        1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
+        5: 'friday', 6: 'saturday', 0: 'sunday'
+      };
+
+      const areaData = weekAreas.find(a => a.name === area);
+      if (!areaData) return;
+
+      const responsables = getCustomFieldValue(task, 'Responsables de actividad');
+      const activityText = responsables && responsables !== '-'
+        ? `${task.name} (${responsables})`
+        : task.name;
+
+      for (let i = 0; i < 7; i++) {
+        const dayDate = moment(currentWeekStart).add(i, 'days');
+        if (dayDate.month() === currentMonth && dayDate.isBetween(taskStart, taskEnd, 'day', '[]')) {
+          const dayProp = dayMap[dayDate.day()];
+          if (dayProp) areaData.days[dayProp].push(activityText);
+        }
+      }
+    });
+
+    weeks.push({ title: weekTitle, areas: weekAreas });
+    currentWeekStart.add(1, 'week');
+  }
+
+  const scheduleData: MonthlyScheduleData = {
+    month: format(date, 'MMMM', { locale: es }).charAt(0).toUpperCase() + format(date, 'MMMM', { locale: es }).slice(1),
+    year: date.getFullYear(),
+    weeks
+  };
+
+  // ============ GENERAR WORD ============
+
+  const escapeHtml = (value: string): string =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const cellStyle = 'border:0.3pt solid #c8c8c8;padding:2pt 3pt;font-size:8pt;vertical-align:top;text-align:left;';
+  const beigeCellStyle = `border:0.3pt solid #c8c8c8;padding:2pt 3pt;font-size:9pt;font-weight:bold;text-align:center;background-color:#f5f5dc;vertical-align:middle;`;
+  const areaCellStyle = `border:0.3pt solid #c8c8c8;padding:2pt 3pt;font-size:8pt;font-weight:bold;background-color:#f0f0f0;vertical-align:middle;text-align:left;`;
+
+  const tableRows: string[] = [];
+
+  scheduleData.weeks.forEach((week, weekIndex) => {
+    const weekMoment = moment(startOfMonth).startOf('isoWeek').add(weekIndex, 'weeks');
+    const weekMonth = moment(date).month();
+    const dayNumbers: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dayDate = moment(weekMoment).add(i, 'days');
+      dayNumbers.push(dayDate.month() === weekMonth ? dayDate.date().toString() : '');
+    }
+
+    // Fila con números de día (beige)
+    tableRows.push(`
+      <tr>
+        <td style="${beigeCellStyle}"></td>
+        ${dayNumbers.map(d => `<td style="${beigeCellStyle}">${d}</td>`).join('')}
+      </tr>
+    `);
+
+    // Filas de área con actividades (usando rowspan como el PDF)
+    week.areas.forEach(area => {
+      const dayActivities = [
+        area.days.monday, area.days.tuesday, area.days.wednesday,
+        area.days.thursday, area.days.friday, area.days.saturday, area.days.sunday
+      ];
+      const totalActivities = dayActivities.reduce((sum, acts) => sum + acts.length, 0);
+      if (totalActivities === 0) return;
+
+      const maxActivitiesPerDay = Math.max(...dayActivities.map(acts => acts.length), 1);
+
+      for (let i = 0; i < maxActivitiesPerDay; i++) {
+        const rowParts: string[] = [];
+        if (i === 0) {
+          rowParts.push(`<td rowspan="${maxActivitiesPerDay}" style="${areaCellStyle}">${escapeHtml(area.name)}</td>`);
+        }
+        dayActivities.forEach(activities => {
+          rowParts.push(`<td style="${cellStyle}background-color:#ffffff;">${escapeHtml(activities[i] || '')}</td>`);
+        });
+        tableRows.push(`<tr>${rowParts.join('')}</tr>`);
+      }
+    });
+  });
+
+  if (tableRows.length === 0) {
+    tableRows.push(`
+      <tr>
+        <td colspan="8" style="${cellStyle}padding:10pt;font-style:italic;text-align:center;">
+          No hay actividades programadas en este per&#237;odo
+        </td>
+      </tr>
+    `);
+  }
+
+  const nowStr = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es });
+
+  const htmlContent = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="UTF-8"/>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Normal</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page WordSection1 {
+          size: 27.94cm 21.59cm;
+          mso-page-orientation: landscape;
+          margin: 1.0cm 1.0cm 1.0cm 1.0cm;
+          mso-header-margin: 0.5cm;
+          mso-footer-margin: 0.5cm;
+        }
+        div.WordSection1 { page: WordSection1; }
+        body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; margin: 0; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { border: 0.3pt solid #c8c8c8; padding: 3pt 2pt; font-size: 9pt; font-weight: bold; text-align: center; background-color: #f5f5dc; color: #000; word-wrap: break-word; }
+        td { border: 0.3pt solid #c8c8c8; padding: 2pt 3pt; font-size: 8pt; color: #000; word-wrap: break-word; }
+      </style>
+    </head>
+    <body>
+      <div class="WordSection1">
+        <div style="text-align:center;font-size:16pt;font-weight:bold;margin-bottom:6pt;font-family:Arial,sans-serif;">
+          Cronograma de ${scheduleData.month} ${scheduleData.year}
+        </div>
+        <table>
+          <colgroup>
+            <col style="width:35mm;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+            <col style="width:auto;"/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>&#193;rea</th>
+              <th>Lunes</th>
+              <th>Martes</th>
+              <th>Mi&#233;rcoles</th>
+              <th>Jueves</th>
+              <th>Viernes</th>
+              <th>S&#225;bado</th>
+              <th>Domingo</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows.join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:6pt;font-size:9pt;color:#555;font-family:Arial,sans-serif;">
+          Generaci&#243;n de reporte: ${nowStr} &#8212; CDIMA - Cronograma Mensual
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `cronograma-${scheduleData.month.toLowerCase()}-${scheduleData.year}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};

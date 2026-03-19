@@ -558,7 +558,7 @@ export const exportEscuelaCentralizadorNotasPDF = ({
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-  pdf.text('Nómina Oficial de Aprobados/os', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  pdf.text('Nómina Oficial de Aprobados/as', pageWidth - margins.right, margins.top + 5, { align: 'right' });
   
   // Metadatos
   pdf.setFontSize(9);
@@ -694,8 +694,8 @@ export const exportEscuelaCentralizadorNotasPDF = ({
       },
       columnStyles: {
         0: { cellWidth: 6, halign: 'center' },
-        1: { cellWidth: 14, halign: 'center' },
-        2: { cellWidth: 56, halign: 'left' },
+        1: { cellWidth: 16, halign: 'center' },
+        2: { cellWidth: 54, halign: 'left' },
         3: { cellWidth: 12, halign: 'center' },
         4: { cellWidth: 12, halign: 'center' },
         5: { cellWidth: 12, halign: 'center' },
@@ -928,6 +928,175 @@ export const exportEscuelaCentralizadorNotasWord = ({
   const link = document.createElement('a');
   link.href = url;
   link.download = `nomina-oficial-escuela-${escuela.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Genera un Acta de Calificaciones en Word para el Centralizador de Notas
+ */
+export const exportEscuelaActaCalificacionesWord = ({
+  escuela,
+  estudiantes
+}: ExportEscuelaCentralizadorNotasParams): void => {
+  const escapeHtml = (value: string): string =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const notasEstudiantes = estudiantes.map(estudiante => {
+    const partes = estudiante.name.split(',').map(p => p.trim());
+    const nombre = partes[0] || '';
+    const apellidoPaterno = partes[1] || '';
+    const apellidoMaterno = partes[2] || '';
+    const nombreFormateado = `${apellidoPaterno} ${apellidoMaterno} ${nombre}`.trim();
+
+    const data = parseEstudianteData(estudiante.notes);
+    const ci = data.documentoIdentidad || 'N/A';
+
+    const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
+    const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
+    const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
+    const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
+    const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
+    const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+    const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+    const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
+
+    return {
+      nombreFormateado,
+      ci,
+      modulos: [modulo1, modulo2, modulo3, modulo4, modulo5, modulo6, modulo7],
+      total
+    };
+  });
+
+  const promedioGeneral = (): string => {
+    if (notasEstudiantes.length === 0) return '0.0';
+    const suma = notasEstudiantes.reduce((acc, est) => acc + est.total, 0);
+    return (suma / notasEstudiantes.length).toFixed(1);
+  };
+
+  const fechaEmision = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+
+  const filas = notasEstudiantes.map((est, index) => {
+    const aprobado = est.total >= 51;
+    const bgColor = aprobado ? '#e8f5e9' : '#ffebee';
+    const notas = est.modulos.map(mod => `<td class="num-cell">${mod}</td>`).join('');
+    return `
+      <tr style="background-color: ${bgColor}">
+        <td class="num-cell">${index + 1}</td>
+        <td>${escapeHtml(est.ci)}</td>
+        <td class="name-cell">${escapeHtml(est.nombreFormateado)}</td>
+        ${notas}
+        <td class="num-cell" style="font-weight:700">${est.total.toFixed(1)}</td>
+        <td class="num-cell" style="font-weight:700;color:${aprobado ? '#2e7d32' : '#c62828'}">${aprobado ? 'APROBADO' : 'REPROBADO'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const htmlContent = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          @page { size: letter portrait; margin: 10mm; }
+          body { font-family: Arial, sans-serif; margin: 0; color: #000; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
+          thead th { font-weight: 800; text-align: center; border-width: 1.4px; }
+          .doc-header-cell { padding: 8px; border-width: 1.4px; }
+          .header-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr 150px;
+            align-items: start;
+            column-gap: 8px;
+          }
+          .logo-block { text-align: center; font-size: 10px; font-weight: 700; }
+          .logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 4px auto; }
+          .title-wrap { text-align: center; }
+          .title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
+          .subtitle { margin: 6px 0 0 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.6; text-align: left; }
+          .num-cell { text-align: center; }
+          .name-cell { text-align: left; }
+          .footer-row td { font-size: 10px; color: #555; text-align: center; border: none; padding-top: 8px; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th colspan="12" class="doc-header-cell">
+                <div class="header-grid">
+                  <div class="logo-block">
+                    <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
+                    UNIVERSIDAD [Espacio para Editar]
+                  </div>
+                  <div class="title-wrap">
+                    <h1 class="title">ACTA DE CALIFICACIONES</h1>
+                    <div class="subtitle">${escapeHtml(escuela.name)}</div>
+                  </div>
+                  <div class="logo-block">
+                    <img class="logo" src="${logoCdima}" alt="Logo CDIMA" />
+                    CDIMA
+                  </div>
+                </div>
+                <div class="meta">
+                  <div>GESTION: [Espacio para editar]</div>
+                  <div>PERIODO: [Espacio para editar]</div>
+                  <div>FECHA DE EMISIÓN: ${fechaEmision}</div>
+                  <div>TOTAL PARTICIPANTES: ${notasEstudiantes.length}</div>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th style="width: 30px;">No.</th>
+              <th style="width: 85px;">C.I.</th>
+              <th style="width: 35%;">NOMBRES Y APELLIDOS</th>
+              <th>MÓD. 1</th>
+              <th>MÓD. 2</th>
+              <th>MÓD. 3</th>
+              <th>MÓD. 4</th>
+              <th>MÓD. 5</th>
+              <th>MÓD. 6</th>
+              <th>MÓD. 7</th>
+              <th>PROMEDIO</th>
+              <th style="width: 80px;">RESULTADO</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || '<tr><td colspan="12" class="num-cell">No hay participantes registrados</td></tr>'}
+            ${notasEstudiantes.length > 0 ? `
+            <tr style="background-color:#f5f5f5;font-weight:800">
+              <td></td>
+              <td></td>
+              <td class="name-cell">PROMEDIO GENERAL</td>
+              <td class="num-cell" colspan="8"></td>
+              <td class="num-cell">${promedioGeneral()}</td>
+              <td></td>
+            </tr>` : ''}
+          </tbody>
+        </table>
+        <table>
+          <tr class="footer-row">
+            <td colspan="12">Generación de reporte: ${fechaEmision} — CDIMA</td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `acta-calificaciones-${escuela.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
