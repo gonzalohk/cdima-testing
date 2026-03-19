@@ -5,7 +5,7 @@ import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialRetu
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
-import VerificationSourcesModal from './VerificationSourcesModal';
+import VerificationSourcesModal, { FuentesJsonData } from './VerificationSourcesModal';
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 
@@ -27,22 +27,29 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
-  
-  // Estados para expandir/colapsar secciones (por defecto colapsadas)
-  const [showFuentesVerificacion, setShowFuentesVerificacion] = useState(false);
-  const [showSolicitudes, setShowSolicitudes] = useState(false);
-  const [showContrataciones, setShowContrataciones] = useState(false);
-  const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
-
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
     subtask => subtask.name.startsWith('FUENTES DE VERIFICACION')
   );
 
-  // Cargar attachments de la subtarea de verificación
+  // Parsear JSON de fuentes de verificación desde las notas de la subtarea
+  const parseFuentesJson = (subtask?: AsanaTask): FuentesJsonData | undefined => {
+    if (!subtask?.notes) return undefined;
+    try {
+      const parsed = JSON.parse(subtask.notes);
+      if (parsed.tipo === 'FUENTES_VERIFICACION') return parsed as FuentesJsonData;
+    } catch {
+      // notas en formato antiguo (texto plano)
+    }
+    return undefined;
+  };
+
+  const fuentesData = parseFuentesJson(verificationSubtask);
+
+  // Cargar attachments solo si no hay JSON (compatibilidad con subtareas antiguas)
   useEffect(() => {
     const loadVerificationAttachments = async () => {
-      if (verificationSubtask) {
+      if (verificationSubtask && !fuentesData) {
         setLoadingAttachments(true);
         try {
           const attachments = await asanaService.getTaskAttachments(verificationSubtask.gid);
@@ -59,7 +66,13 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
     };
 
     loadVerificationAttachments();
-  }, [verificationSubtask]);
+  }, [verificationSubtask?.gid]);
+
+  // Estados para expandir/colapsar secciones (por defecto colapsadas)
+  const [showFuentesVerificacion, setShowFuentesVerificacion] = useState(false);
+  const [showSolicitudes, setShowSolicitudes] = useState(false);
+  const [showContrataciones, setShowContrataciones] = useState(false);
+  const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
 
   // Función auxiliar para obtener el valor de un campo personalizado de una tarea específica
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -459,75 +472,115 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
               }}
               className="button-primary"
               style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-              disabled={!!verificationSubtask}
-              title={verificationSubtask ? 'La subtactividad ya existe' : 'Crear subtactividad de fuentes de verificación'}
+              title={verificationSubtask ? 'Agregar nueva fuente de verificación' : 'Crear subactividad de fuentes de verificación'}
             >
-              {verificationSubtask ? '✓ Subtactividad Creada' : '+ Crear Subactividad'}
+              {verificationSubtask ? '+ Agregar Fuente' : '+ Crear Subactividad'}
             </button>
           </div>
 
           {showFuentesVerificacion && (verificationSubtask ? (
             <div>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#666' }}>
-                {loadingAttachments ? (
-                  'Cargando recursos...'
-                ) : verificationAttachments.length > 0 ? (
-                  `${verificationAttachments.length} ${verificationAttachments.length === 1 ? 'recurso adjunto' : 'recursos adjuntos'}`
+              {/* Modo nuevo: entradas JSON */}
+              {fuentesData ? (
+                fuentesData.entradas.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {fuentesData.entradas.map((entry) => (
+                      <div
+                        key={entry.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.6rem 0.875rem',
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '6px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        <span style={{ flex: 1, fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          📎 {entry.nombre}
+                        </span>
+                        <a
+                          href={entry.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            padding: '0.3rem 0.75rem',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                            color: '#555',
+                            border: '1px solid #ccc',
+                            textDecoration: 'none',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Ver
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  'No hay recursos adjuntos. Agregue archivos en Asana.'
-                )}
-              </p>
-              
-              {verificationAttachments.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {verificationAttachments.map((attachment) => (
-                    <a
-                      key={attachment.gid}
-                      href={attachment.view_url || attachment.download_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="button-secondary"
-                      style={{
-                        fontSize: '0.85rem',
-                        padding: '0.5rem 1rem',
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        backgroundColor: '#fff',
-                        border: '1px solid #626262',
-                        color: '#626262',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#626262';
-                        e.currentTarget.style.color = '#fff';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#fff';
-                        e.currentTarget.style.color = '#626262';
-                      }}
-                      title={attachment.name}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                      <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {attachment.name}
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              )}
-
-              {!loadingAttachments && verificationAttachments.length === 0 && (
-                <div style={{ padding: '1rem', backgroundColor: '#fff3e0', borderRadius: '4px', borderLeft: '4px solid #ff9800' }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#e65100' }}>
-                    <strong>📌 Instrucción:</strong> Vaya a Asana y adjunte archivos a la subtarea "{verificationSubtask.name}" para que aparezcan aquí.
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }}>
+                    No hay fuentes registradas. Use el botón "Agregar Fuente".
                   </p>
+                )
+              ) : (
+                /* Modo legado: attachments de Asana */
+                <div>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#666' }}>
+                    {loadingAttachments ? (
+                      'Cargando recursos...'
+                    ) : verificationAttachments.length > 0 ? (
+                      `${verificationAttachments.length} ${verificationAttachments.length === 1 ? 'recurso adjunto' : 'recursos adjuntos'}`
+                    ) : (
+                      'No hay recursos adjuntos.'
+                    )}
+                  </p>
+                  {verificationAttachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {verificationAttachments.map((attachment) => (
+                        <a
+                          key={attachment.gid}
+                          href={attachment.view_url || attachment.download_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="button-secondary"
+                          style={{
+                            fontSize: '0.85rem',
+                            padding: '0.5rem 1rem',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            backgroundColor: '#fff',
+                            border: '1px solid #626262',
+                            color: '#626262',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#626262';
+                            e.currentTarget.style.color = '#fff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#fff';
+                            e.currentTarget.style.color = '#626262';
+                          }}
+                          title={attachment.name}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                          </svg>
+                          <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {attachment.name}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1014,10 +1067,11 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
       {showVerificationModal && (
         <VerificationSourcesModal
           task={task}
+          verificationSubtask={verificationSubtask}
+          currentData={fuentesData}
           onClose={() => setShowVerificationModal(false)}
           onSuccess={() => {
             setShowVerificationModal(false);
-            // Recargar la página o actualizar las subtareas para mostrar la nueva subtarea
             window.location.reload();
           }}
         />

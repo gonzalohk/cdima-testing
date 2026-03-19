@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaProject, AsanaTask, AsanaAttachment } from '../types/asana.types';
@@ -395,6 +395,9 @@ const ResourceLibraryPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const rawTasksBySectionId = useRef<Map<string, AsanaTask[]>>(new Map());
+  const loadedSectionIds = useRef<Set<string>>(new Set());
 
   // Verificar token al cargar
   useEffect(() => {
@@ -444,31 +447,66 @@ const ResourceLibraryPage: React.FC = () => {
     }
   };
 
+  const loadSectionAttachments = useCallback(async (sectionId: string) => {
+    if (loadedSectionIds.current.has(sectionId)) return;
+    const rawTasks = rawTasksBySectionId.current.get(sectionId);
+    if (!rawTasks || rawTasks.length === 0) {
+      loadedSectionIds.current.add(sectionId);
+      return;
+    }
+    setSectionLoading(true);
+    try {
+      const tasksWithAttachments = await asanaService.getSectionTasksWithAttachments(rawTasks);
+      loadedSectionIds.current.add(sectionId);
+      setSections(prev =>
+        prev.map(s =>
+          s.id === sectionId
+            ? { ...s, tasks: tasksWithAttachments.map(convertAsanaTaskToTask) }
+            : s
+        )
+      );
+    } catch (err) {
+      console.error('Error cargando adjuntos para sección:', err);
+    } finally {
+      setSectionLoading(false);
+    }
+  }, []);
+
   const loadResourceLibrary = async (projectGid: string) => {
     setLoading(true);
     setError('');
+    rawTasksBySectionId.current.clear();
+    loadedSectionIds.current.clear();
     try {
-      const { sections: asanaSections, tasksBySection } = await asanaService.getProjectResourceLibrary(projectGid);
-      
-      // Convertir secciones de Asana al formato del componente
+      const { sections: asanaSections, tasksBySection } = await asanaService.getProjectSectionsAndTasks(projectGid);
+
       const convertedSections: Section[] = asanaSections
         .map(asanaSection => {
           const sectionTasks = tasksBySection.get(asanaSection.gid) || [];
+          rawTasksBySectionId.current.set(asanaSection.gid, sectionTasks);
           const { tipo, color } = getSectionTypeColor(asanaSection.name);
-          
+
           return {
             id: asanaSection.gid,
             name: asanaSection.name,
             tipo,
             tipoColor: color,
-            tasks: sectionTasks.map(convertAsanaTaskToTask)
+            tasks: sectionTasks.map(t => ({
+              id: t.gid,
+              name: t.name,
+              estado: t.completed ? 'Entregado' : null,
+              links: [],
+              subtasks: []
+            }))
           };
         })
-        .filter(section => section.tasks.length > 0); // Solo secciones con tareas
-      
+        .filter(section => section.tasks.length > 0);
+
       setSections(convertedSections);
       if (convertedSections.length > 0) {
-        setActiveSection(convertedSections[0].id);
+        const firstId = convertedSections[0].id;
+        setActiveSection(firstId);
+        await loadSectionAttachments(firstId);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar biblioteca de recursos');
@@ -629,7 +667,7 @@ const ResourceLibraryPage: React.FC = () => {
                 key={s.id}
                 section={s}
                 isActive={s.id === activeSection}
-                onClick={() => { setActiveSection(s.id); setSearch(''); }}
+                onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
               />
             ))}
           </div>
@@ -654,7 +692,11 @@ const ResourceLibraryPage: React.FC = () => {
 
               {/* Task list */}
               <div className="rl-tasks-list">
-                {filteredTasks.length === 0 ? (
+                {sectionLoading ? (
+                  <div className="rl-empty-state">
+                    <div className="rl-empty-text" style={{ color: '#6b7280' }}>Cargando recursos...</div>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
                   <div className="rl-empty-state">
                     <div className="rl-empty-icon">🔍</div>
                     <div className="rl-empty-text">

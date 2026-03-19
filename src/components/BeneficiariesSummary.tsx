@@ -115,7 +115,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
           onClick={handleExportPDF}
           className="btn-export"
         >
-          📄 Exportar
+          🖨️
         </button>
       </div>
       

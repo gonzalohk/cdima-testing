@@ -775,14 +775,10 @@ export const exportTaskReportToPDF = (
     });
   }
   
-  // Generar nombre de archivo descriptivo
-  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
-  const nombreProyectoLimpio = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-  const nombreTareaLimpio = mainTask.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-  const filename = `Reporte_Avance_${nombreProyectoLimpio}_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
-  
-  // Descargar PDF con nombre descriptivo
-  doc.save(filename);
+  // Abrir PDF en nueva pestaña
+  const pdfBlob = doc.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  window.open(pdfUrl, '_blank');
 };
 
 export const exportBeneficiariesToPDF = (
@@ -798,10 +794,10 @@ export const exportBeneficiariesToPDF = (
 ) => {
   // ============ CONFIGURACIÓN PDF - ESTÁNDAR CDIMA ============
   const margins = PDF_MARGINS;
-  const pageWidth = 279.4; // Landscape letter width
+  const pageWidth = 215.9; // Portrait letter width
 
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
     format: 'letter'
   });
@@ -813,21 +809,21 @@ export const exportBeneficiariesToPDF = (
     console.error('Error al cargar logo:', error);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
+    doc.setTextColor(0, 0, 0);
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  doc.setFontSize(PDF_FONT_SIZES.h1);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(PDF_COLORS.navyBlue[0], PDF_COLORS.navyBlue[1], PDF_COLORS.navyBlue[2]);
-  doc.text('REPORTE DE BENEFICIARIOS', pageWidth - margins.right, margins.top + 8, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+  doc.text('REPORTE DE BENEFICIARIOS', pageWidth - margins.right, margins.top + 5, { align: 'right' });
 
-  doc.setFontSize(PDF_FONT_SIZES.body);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(PDF_COLORS.black[0], PDF_COLORS.black[1], PDF_COLORS.black[2]);
+  doc.setTextColor(0, 0, 0);
   
   const metadataX = pageWidth - margins.right;
-  let metadataY = margins.top + 13;
+  let metadataY = margins.top + 12;
   
   if (mainTask) {
     const activityText = mainTask.name.length > 50 ? mainTask.name.substring(0, 47) + '...' : mainTask.name;
@@ -843,18 +839,19 @@ export const exportBeneficiariesToPDF = (
   const yearNumber = format(today, 'yyyy', { locale: es });
   doc.text(`FECHA: ${dayNumber} de ${monthName} de ${yearNumber}`, metadataX, metadataY, { align: 'right' });
 
-  let yPos = margins.top + 30;
-  doc.setDrawColor(PDF_COLORS.lightGray[0], PDF_COLORS.lightGray[1], PDF_COLORS.lightGray[2]);
+  metadataY += 5;
+  doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
-  doc.line(margins.left, yPos, pageWidth - margins.right, yPos);
-  yPos += 10;
+  doc.line(margins.left, metadataY + 6, pageWidth - margins.right, metadataY + 6);
+  let yPos = metadataY + 16;
   // ============ FIN ENCABEZADO ============
 
   // Tabla de Beneficiarios Directos
   if (tasksWithoutReplicantes.length > 0) {
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Beneficiarios Directos (sin replicantes)', margins.left, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text('BENEFICIARIOS DIRECTOS (SIN REPLICANTES)', margins.left, yPos);
     yPos += 7;
 
     const directosData = tasksWithoutReplicantes.map(task => {
@@ -876,7 +873,7 @@ export const exportBeneficiariesToPDF = (
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Nombre', 'Lugar', 'Población Meta', 'Mujeres', 'Hombres', 'Total']],
+      head: [['NOMBRE', 'LUGAR', 'POBLACIÓN META', 'MUJERES', 'HOMBRES', 'TOTAL']],
       body: directosData,
       foot: [[
         'TOTAL',
@@ -886,22 +883,32 @@ export const exportBeneficiariesToPDF = (
         totalsWithoutReplicantes.hombres.toString(),
         totalWithoutReplicantes.toString()
       ]],
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      footStyles: {
-        fillColor: [248, 249, 250],
+        fillColor: [220, 220, 220],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
-        fontSize: 10
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      footStyles: {
+        fillColor: [220, 220, 220],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
       },
       styles: {
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 8.5,
+        cellPadding: 4,
         overflow: 'linebreak',
+        valign: 'middle',
+        textColor: [0, 0, 0],
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
       },
       margin: { left: margins.left, right: margins.right },
       tableWidth: 'auto',
@@ -918,9 +925,10 @@ export const exportBeneficiariesToPDF = (
       yPos = margins.top;
     }
 
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Beneficiarios Indirectos (con replicantes)', margins.left, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text('BENEFICIARIOS INDIRECTOS (CON REPLICANTES)', margins.left, yPos);
     yPos += 7;
 
     const indirectosData = tasksWithReplicantes.map(task => {
@@ -942,7 +950,7 @@ export const exportBeneficiariesToPDF = (
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Nombre', 'Lugar', 'Replicantes', 'Mujeres', 'Hombres', 'Total']],
+      head: [['NOMBRE', 'LUGAR', 'REPLICANTES', 'MUJERES', 'HOMBRES', 'TOTAL']],
       body: indirectosData,
       foot: [[
         'TOTAL',
@@ -952,36 +960,53 @@ export const exportBeneficiariesToPDF = (
         totalsWithReplicantes.hombres.toString(),
         totalWithReplicantes.toString()
       ]],
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
-        fillColor: [44, 95, 141],  // Azul Profundo #2C5F8D
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      footStyles: {
-        fillColor: [248, 249, 250],
+        fillColor: [220, 220, 220],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
-        fontSize: 10
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      footStyles: {
+        fillColor: [220, 220, 220],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
       },
       styles: {
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 8.5,
+        cellPadding: 4,
         overflow: 'linebreak',
+        valign: 'middle',
+        textColor: [0, 0, 0],
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
       },
       margin: { left: margins.left, right: margins.right },
       tableWidth: 'auto',
     });
   }
 
-  // Generar nombre de archivo descriptivo
-  const fechaActualFormato = format(new Date(), 'yyyy-MM-dd');
-  const nombreProyectoLimpio = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-  const nombreTareaLimpio = mainTask ? mainTask.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 'General';
-  const filename = `Reporte_Beneficiarios_${nombreProyectoLimpio}_${nombreTareaLimpio}_${fechaActualFormato}.pdf`;
-  
-  // Descargar PDF con nombre descriptivo
-  doc.save(filename);
+  // ============ PIE DE PÁGINA ============
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageH = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text('CDIMA - Reporte de Beneficiarios', pageWidth - margins.right, pageH - margins.bottom + 10, { align: 'right' });
+  }
+
+  // Abrir PDF en nueva pestaña
+  const pdfBlob = doc.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  window.open(pdfUrl, '_blank');
 };
 
 // Interfaz para los materiales

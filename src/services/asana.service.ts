@@ -182,7 +182,7 @@ class AsanaService {
     return subtasksWithAttachments;
   }
 
-  async getProjectResourceLibrary(projectGid: string): Promise<{
+  async getProjectSectionsAndTasks(projectGid: string): Promise<{
     sections: AsanaSection[];
     tasksBySection: Map<string, AsanaTask[]>;
   }> {
@@ -191,30 +191,42 @@ class AsanaService {
       this.getProjectTasks(projectGid),
     ]);
 
-    // Filtrar solo tareas principales (no subtareas)
     const parentTasks = tasks.filter(task => !task.parent);
 
-    // Obtener attachments para todas las tareas principales
-    const tasksWithAttachments = await Promise.all(
-      parentTasks.map(async (task) => {
-        const [attachments, subtasks] = await Promise.all([
-          this.getTaskAttachments(task.gid),
-          task.num_subtasks ? this.getSubtasksWithAttachments(task.gid) : Promise.resolve([])
-        ]);
-        return { ...task, attachments, subtasks };
-      })
-    );
-
-    // Organizar tareas por sección
     const tasksBySection = new Map<string, AsanaTask[]>();
     sections.forEach(section => {
-      const sectionTasks = tasksWithAttachments.filter(task =>
+      const sectionTasks = parentTasks.filter(task =>
         task.memberships?.some(m => m.section?.gid === section.gid)
       );
       tasksBySection.set(section.gid, sectionTasks);
     });
 
     return { sections, tasksBySection };
+  }
+
+  async getSectionTasksWithAttachments(tasks: AsanaTask[]): Promise<AsanaTask[]> {
+    const CHUNK_SIZE = 5;
+    const DELAY_MS = 300;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const result: AsanaTask[] = [];
+    for (let i = 0; i < tasks.length; i += CHUNK_SIZE) {
+      const chunk = tasks.slice(i, i + CHUNK_SIZE);
+      const chunkResults = await Promise.all(
+        chunk.map(async (task) => {
+          const [attachments, subtasks] = await Promise.all([
+            this.getTaskAttachments(task.gid),
+            task.num_subtasks ? this.getSubtasksWithAttachments(task.gid) : Promise.resolve([])
+          ]);
+          return { ...task, attachments, subtasks };
+        })
+      );
+      result.push(...chunkResults);
+      if (i + CHUNK_SIZE < tasks.length) {
+        await delay(DELAY_MS);
+      }
+    }
+    return result;
   }
 
   // ===== Métodos para Diplomados =====

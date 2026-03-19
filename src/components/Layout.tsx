@@ -108,7 +108,7 @@ const Layout: React.FC = () => {
               to="/biblioteca" 
               className={`nav-link ${location.pathname === '/biblioteca' ? 'active' : ''}`}
             >
-              📚 Biblioteca de Recursos
+               📡 Comunicación
             </Link>
           </li>
           <li>

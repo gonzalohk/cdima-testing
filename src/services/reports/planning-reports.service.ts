@@ -64,7 +64,8 @@ interface ExportCalendarParams {
 
 interface ExportTablesParams {
   executedTasks: AsanaTask[];
-  pendingTasks: AsanaTask[];
+  overdueTasks: AsanaTask[];
+  inProcessTasks: AsanaTask[];
   date: Date;
   projectName: string;
   areaFilter: string;
@@ -256,7 +257,7 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
  * Exporta las tablas de tareas ejecutadas y pendientes a PDF
  */
 export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promise<void> => {
-  const { executedTasks, pendingTasks, date, projectName, areaFilter } = params;
+  const { executedTasks, overdueTasks, inProcessTasks, date, projectName, areaFilter } = params;
 
   // Forzar locale español para moment
   moment.locale('es');
@@ -337,8 +338,8 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
 
   let startY = metaY + 16;
 
-  // ============ SECCIÓN 1: ACTIVIDADES EN PROCESO ============
-  if (pendingTasks.length > 0) {
+  // ============ SECCIÓN 1: ACTIVIDADES EN PROCESO (ATRASADAS) ============
+  if (overdueTasks.length > 0) {
     // Título de sección
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
@@ -348,18 +349,18 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     // Subtítulo con mes y año
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    const mesAnio = moment(date).locale('es').format('MMMM YYYY');
+    const mesAnio = format(date, 'MMMM yyyy', { locale: es });
     const mesAnioCapitalizado = mesAnio.charAt(0).toUpperCase() + mesAnio.slice(1);
     pdf.text(mesAnioCapitalizado, margins.left, startY + 5);
     
     const pendingHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
     
-    // Crear body con estilos condicionales para tareas atrasadas
-    const pendingBody = pendingTasks.map(task => {
+    const pendingBody = overdueTasks.map(task => {
       const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
       const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
       let fecha = '-';
-      if (inicio) fecha = inicio;
+      if (inicio && fin) fecha = `${inicio} - ${fin}`;
+      else if (inicio) fecha = inicio;
       else if (fin) fecha = fin;
       
       return [
@@ -418,7 +419,87 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     startY = (pdf as any).lastAutoTable.finalY + 12;
   }
 
-  // ============ SECCIÓN 2: ACTIVIDADES EJECUTADAS ============
+  // ============ SECCIÓN 2: ACTIVIDADES EN PROCESO ============
+  if (inProcessTasks.length > 0) {
+    if (startY > pageHeight - 80) {
+      pdf.addPage();
+      startY = margins.top + 10;
+    }
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+    pdf.text('ACTIVIDADES EN PROCESO', margins.left, startY);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    const mesAnioInProcess = format(date, 'MMMM yyyy', { locale: es });
+    pdf.text(mesAnioInProcess.charAt(0).toUpperCase() + mesAnioInProcess.slice(1), margins.left, startY + 5);
+
+    const inProcessHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
+    const inProcessBody = inProcessTasks.map(task => {
+      const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+      const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+      let fecha = '-';
+      if (inicio && fin) fecha = `${inicio} - ${fin}`;
+      else if (inicio) fecha = inicio;
+      else if (fin) fecha = fin;
+
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Responsables de actividad'),
+        fecha,
+        {
+          content: 'EN PROCESO',
+          styles: { textColor: colors.black }
+        }
+      ];
+    });
+
+    autoTable(pdf, {
+      head: inProcessHeaders,
+      body: inProcessBody,
+      startY: startY + 10,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fontSize: 8.5,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        cellWidth: 'wrap',
+        valign: 'middle',
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fillColor: colors.headerGray,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      bodyStyles: {
+        fillColor: colors.white,
+      },
+      columnStyles: {
+        0: { cellWidth: 68, halign: 'left' },
+        1: { cellWidth: 45, halign: 'left' },
+        2: { cellWidth: 35, halign: 'left' },
+        3: {
+          cellWidth: 30,
+          halign: 'center',
+          textColor: colors.black,
+          fontStyle: 'bold'
+        },
+      },
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 12;
+  }
+
+  // ============ SECCIÓN 3: ACTIVIDADES EJECUTADAS ============
   if (executedTasks.length > 0) {
     // Si no hay espacio suficiente, agregar nueva página
     if (startY > pageHeight - 80) {
@@ -435,7 +516,7 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     // Subtítulo con mes y año
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    const mesAnioEjecutadas = moment(date).locale('es').format('MMMM YYYY');
+    const mesAnioEjecutadas = format(date, 'MMMM yyyy', { locale: es });
     const mesAnioEjecutadasCapitalizado = mesAnioEjecutadas.charAt(0).toUpperCase() + mesAnioEjecutadas.slice(1);
     pdf.text(mesAnioEjecutadasCapitalizado, margins.left, startY + 5);
     

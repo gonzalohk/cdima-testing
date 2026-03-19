@@ -77,7 +77,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
           onClick={onExportPDF}
           className="btn-export"
         >
-          📄 Exportar
+          🖨️
         </button>
       </div>
 

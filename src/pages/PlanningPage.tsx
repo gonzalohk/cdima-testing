@@ -379,7 +379,8 @@ const PlanningPage: React.FC = () => {
     try {
       await exportTasksTablesToPDF({
         executedTasks,
-        pendingTasks: [...overdueTasks, ...inProcessTasks],
+        overdueTasks,
+        inProcessTasks,
         date,
         projectName,
         areaFilter
