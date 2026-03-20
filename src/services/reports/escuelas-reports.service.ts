@@ -196,7 +196,7 @@ export const exportEscuelaGeneralPDF = ({
       const apellidoPaterno = partes[1] || '';
       const apellidoMaterno = partes[2] || '';
       
-      const nombreCompleto = [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim() || 'N/A';
+      const nombreCompleto = [apellidoPaterno, apellidoMaterno, nombre].filter(Boolean).join(' ').trim() || 'N/A';
       const lugarNacimiento = info.lugarNacimiento || 'N/A';
       const fechaNacimiento = info.fechaNacimiento || 'N/A';
       const nacimiento = `${lugarNacimiento} / ${fechaNacimiento}`;
