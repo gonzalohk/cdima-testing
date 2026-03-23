@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Alert, Button, Form, Input, Modal, Space, Typography } from 'antd';
+import { TeamOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
@@ -16,8 +18,7 @@ const ContratacionModal: React.FC<ContratacionModalProps> = ({ task, onClose, on
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError('');
 
@@ -131,87 +132,69 @@ ${JSON.stringify(jsonData, null, 2)}
           onClose={() => setNotification(null)}
         />
       )}
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-          <div className="modal-header">
-            <h2>👔 Solicitud de Contratación</h2>
-            <button className="modal-close" onClick={onClose}>&times;</button>
-          </div>
+      <Modal
+        title={
+          <Space>
+            <TeamOutlined style={{ color: '#1677ff' }} />
+            <span>Solicitud de Contratación</span>
+          </Space>
+        }
+        open={true}
+        onCancel={onClose}
+        width={560}
+        footer={[
+          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
+          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
+            Crear Solicitud
+          </Button>,
+        ]}
+      >
+        {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
-          {error && (
-            <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f' }}>
-                  <strong>📋 Actividad:</strong> {task.name}
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  Nombre del Subárea <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={subarea}
-                  onChange={(e) => setSubarea(e.target.value)}
-                  placeholder="Ej: Coordinador de Proyectos"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
-                  required
-                  disabled={loading}
-                />
-                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  La subtarea se creará como: "CPER - {subarea || '[nombre]'}"
-                </small>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  Descripción (Opcional)
-                </label>
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Descripción adicional sobre la contratación..."
-                  rows={4}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', resize: 'vertical' }}
-                  disabled={loading}
-                />
-              </div>
-
-              <div style={{ padding: '1rem', backgroundColor: '#fff3e0', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#e65100' }}>
-                  <strong>📌 Nota:</strong> La subtarea se creará en Asana. Podrá agregar documentos, 
-                  establecer fechas y actualizar el campo "Estado de contratación" directamente en Asana.
-                </p>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button
-                type="button"
-                onClick={onClose}
-                className="button-secondary"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="button-primary"
-                disabled={loading}
-              >
-                {loading ? 'Creando...' : 'Crear Solicitud'}
-              </button>
-            </div>
-          </form>
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f8faff', borderRadius: 6, border: '1px solid #e0e7ff' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            <strong>Actividad:</strong> {task.name}
+          </Typography.Text>
         </div>
-      </div>
+
+        <Form layout="vertical">
+          <Form.Item
+            label={
+              <>
+                Nombre del Subárea{' '}
+                <Typography.Text type="danger">*</Typography.Text>
+              </>
+            }
+          >
+            <Input
+              value={subarea}
+              onChange={(e) => setSubarea(e.target.value)}
+              placeholder="Ej: Coordinador de Proyectos"
+              disabled={loading}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+              La subtarea se creará como: "CPER - {subarea || '[nombre]'}"
+            </Typography.Text>
+          </Form.Item>
+
+          <Form.Item label="Descripción (Opcional)">
+            <Input.TextArea
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Descripción adicional sobre la contratación..."
+              rows={4}
+              disabled={loading}
+            />
+          </Form.Item>
+
+          <Alert
+            type="warning"
+            showIcon
+            message="La subtarea se creará en Asana. Podrá agregar documentos, establecer fechas y actualizar el campo 'Estado de contratación' directamente en Asana."
+            style={{ borderRadius: 6 }}
+          />
+        </Form>
+      </Modal>
     </>
   );
 };

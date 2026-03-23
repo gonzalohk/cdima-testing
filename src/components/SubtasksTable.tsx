@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Button, Card, Checkbox, Dropdown, Empty, Form, Input, InputNumber, MenuProps, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
+import { asanaService } from '../services/asana.service';
 
 interface SubtasksTableProps {
   filteredSubtasks: AsanaTask[];
@@ -15,6 +18,7 @@ interface SubtasksTableProps {
   onResponsableFilterChange: (value: string) => void;
   onExportPDF: () => void;
   onExportWord?: () => void;
+  onTaskUpdate?: (updatedTask: AsanaTask) => void;
 }
 
 const SubtasksTable: React.FC<SubtasksTableProps> = ({
@@ -31,7 +35,73 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   onResponsableFilterChange,
   onExportPDF,
   onExportWord,
+  onTaskUpdate,
 }) => {
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [benefModal, setBenefModal] = useState<AsanaTask | null>(null);
+  const [hasReplicantes, setHasReplicantes] = useState(false);
+  const [benefForm] = Form.useForm();
+  const [saving, setSaving] = useState(false);
+
+  const getFieldGid = (task: AsanaTask, fieldName: string): string | undefined =>
+    task.custom_fields?.find(f => f.name === fieldName)?.gid;
+
+  const getEnumOptionGid = (task: AsanaTask, fieldName: string, optionName: string): string | undefined =>
+    task.custom_fields?.find(f => f.name === fieldName)?.enum_options?.find(o => o.name.toLowerCase() === optionName.toLowerCase())?.gid;
+
+  const getNumericValue = (task: AsanaTask, fieldName: string): number =>
+    task.custom_fields?.find(f => f.name === fieldName)?.number_value ?? 0;
+
+  const handleStatusChange = async (task: AsanaTask, newStatus: 'Ejecutado' | 'En Proceso') => {
+    const fieldGid = getFieldGid(task, 'Estado');
+    const optionGid = getEnumOptionGid(task, 'Estado', newStatus);
+    if (!fieldGid || !optionGid) return;
+    setUpdatingStatus(task.gid);
+    try {
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: { [fieldGid]: optionGid },
+      });
+      onTaskUpdate?.(updated);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const openBenefModal = (task: AsanaTask) => {
+    const existingReplicantes = getNumericValue(task, 'Replicantes');
+    const hasR = existingReplicantes > 0;
+    setHasReplicantes(hasR);
+    benefForm.setFieldsValue({
+      poblacionMeta: getNumericValue(task, 'Población Meta'),
+      hombres: getNumericValue(task, 'Hombres'),
+      mujeres: getNumericValue(task, 'Mujeres '),
+      replicantes: existingReplicantes,
+      tieneReplicantes: hasR,
+    });
+    setBenefModal(task);
+  };
+
+  const handleBeneficiarioSubmit = async () => {
+    if (!benefModal) return;
+    const values = await benefForm.validateFields();
+    setSaving(true);
+    try {
+      const cf: Record<string, number> = {};
+      const pmGid = getFieldGid(benefModal, 'Población Meta');
+      const hGid  = getFieldGid(benefModal, 'Hombres');
+      const mGid  = getFieldGid(benefModal, 'Mujeres ');
+      const rGid  = getFieldGid(benefModal, 'Replicantes');
+      if (pmGid) cf[pmGid] = values.poblacionMeta ?? 0;
+      if (hGid)  cf[hGid]  = values.hombres ?? 0;
+      if (mGid)  cf[mGid]  = values.mujeres ?? 0;
+      if (hasReplicantes && rGid) cf[rGid] = values.replicantes ?? 0;
+      const updated = await asanaService.updateTask(benefModal.gid, { custom_fields: cf });
+      onTaskUpdate?.(updated);
+      setBenefModal(null);
+    } finally {
+      setSaving(false);
+    }
+  };
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -71,117 +141,238 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     return tipoSolicitud === '-' && !isFuentesVerificacion;
   });
 
+  const rows = subtasksWithoutRequests.map((task) => ({
+    key: task.gid,
+    task,
+    nombre: task.name,
+    descripcion: task.notes || '-',
+    fecha: [task.start_on, task.due_on].filter(Boolean).join(' – ') || 'Sin fecha',
+    lugar: getCustomFieldValue(task, 'Lugar'),
+    estado: getCustomFieldValue(task, 'Estado'),
+    poblacionMeta: getCustomFieldValue(task, 'Población Meta'),
+    responsable: getCustomFieldValue(task, 'Responsable de Actividad'),
+  }));
+
+  const columns = [
+    {
+      title: 'Nombre',
+      dataIndex: 'nombre',
+      key: 'nombre',
+      width: 220,
+      render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+    },
+    {
+      title: 'Fecha',
+      dataIndex: 'fecha',
+      key: 'fecha',
+      width: 180,
+    },
+    {
+      title: 'Lugar',
+      dataIndex: 'lugar',
+      key: 'lugar',
+      width: 140,
+      render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
+    },
+    {
+      title: 'Estado',
+      dataIndex: 'estado',
+      key: 'estado',
+      width: 120,
+      render: (value: string) => {
+        const normalized = value?.toUpperCase?.() || '';
+        if (normalized === 'EJECUTADO') return <Tag color="success">Completada</Tag>;
+        if (normalized === 'EN PROCESO') return <Tag color="processing">En Proceso</Tag>;
+        return <Tag color="default">Pendiente</Tag>;
+      },
+    },
+    {
+      title: 'Población Meta',
+      dataIndex: 'poblacionMeta',
+      key: 'poblacionMeta',
+      width: 140,
+      render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
+    },
+    {
+      title: 'Responsable',
+      dataIndex: 'responsable',
+      key: 'responsable',
+      width: 180,
+      render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
+    },
+    {
+      title: 'Acciones',
+      key: 'acciones',
+      width: 120,
+      fixed: 'right' as const,
+      render: (_: unknown, record: { task: AsanaTask }) => {
+        const task = record.task;
+        const statusMenuItems: MenuProps['items'] = [
+          {
+            key: 'ejecutado',
+            icon: <CheckCircleOutlined style={{ color: '#16a34a' }} />,
+            label: 'Ejecutado',
+            onClick: () => handleStatusChange(task, 'Ejecutado'),
+          },
+          {
+            key: 'en-proceso',
+            icon: <ClockCircleOutlined style={{ color: '#0ea5e9' }} />,
+            label: 'En Proceso',
+            onClick: () => handleStatusChange(task, 'En Proceso'),
+          },
+        ];
+        return (
+          <Space size={4}>
+            <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="bottomRight">
+              <Tooltip title="Cambiar estado">
+                <Button
+                  size="small"
+                  icon={<ClockCircleOutlined />}
+                  loading={updatingStatus === task.gid}
+                  style={{ fontSize: 13 }}
+                />
+              </Tooltip>
+            </Dropdown>
+            <Tooltip title="Agregar beneficiarios">
+              <Button
+                size="small"
+                icon={<UserAddOutlined />}
+                onClick={() => openBenefModal(task)}
+                style={{ fontSize: 13 }}
+              />
+            </Tooltip>
+          </Space>
+        );
+      },
+    },
+  ];
+
+  const statusOptions = [
+    { value: 'all', label: 'Todos los estados' },
+    { value: 'completed', label: 'Completadas' },
+    { value: 'pending', label: 'Pendientes' },
+  ];
+
+  const lugarOptions = [
+    { value: 'all', label: 'Todos los lugares' },
+    ...uniqueLugares.map((lugar) => ({ value: lugar, label: lugar })),
+  ];
+
+  const responsableOptions = [
+    { value: 'all', label: 'Todos los responsables' },
+    ...uniqueResponsables.map((responsable) => ({ value: responsable, label: responsable })),
+  ];
+
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Sub Actividades ({subtasksWithoutRequests.length})</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+    <>
+    <Card className="section-card" bodyStyle={{ padding: 0 }} style={{ marginBottom: '1.5rem' }}>
+      <div className="section-card__header">
+        <Typography.Title level={4} className="section-card__title">
+          Sub Actividades ({subtasksWithoutRequests.length})
+        </Typography.Title>
+        <Space size={8}>
           {onExportWord && (
-            <button onClick={onExportWord} className="btn-export" title="Exportar a Word">📄</button>
+            <Tooltip title="Exportar a Word">
+              <Button className="task-ficha-pro__actions-trigger" onClick={onExportWord} icon={<FileWordOutlined />} />
+            </Tooltip>
           )}
-          <button onClick={onExportPDF} className="btn-export" title="Exportar a PDF">🖨️</button>
-        </div>
+          <Tooltip title="Exportar a PDF">
+            <Button className="task-ficha-pro__actions-trigger" onClick={onExportPDF} icon={<PrinterOutlined />} />
+          </Tooltip>
+        </Space>
       </div>
 
-      <div className="search-filter">
-        <input
-          type="text"
-          placeholder="Buscar por nombre..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="search-input"
-        />
+      <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+        <Space wrap size={10} style={{ marginBottom: 16, width: '100%' }}>
+          <Input.Search
+            placeholder="Buscar por nombre..."
+            allowClear
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            style={{ minWidth: 260 }}
+          />
+          <Select
+            value={statusFilter}
+            onChange={onStatusFilterChange}
+            options={statusOptions}
+            style={{ minWidth: 180 }}
+          />
+          <Select
+            value={lugarFilter}
+            onChange={onLugarFilterChange}
+            options={lugarOptions}
+            showSearch
+            optionFilterProp="label"
+            style={{ minWidth: 200 }}
+          />
+          <Select
+            value={responsableFilter}
+            onChange={onResponsableFilterChange}
+            options={responsableOptions}
+            showSearch
+            optionFilterProp="label"
+            style={{ minWidth: 220 }}
+          />
+        </Space>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => onStatusFilterChange(e.target.value)}
-          className="filter-select"
-        >
-          <option value="all">Todos los estados</option>
-          <option value="completed">Completadas</option>
-          <option value="pending">Pendientes</option>
-        </select>
-
-        <select
-          value={lugarFilter}
-          onChange={(e) => onLugarFilterChange(e.target.value)}
-          className="filter-select"
-        >
-          <option value="all">Todos los lugares</option>
-          {uniqueLugares.map((lugar) => (
-            <option key={lugar} value={lugar}>
-              {lugar}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={responsableFilter}
-          onChange={(e) => onResponsableFilterChange(e.target.value)}
-          className="filter-select"
-        >
-          <option value="all">Todos los responsables</option>
-          {uniqueResponsables.map((responsable) => (
-            <option key={responsable} value={responsable}>
-              {responsable}
-            </option>
-          ))}
-        </select>
+        {subtasksWithoutRequests.length === 0 ? (
+          <Empty description="No se encontraron sub actividades" />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={rows}
+            size="middle"
+            bordered
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            rowClassName={(_, index) => index % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+          />
+        )}
       </div>
+    </Card>
 
-      {subtasksWithoutRequests.length === 0 ? (
-        <div className="empty-state">
-          <p>No se encontraron sub actividades</p>
-        </div>
-      ) : (
-        <div className="table-container" style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ minWidth: '200px' }}>Nombre</th>
-                <th style={{ minWidth: '300px' }}>Descripción</th>
-                <th style={{ minWidth: '120px' }}>Vencimiento</th>
-                <th style={{ minWidth: '120px' }}>Lugar</th>
-                <th style={{ minWidth: '100px' }}>Estado</th>
-                <th style={{ minWidth: '100px' }}>Población Meta</th>
-                <th style={{ minWidth: '150px' }}>Responsable</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subtasksWithoutRequests.map((task) => {
-                return (
-                  <tr key={task.gid}>
-                    <td>{task.name}</td>
-                    <td style={{ 
-                      maxWidth: '400px', 
-                      whiteSpace: 'normal', 
-                      wordWrap: 'break-word',
-                      fontSize: '0.9rem',
-                      color: '#555'
-                    }}>
-                      {task.notes || '-'}
-                    </td>
-                    <td>{task.due_on || 'Sin fecha'}</td>
-                    <td>{getCustomFieldValue(task, 'Lugar')}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${
-                          getCustomFieldValue(task, 'Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
-                        }`}
-                      >
-                        {getCustomFieldValue(task, 'Estado') === 'EJECUTADO' ? 'Completada' : getCustomFieldValue(task, 'Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td>{getCustomFieldValue(task, 'Población Meta')}</td>
-                    <td>{getCustomFieldValue(task, 'Responsable de Actividad')}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+      {/* Modal: Agregar Beneficiarios */}
+      <Modal
+        title="Agregar Beneficiarios"
+        open={!!benefModal}
+        onOk={handleBeneficiarioSubmit}
+        onCancel={() => { setBenefModal(null); setHasReplicantes(false); }}
+        confirmLoading={saving}
+        okText="Guardar"
+        cancelText="Cancelar"
+        destroyOnClose
+      >
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+          {benefModal?.name}
+        </Typography.Text>
+        <Form form={benefForm} layout="vertical">
+          <Form.Item label="Población Meta" name="poblacionMeta" rules={[{ required: true, message: 'Requerido' }]}>
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Varones" name="hombres" rules={[{ required: true, message: 'Requerido' }]}>
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Mujeres" name="mujeres" rules={[{ required: true, message: 'Requerido' }]}>
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="tieneReplicantes" valuePropName="checked" style={{ marginBottom: hasReplicantes ? 0 : undefined }}>
+            <Checkbox
+              onChange={(e) => {
+                setHasReplicantes(e.target.checked);
+                if (!e.target.checked) benefForm.setFieldValue('replicantes', 0);
+              }}
+            >
+              Tiene replicantes
+            </Checkbox>
+          </Form.Item>
+          {hasReplicantes && (
+            <Form.Item label="Replicantes" name="replicantes" rules={[{ required: true, message: 'Requerido' }]}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          )}
+        </Form>
+      </Modal>
+    </>
   );
 };
 

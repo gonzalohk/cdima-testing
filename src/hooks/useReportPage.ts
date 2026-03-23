@@ -206,9 +206,15 @@ export const useReportPage = () => {
   // si hay sección seleccionada -> tareas de esa sección,
   // si no -> todas las tareas del proyecto
   const displayTasks = useMemo(() => {
-    // Si hay actividad seleccionada, mostrar sus subtareas (excluyendo FUENTES DE VERIFICACION)
+    // Si hay actividad seleccionada, mostrar sus subtareas (excluyendo FUENTES DE VERIFICACION y solicitudes)
     if (selectedMainTask && subtasks.length > 0) {
-      return subtasks.filter(task => !task.name.startsWith('FUENTES DE VERIFICACION'));
+      return subtasks.filter(task =>
+        !task.name.startsWith('FUENTES DE VERIFICACION') &&
+        !task.name.startsWith('SFON') &&
+        !task.name.startsWith('SMAT') &&
+        !task.name.startsWith('DMAT') &&
+        !task.name.startsWith('CPER')
+      );
     }
     
     // Si no hay actividad pero hay sección seleccionada, filtrar por sección

@@ -1,13 +1,12 @@
 import React from 'react';
+import { Alert, Card, Typography } from 'antd';
 import { useReportPage } from '../hooks/useReportPage';
 import HierarchicalSelector from '../components/HierarchicalSelector';
 import TaskInfo from '../components/TaskInfo';
 import StatisticsSection from '../components/StatisticsSection';
-import ResponsibleDistribution from '../components/ResponsibleDistribution';
-import SubtasksTable from '../components/SubtasksTable';
-// import RequestsTable from '../components/RequestsTable'; // Comentado: tabla duplicada, info disponible en TaskInfo
-import BeneficiariesSummary from '../components/BeneficiariesSummary';
+import SectionTabs from '../components/SectionTabs';
 import LoadingOverlay from '../components/LoadingOverlay';
+import GanttChart from '../components/GanttChart';
 import { exportDistributionReportToPDF } from '../services/reports/report-reports.service';
 import { exportDistributionReportToWord } from '../services/reports/report-word.service';
 
@@ -86,24 +85,22 @@ const ReportPage: React.FC = () => {
   return (
     <div className="planning-page">
       {/* Header */}
-      <div className="planning-header">
+      <Card style={{ marginBottom: '1.5rem' }}>
         <div className="planning-header-left">
           <div className="planning-icon">📊</div>
           <div className="planning-info">
-            <h1 className="planning-title">Reporte de Actividades</h1>
-            <p className="planning-subtitle">
+            <Typography.Title level={3} style={{ margin: 0 }}>Reporte de Proyectos</Typography.Title>
+            <Typography.Text type="secondary">
               {selectedProject 
                 ? `${projectName} · ${statistics.total} ${statistics.total === 1 ? 'actividad' : 'actividades'}`
                 : 'Selecciona un proyecto para ver el reporte'}
-            </p>
+            </Typography.Text>
           </div>
         </div>
-      </div>
+      </Card>
 
       {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
+        <Alert message={error} type="error" showIcon style={{ marginBottom: '1rem' }} />
       )}
 
       <HierarchicalSelector
@@ -134,42 +131,14 @@ const ReportPage: React.FC = () => {
               !t.name.startsWith('CPER')
             ).length}
             subtasks={subtasks}
+            statistics={statistics}
+            projectName={projects.find(p => p.gid === selectedProject)?.name}
             onSubtaskDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
             onSubtaskCreated={() => loadTaskDetails(selectedMainTask)}
           />
           
-          <StatisticsSection statistics={statistics} />
-          
-          <ResponsibleDistribution 
-            title="Distribución por Municipio" 
-            columnName="Municipio"
-            byAssignee={statistics.byAssignee}
-            onExport={handleExportMunicipios}
-            onExportWord={handleExportMunicipiosWord}
-          />
-          
-          <ResponsibleDistribution 
-            title="Distribución por Responsable" 
-            columnName="Responsable"
-            byAssignee={statistics.byResponsable}
-            onExport={handleExportResponsables}
-            onExportWord={handleExportResponsablesWord}
-          />
-          
-          <BeneficiariesSummary 
-            subtasks={subtasks} 
-            mainTask={selectedTask}
-            projectName={projects.find(p => p.gid === selectedProject)?.name}
-          />
-          
-          {/* <RequestsTable subtasks={subtasks} /> */}
-          {/* Comentado: información duplicada, ya visible en la ficha de actividad (TaskInfo) */}
-          {/* <RequestsTable
-            subtasks={subtasks}
-            onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
-          /> */}
-          
-          <SubtasksTable
+          <SectionTabs
+            // Subtasks
             filteredSubtasks={filteredSubtasks}
             uniqueLugares={uniqueLugares}
             uniqueResponsables={uniqueResponsables}
@@ -181,54 +150,41 @@ const ReportPage: React.FC = () => {
             onStatusFilterChange={setStatusFilter}
             onLugarFilterChange={setLugarFilter}
             onResponsableFilterChange={setResponsableFilter}
-            onExportPDF={handleExportPDF}
-            onExportWord={handleExportWord}
+            onExportSubtasksPDF={handleExportPDF}
+            onExportSubtasksWord={handleExportWord}
+            onTaskUpdate={(updated) => setSubtasks(prev => prev.map(t => t.gid === updated.gid ? updated : t))}
+            // Beneficiaries
+            subtasks={subtasks}
+            mainTask={selectedTask}
+            projectName={projects.find(p => p.gid === selectedProject)?.name}
+            // Distributions
+            byMunicipio={statistics.byAssignee}
+            byResponsable={statistics.byResponsable}
+            onExportMunicipiosPDF={handleExportMunicipios}
+            onExportMunicipiosWord={handleExportMunicipiosWord}
+            onExportResponsablesPDF={handleExportResponsables}
+            onExportResponsablesWord={handleExportResponsablesWord}
           />
+
+          <GanttChart task={selectedTask} subtasks={subtasks} />
         </>
       )}
 
 
       {!selectedTask && !loading && selectedProject && (
         <>
-          <div className="card">
-            <h2>Información del Proyecto</h2>
+          <Card style={{ marginBottom: '1.5rem' }}>
+            <Typography.Title level={4}>Información del Proyecto</Typography.Title>
             <div className="task-info">
               <p><strong>Proyecto:</strong> {projects.find(p => p.gid === selectedProject)?.name}</p>
               <p><strong>Total de actividades:</strong> {statistics.total}</p>
             </div>
-          </div>
+          </Card>
 
           <StatisticsSection statistics={statistics} />
           
-          <ResponsibleDistribution 
-            title="Distribución por Municipio" 
-            columnName="Municipio"
-            byAssignee={statistics.byAssignee}
-            onExport={handleExportMunicipios}
-            onExportWord={handleExportMunicipiosWord}
-          />
-          
-          <ResponsibleDistribution 
-            title="Distribución por Responsable" 
-            columnName="Responsable"
-            byAssignee={statistics.byResponsable}
-            onExport={handleExportResponsables}
-            onExportWord={handleExportResponsablesWord}
-          />
-          
-          <BeneficiariesSummary 
-            subtasks={filteredSubtasks}
-            projectName={projects.find(p => p.gid === selectedProject)?.name}
-          />
-          
-          {/* <RequestsTable subtasks={filteredSubtasks} /> */}
-          {/* Comentado: información duplicada, ya visible en la ficha de actividad (TaskInfo) */}
-          {/* <RequestsTable
-            subtasks={filteredSubtasks}
-            onDeleted={(gid) => setSubtasks(prev => prev.filter(t => t.gid !== gid))}
-          /> */}
-          
-          <SubtasksTable
+          <SectionTabs
+            // Subtasks
             filteredSubtasks={filteredSubtasks}
             uniqueLugares={uniqueLugares}
             uniqueResponsables={uniqueResponsables}
@@ -240,18 +196,29 @@ const ReportPage: React.FC = () => {
             onStatusFilterChange={setStatusFilter}
             onLugarFilterChange={setLugarFilter}
             onResponsableFilterChange={setResponsableFilter}
-            onExportPDF={handleExportPDF}
-            onExportWord={handleExportWord}
+            onExportSubtasksPDF={handleExportPDF}
+            onExportSubtasksWord={handleExportWord}
+            onTaskUpdate={(updated) => setSubtasks(prev => prev.map(t => t.gid === updated.gid ? updated : t))}
+            // Beneficiaries
+            subtasks={filteredSubtasks}
+            projectName={projects.find(p => p.gid === selectedProject)?.name}
+            // Distributions
+            byMunicipio={statistics.byAssignee}
+            byResponsable={statistics.byResponsable}
+            onExportMunicipiosPDF={handleExportMunicipios}
+            onExportMunicipiosWord={handleExportMunicipiosWord}
+            onExportResponsablesPDF={handleExportResponsables}
+            onExportResponsablesWord={handleExportResponsablesWord}
           />
         </>
       )}
 
       {!selectedTask && !loading && selectedMainTask && !selectedProject && (
-        <div className="card">
+        <Card>
           <div className="empty-state">
             <p>Selecciona una actividad para ver su información</p>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Button, Card, Descriptions, Empty, Form, Input, Modal, Popconfirm, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckCircleOutlined, CommentOutlined, DeleteOutlined, EyeOutlined, PrinterOutlined, WarningOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -23,6 +25,11 @@ interface MaterialItem {
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) => {
+  const [detailModal, setDetailModal] = useState<AsanaTask | null>(null);
+  const [observeModal, setObserveModal] = useState<AsanaTask | null>(null);
+  const [observeText, setObserveText] = useState('');
+  const [observeSaving, setObserveSaving] = useState(false);
+  const [approvingGid, setApprovingGid] = useState<string | null>(null);
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -224,15 +231,44 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
     };
   };
 
+  // Aprobar solicitud (marca como completada en Asana)
+  const handleApprove = async (task: AsanaTask) => {
+    setApprovingGid(task.gid);
+    try {
+      await asanaService.updateTask(task.gid, { completed: true } as Parameters<typeof asanaService.updateTask>[1]);
+      onDeleted?.(task.gid); // refrescar lista
+    } catch (err) {
+      console.error('Error approving task:', err);
+    } finally {
+      setApprovingGid(null);
+    }
+  };
+
+  // Guardar observación en las notas de la tarea
+  const handleObserveSubmit = async () => {
+    if (!observeModal || !observeText.trim()) return;
+    setObserveSaving(true);
+    try {
+      const existing = observeModal.notes || '';
+      const updated = existing
+        ? `${existing}\n\n--- Observación ---\n${observeText.trim()}`
+        : `--- Observación ---\n${observeText.trim()}`;
+      await asanaService.updateTask(observeModal.gid, { notes: updated } as Parameters<typeof asanaService.updateTask>[1]);
+      setObserveModal(null);
+      setObserveText('');
+    } catch (err) {
+      console.error('Error saving observation:', err);
+    } finally {
+      setObserveSaving(false);
+    }
+  };
+
   // Manejar clic en botón eliminar
   const handleDelete = async (task: AsanaTask) => {
-    const confirmed = window.confirm(`¿Eliminar la solicitud "${task.name}"? Esta acción no se puede deshacer.`);
-    if (!confirmed) return;
     try {
       await asanaService.deleteTask(task.gid);
       onDeleted?.(task.gid);
     } catch (err) {
-      alert('Error al eliminar la solicitud. Por favor, intenta de nuevo.');
       console.error('Error deleting task:', err);
     }
   };
@@ -269,115 +305,255 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
     return tipoSolicitud === 'Solicitud de Fondos' || tipoSolicitud === 'Solicitud de Devolucion';
   });
 
-  if (solicitudes.length === 0) {
-    return null;
-  }
+  const tipoTagColor = (tipo: string) => {
+    if (tipo === 'Solicitud de Fondos') return 'default';
+    if (tipo === 'Solicitud de Devolucion') return 'purple';
+    return 'orange';
+  };
+
+  const tipoLabel = (tipo: string) =>
+    tipo === 'Solicitud de Devolucion' ? 'Devolución de Material' : tipo;
+
+  const columns = [
+    {
+      title: 'Nombre de la Solicitud',
+      dataIndex: 'nombre',
+      key: 'nombre',
+      width: 300,
+      render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+    },
+    {
+      title: 'Tipo',
+      dataIndex: 'tipo',
+      key: 'tipo',
+      width: 200,
+      render: (value: string) => (
+        <Tag color={tipoTagColor(value)}>{tipoLabel(value)}</Tag>
+      ),
+    },
+    {
+      title: 'Fecha de Generación',
+      dataIndex: 'fecha',
+      key: 'fecha',
+      width: 180,
+    },
+    {
+      title: 'Estado',
+      dataIndex: 'finalizada',
+      key: 'finalizada',
+      width: 130,
+      render: (value: boolean) =>
+        value
+          ? <Tag color="success">Finalizada</Tag>
+          : <Tag color="warning">Pendiente</Tag>,
+    },
+    {
+      title: 'Acciones',
+      key: 'acciones',
+      width: 120,
+      fixed: 'right' as const,
+      render: (_: unknown, record: { task: AsanaTask }) => (
+        <Space size={4}>
+          <Tooltip title="Ver detalle">
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => setDetailModal(record.task)}
+            />
+          </Tooltip>
+          <Tooltip title="Exportar PDF">
+            <Button
+              size="small"
+              icon={<PrinterOutlined />}
+              onClick={() => handlePrint(record.task)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="¿Eliminar solicitud?"
+            description="Esta acción no se puede deshacer."
+            onConfirm={() => handleDelete(record.task)}
+            okText="Eliminar"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Eliminar">
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+    {
+      title: 'Aprobación',
+      key: 'aprobar',
+      width: 160,
+      fixed: 'right' as const,
+      render: (_: unknown, record: { task: AsanaTask }) => (
+        <Space size={4}>
+          <Popconfirm
+            title="¿Aprobar solicitud?"
+            description="Se marcará esta solicitud como aprobada."
+            onConfirm={() => handleApprove(record.task)}
+            okText="Aprobar"
+            cancelText="Cancelar"
+            okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
+          >
+            <Tooltip title="Aprobar solicitud">
+              <Button
+                size="small"
+                icon={<CheckCircleOutlined />}
+                style={{ color: '#16a34a', borderColor: '#16a34a' }}
+                loading={approvingGid === record.task.gid}
+              >
+                Aprobar
+              </Button>
+            </Tooltip>
+          </Popconfirm>
+          <Tooltip title="Agregar observación">
+            <Button
+              size="small"
+              icon={<CommentOutlined />}
+              style={{ color: '#b45309', borderColor: '#d97706' }}
+              onClick={() => { setObserveModal(record.task); setObserveText(''); }}
+            >
+              Observar
+            </Button>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  const rows = solicitudes.map((task) => ({
+    key: task.gid,
+    task,
+    nombre: task.name,
+    tipo: getCustomFieldValue(task, 'Tipo de Solicitud'),
+    fecha: extractFechaSolicitud(task.notes),
+    finalizada: task.completed,
+  }));
 
   return (
-    <div className="card">
-      <h2 style={{ marginBottom: '1rem' }}>Solicitudes ({solicitudes.length})</h2>
-
-      <div className="table-container" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th style={{ minWidth: '300px' }}>Nombre de la Solicitud</th>
-              <th style={{ minWidth: '180px' }}>Tipo de Solicitud</th>
-              <th style={{ minWidth: '160px' }}>Fecha de Generación</th>
-              <th style={{ minWidth: '140px' }}>Estado</th>
-              <th style={{ minWidth: '120px', textAlign: 'center' }}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {solicitudes.map((task) => {
-              const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
-              const fechaGeneracion = extractFechaSolicitud(task.notes);
-              const esFinalizada = task.completed;
-
-              return (
-                <tr key={task.gid}>
-                  <td>{task.name}</td>
-                  <td>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '12px',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        backgroundColor: 
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#f2f2f2' : 
-                          tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
-                          '#fff3e0',
-                        color: 
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#5a5a5a' : 
-                          tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
-                          '#f57c00',
-                        border: `1px solid ${
-                          tipoSolicitud === 'Solicitud de Fondos' ? '#b5b5b5' : 
-                          tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
-                          '#ffb74d'
-                        }`,
-                      }}
-                    >
-                      {tipoSolicitud === 'Solicitud de Devolucion' ? 'Devolución de Material' : tipoSolicitud}
-                    </span>
-                  </td>
-                  <td>{fechaGeneracion}</td>
-                  <td>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '12px',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        backgroundColor: esFinalizada ? '#e8f5e9' : '#fff3e0',
-                        color: esFinalizada ? '#2e7d32' : '#f57c00',
-                        border: `1px solid ${esFinalizada ? '#81c784' : '#ffb74d'}`,
-                      }}
-                    >
-                      {esFinalizada ? '✓ Finalizada' : '⏸ Pendiente'}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => handlePrint(task)}
-                        className="button-primary"
-                        title="Imprimir"
-                        style={{ padding: '0.5rem 0.65rem', fontSize: '1rem', cursor: 'pointer', lineHeight: 1 }}
-                      >
-                        🖨️
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task)}
-                        title="Eliminar solicitud"
-                        style={{
-                          background: 'none',
-                          border: '1px solid #f5c6cb',
-                          borderRadius: '6px',
-                          padding: '0.45rem 0.6rem',
-                          cursor: 'pointer',
-                          color: '#c0392b',
-                          fontSize: '1rem',
-                          lineHeight: 1,
-                          transition: 'background 0.15s'
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <>
+    <Card className="section-card" bodyStyle={{ padding: 0 }} style={{ marginBottom: '1.5rem' }}>
+      <div className="section-card__header">
+        <Typography.Title level={4} className="section-card__title">
+          Solicitudes ({solicitudes.length})
+        </Typography.Title>
       </div>
-    </div>
+      <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+        {solicitudes.length === 0 ? (
+          <Empty description="No hay solicitudes" />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={rows}
+            size="middle"
+            bordered
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            rowClassName={(_, index) => index % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+          />
+        )}
+      </div>
+    </Card>
+
+    {/* Modal: Ver Detalle */}
+    <Modal
+      title={
+        <Space>
+          <EyeOutlined style={{ color: '#1677ff' }} />
+          <span>Detalle de Solicitud</span>
+        </Space>
+      }
+      open={!!detailModal}
+      onCancel={() => setDetailModal(null)}
+      footer={[
+        <Button key="close" onClick={() => setDetailModal(null)}>Cerrar</Button>,
+        <Button key="print" icon={<PrinterOutlined />} type="primary" onClick={() => { if (detailModal) handlePrint(detailModal); }}>
+          Exportar PDF
+        </Button>,
+      ]}
+      width={600}
+    >
+      {detailModal && (() => {
+        const tipo = getCustomFieldValue(detailModal, 'Tipo de Solicitud');
+        const fecha = extractFechaSolicitud(detailModal.notes);
+        let parsed: Record<string, string> = {};
+        if (tipo === 'Solicitud de Fondos') {
+          const d = parseFundsRequest(detailModal);
+          parsed = { Actividad: d.taskName, Área: d.area, 'Lugar de entrega': d.lugar, 'Fecha inicio': d.fechaInicio, 'Fecha finalización': d.fechaFinalizacion };
+        } else if (tipo === 'Solicitud de Material') {
+          const d = parseMaterialRequest(detailModal);
+          parsed = { Actividad: d.taskName, Área: d.area, 'Lugar de entrega': d.lugar, 'Fecha inicio': d.fechaInicio, 'Fecha finalización': d.fechaFinalizacion };
+        } else if (tipo === 'Solicitud de Devolucion') {
+          const d = parseMaterialReturn(detailModal);
+          parsed = { Actividad: d.taskName, Área: d.area, 'Lugar de devolución': d.lugar, 'Fecha de devolución': d.fechaDevolucion };
+        }
+        return (
+          <Descriptions bordered size="small" column={1} style={{ marginTop: 8 }}>
+            <Descriptions.Item label="Tipo">
+              <Tag color={tipoTagColor(tipo)}>{tipoLabel(tipo)}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Fecha de generación">{fecha}</Descriptions.Item>
+            <Descriptions.Item label="Estado">
+              {detailModal.completed
+                ? <Tag color="success">Aprobada</Tag>
+                : <Tag color="warning">Pendiente</Tag>}
+            </Descriptions.Item>
+            {Object.entries(parsed).filter(([, v]) => v).map(([k, v]) => (
+              <Descriptions.Item key={k} label={k}>{v}</Descriptions.Item>
+            ))}
+            {detailModal.notes && (
+              <Descriptions.Item label="Notas">
+                <Typography.Text style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                  {detailModal.notes}
+                </Typography.Text>
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        );
+      })()}
+    </Modal>
+
+    {/* Modal: Observar Solicitud */}
+    <Modal
+      title={
+        <Space>
+          <WarningOutlined style={{ color: '#b45309' }} />
+          <span>Observar Solicitud</span>
+        </Space>
+      }
+      open={!!observeModal}
+      onOk={handleObserveSubmit}
+      onCancel={() => { setObserveModal(null); setObserveText(''); }}
+      confirmLoading={observeSaving}
+      okText="Guardar observación"
+      cancelText="Cancelar"
+      okButtonProps={{ style: { background: '#b45309', borderColor: '#b45309' } }}
+      destroyOnClose
+    >
+      <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        {observeModal?.name}
+      </Typography.Text>
+      <Form layout="vertical">
+        <Form.Item label="Observación" required>
+          <Input.TextArea
+            rows={4}
+            placeholder="Escribe la observación sobre esta solicitud..."
+            value={observeText}
+            onChange={e => setObserveText(e.target.value)}
+            maxLength={500}
+            showCount
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+    </>
   );
 };
 

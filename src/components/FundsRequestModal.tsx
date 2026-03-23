@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Typography } from 'antd';
+import { DeleteOutlined, DollarOutlined, PlusOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF } from '../services/pdf.service';
@@ -46,8 +48,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
     ));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError('');
 
@@ -207,172 +208,133 @@ ${JSON.stringify(jsonData, null, 2)}
           onClose={() => setNotification(null)}
         />
       )}
-      <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="modal-header">
-          <h2>💰 Solicitud de Fondos</h2>
-          <button className="modal-close" onClick={onClose}>&times;</button>
-        </div>
+      <Modal
+        title={
+          <Space>
+            <DollarOutlined style={{ color: '#16a34a' }} />
+            <span>Solicitud de Fondos</span>
+          </Space>
+        }
+        open={true}
+        onCancel={onClose}
+        width={700}
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto', paddingTop: 12 } }}
+        footer={[
+          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
+          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
+            Crear Solicitud
+          </Button>,
+        ]}
+      >
+        {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
-        {error && (
-          <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
-            {error}
-          </div>
-        )}
+        <Form layout="vertical">
+          <Form.Item label={<strong>Título de la solicitud</strong>} required>
+            <Input
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              maxLength={200}
+            />
+          </Form.Item>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-              <label className="form-label" style={{ display: 'block', marginBottom: '0.4rem' }}><strong>Título de la solicitud</strong></label>
-              <input
-                className="form-input"
-                type="text"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                maxLength={200}
-                required
-              />
-            </div>
+          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Información General</Typography.Title>
 
-            <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Información General</h3>
-            
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Área *</label>
-              <select
-                className="form-input"
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                required
-              >
-                <option value="">Seleccione un área</option>
-                <option value="Erradicación de Violencia">Erradicación de Violencia</option>
-                <option value="Empoderamiento Político">Empoderamiento Político</option>
-                <option value="Empoderamiento Productivo">Empoderamiento Productivo</option>
-                <option value="Administrativa y Financiera">Administrativa y Financiera</option>
-                <option value="Comunicación">Comunicación</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Lugar de Entrega *</label>
-              <input
-                type="text"
-                className="form-input"
-                value={lugar}
-                onChange={(e) => setLugar(e.target.value)}
-                required
-                placeholder="Ej: Oficina Central"
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label className="form-label">Fecha de inicio *</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
-                  required
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Área" required>
+                <Select
+                  value={area || undefined}
+                  onChange={setArea}
+                  placeholder="Seleccione un área"
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'Erradicación de Violencia', label: 'Erradicación de Violencia' },
+                    { value: 'Empoderamiento Político', label: 'Empoderamiento Político' },
+                    { value: 'Empoderamiento Productivo', label: 'Empoderamiento Productivo' },
+                    { value: 'Administrativa y Financiera', label: 'Administrativa y Financiera' },
+                    { value: 'Comunicación', label: 'Comunicación' },
+                  ]}
                 />
-              </div>
-              
-              <div>
-                <label className="form-label">Fecha de finalización *</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={fechaFinalizacion}
-                  onChange={(e) => setFechaFinalizacion(e.target.value)}
-                  required
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Lugar de Entrega" required>
+                <Input
+                  value={lugar}
+                  onChange={(e) => setLugar(e.target.value)}
+                  placeholder="Ej: Oficina Central"
                 />
-              </div>
-            </div>
+              </Form.Item>
+            </Col>
+          </Row>
 
-            <h3 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.1rem' }}>Fondos Solicitados</h3>
-            
-            {fondos.map((fondo, index) => (
-              <div key={fondo.id} style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <strong>Ítem {index + 1}</strong>
-                  {fondos.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => eliminarFondo(fondo.id)}
-                      className="button"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', color: '#dc3545' }}
-                    >
-                      ✕ Eliminar
-                    </button>
-                  )}
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label className="form-label">Descripción *</label>
-                    <input
-                      type="text"
-                      className="form-input"
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Fecha de inicio" required>
+                <Input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Fecha de finalización" required>
+                <Input type="date" value={fechaFinalizacion} onChange={(e) => setFechaFinalizacion(e.target.value)} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Fondos Solicitados</Typography.Title>
+
+          {fondos.map((fondo, index) => (
+            <Card
+              key={fondo.id}
+              size="small"
+              style={{ marginBottom: 12, borderRadius: 6, borderColor: '#e5e7eb' }}
+              title={<Typography.Text strong>Ítem {index + 1}</Typography.Text>}
+              extra={
+                fondos.length > 1 && (
+                  <Button size="small" danger icon={<DeleteOutlined />} onClick={() => eliminarFondo(fondo.id)} />
+                )
+              }
+            >
+              <Row gutter={16}>
+                <Col span={16}>
+                  <Form.Item label="Descripción" required style={{ marginBottom: 0 }}>
+                    <Input
                       value={fondo.descripcion}
                       onChange={(e) => actualizarFondo(fondo.id, 'descripcion', e.target.value)}
-                      required
                       placeholder="Descripción del gasto"
                     />
-                  </div>
-                  
-                  <div>
-                    <label className="form-label">Importe (Bs.) *</label>
-                    <input
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Importe (Bs.)" required style={{ marginBottom: 0 }}>
+                    <Input
                       type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
                       value={fondo.importeBolivianos}
                       onChange={(e) => actualizarFondo(fondo.id, 'importeBolivianos', e.target.value)}
-                      required
                       placeholder="0.00"
                     />
-                  </div>
-                </div>
-              </div>
-            ))}
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          ))}
 
-            <button
-              type="button"
-              onClick={agregarFondo}
-              className="button"
-              style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem' }}
-            >
-              ➕ Agregar Ítem
-            </button>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={agregarFondo} style={{ width: '100%', marginBottom: 12 }}>
+            Agregar Ítem
+          </Button>
 
-            {fondos.filter(f => f.importeBolivianos).length > 0 && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e7f3ff', borderRadius: '4px', textAlign: 'right' }}>
-                <strong>Total: Bs. {fondos.reduce((sum, f) => sum + (parseFloat(f.importeBolivianos) || 0), 0).toFixed(2)}</strong>
-              </div>
-            )}
-          </div>
-
-          <div className="modal-footer">
-            <button
-              type="button"
-              onClick={onClose}
-              className="button"
-              disabled={loading}
+          {fondos.filter(f => f.importeBolivianos).length > 0 && (
+            <Card
+              size="small"
+              style={{ background: '#f0fdf4', borderColor: '#bbf7d0', borderRadius: 6, textAlign: 'right' }}
             >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={loading}
-            >
-              {loading ? 'Creando solicitud...' : 'Crear Solicitud'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <Typography.Text strong style={{ fontSize: 15 }}>
+                Total: Bs. {fondos.reduce((sum, f) => sum + (parseFloat(f.importeBolivianos) || 0), 0).toFixed(2)}
+              </Typography.Text>
+            </Card>
+          )}
+        </Form>
+      </Modal>
     </>
   );
 };

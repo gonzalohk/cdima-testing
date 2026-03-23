@@ -1,4 +1,6 @@
 import React from 'react';
+import { Button, Card, Empty, Space, Tooltip, Typography } from 'antd';
+import { FileWordOutlined, PrinterOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { exportBeneficiariesToPDF } from '../services/pdf.service';
 import { exportBeneficiariesToWord } from '../services/reports/report-word.service';
@@ -7,9 +9,10 @@ interface BeneficiariesSummaryProps {
   subtasks: AsanaTask[];
   mainTask?: AsanaTask;
   projectName?: string;
+  showEmpty?: boolean;
 }
 
-const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, mainTask, projectName }) => {
+const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, mainTask, projectName, showEmpty = false }) => {
   // Función auxiliar para obtener el valor de un campo personalizado
   const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
     if (!task.custom_fields) return '-';
@@ -118,26 +121,33 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
   };
 
   if (tasksWithoutReplicantes.length === 0 && tasksWithReplicantes.length === 0) {
-    return null;
+    if (!showEmpty) return null;
+    return (
+      <Card className="section-card" bodyStyle={{ padding: '3rem 1.5rem' }} style={{ marginBottom: 0 }}>
+        <Empty description="Sin datos de beneficiarios" />
+      </Card>
+    );
   }
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Resumen de Beneficiarios</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={handleExportWord} className="btn-export" title="Exportar a Word">📄</button>
-          <button onClick={handleExportPDF} className="btn-export" title="Exportar a PDF">🖨️</button>
-        </div>
+    <Card className="section-card" bodyStyle={{ padding: 0 }} style={{ marginBottom: '1.5rem' }}>
+      <div className="section-card__header">
+        <Typography.Title level={4} className="section-card__title">Resumen de Beneficiarios</Typography.Title>
+        <Space size={8}>
+          <Tooltip title="Exportar a Word">
+            <Button className="task-ficha-pro__actions-trigger" onClick={handleExportWord} icon={<FileWordOutlined />} />
+          </Tooltip>
+          <Tooltip title="Exportar a PDF">
+            <Button className="task-ficha-pro__actions-trigger" onClick={handleExportPDF} icon={<PrinterOutlined />} />
+          </Tooltip>
+        </Space>
       </div>
-      
+
       {tasksWithoutReplicantes.length > 0 && (
         <>
-          <h3 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-            Beneficiarios Directos
-          </h3>
-          <div className="table-container" style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-            <table>
+          <div className="section-card__subheader">Beneficiarios Directos</div>
+          <div className="section-card__table-wrap">
+            <table className="section-card__table">
               <thead>
                 <tr>
                   <th style={{ minWidth: '200px' }}>Nombre</th>
@@ -152,11 +162,9 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                 {tasksWithoutReplicantes.map((task) => {
                   const mujeres = getCustomFieldValue(task, 'Mujeres ');
                   const hombres = getCustomFieldValue(task, 'Hombres');
-                  
                   const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
                   const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
                   const total = mujeresNum + hombresNum;
-                  
                   return (
                     <tr key={task.gid}>
                       <td>{task.name}</td>
@@ -168,7 +176,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                     </tr>
                   );
                 })}
-                <tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
+                <tr className="section-card__table-total">
                   <td colSpan={2}>TOTAL</td>
                   <td>{totalsWithoutReplicantes.poblacionMeta}</td>
                   <td>{totalsWithoutReplicantes.mujeres}</td>
@@ -183,11 +191,9 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
 
       {tasksWithReplicantes.length > 0 && (
         <>
-          <h3 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-            Beneficiarios Indirectos (con replicantes)
-          </h3>
-          <div className="table-container" style={{ overflowX: 'auto' }}>
-            <table>
+          <div className="section-card__subheader">Beneficiarios Indirectos (con replicantes)</div>
+          <div className="section-card__table-wrap">
+            <table className="section-card__table">
               <thead>
                 <tr>
                   <th style={{ minWidth: '200px' }}>Nombre</th>
@@ -202,11 +208,9 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                 {tasksWithReplicantes.map((task) => {
                   const mujeres = getCustomFieldValue(task, 'Mujeres ');
                   const hombres = getCustomFieldValue(task, 'Hombres');
-                  
                   const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
                   const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
                   const total = mujeresNum + hombresNum;
-                  
                   return (
                     <tr key={task.gid}>
                       <td>{task.name}</td>
@@ -218,7 +222,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                     </tr>
                   );
                 })}
-                <tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
+                <tr className="section-card__table-total">
                   <td colSpan={2}>TOTAL</td>
                   <td>-</td>
                   <td>{totalsWithReplicantes.mujeres}</td>
@@ -230,7 +234,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 };
 

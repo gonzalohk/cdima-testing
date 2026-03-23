@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AsanaTask, AsanaAttachment } from '../types/asana.types';
+import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, List, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
+import type { MenuProps } from 'antd';
+import { CarryOutOutlined, CheckCircleFilled, CheckOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { AsanaTask, AsanaAttachment, TaskStatistics } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
+import { exportFichaActividadToPDF, exportFichaActividadToWord } from '../services/reports/ficha-activity-report.service';
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
@@ -13,11 +17,13 @@ interface TaskInfoProps {
   task: AsanaTask;
   subtasksCount: number;
   subtasks: AsanaTask[];
+  statistics?: TaskStatistics;
+  projectName?: string;
   onSubtaskDeleted?: (gid: string) => void;
   onSubtaskCreated?: () => void;
 }
 
-const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSubtaskDeleted, onSubtaskCreated }) => {
+const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, statistics, projectName = 'Proyecto', onSubtaskDeleted, onSubtaskCreated }) => {
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -73,7 +79,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
   }, [verificationSubtask?.gid]);
 
   // Estados para expandir/colapsar secciones (por defecto colapsadas)
-  const [showFuentesVerificacion, setShowFuentesVerificacion] = useState(false);
   const [showSolicitudes, setShowSolicitudes] = useState(false);
   const [showContrataciones, setShowContrataciones] = useState(false);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
@@ -387,6 +392,85 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
   };
 
   const aggregatedValues = calculateAggregatedValues();
+  const estadoActividad = getMainTaskFieldValue('Estado');
+  const estadoNormalizado = estadoActividad.toUpperCase();
+  const estadoLabel =
+    estadoNormalizado === 'EJECUTADO'
+      ? 'Completada'
+      : estadoNormalizado === 'EN PROCESO'
+        ? 'En proceso'
+        : 'Pendiente';
+  const estadoClass =
+    estadoNormalizado === 'EJECUTADO'
+      ? 'success'
+      : estadoNormalizado === 'EN PROCESO'
+        ? 'processing'
+        : 'default';
+  const notasActividad = (task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+
+  const statsFromSubtasks = (() => {
+    const relevantSubtasks = subtasks.filter(t =>
+      !t.name.startsWith('FUENTES DE VERIFICACION') &&
+      !t.name.startsWith('SFON') &&
+      !t.name.startsWith('SMAT') &&
+      !t.name.startsWith('DMAT') &&
+      !t.name.startsWith('CPER')
+    );
+    const total = relevantSubtasks.length;
+    const completed = relevantSubtasks.filter(t => t.completed).length;
+    const pending = Math.max(total - completed, 0);
+    const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
+    return { total, completed, pending, completionPercentage };
+  })();
+
+  const generalStatistics = {
+    total: statistics?.total ?? statsFromSubtasks.total,
+    completed: statistics?.completed ?? statsFromSubtasks.completed,
+    pending: statistics?.pending ?? statsFromSubtasks.pending,
+    completionPercentage: statistics?.completionPercentage ?? statsFromSubtasks.completionPercentage,
+  };
+
+  const actionMenuItems: MenuProps['items'] = [
+    {
+      key: 'material',
+      icon: <InboxOutlined />,
+      label: 'Solicitud de Material',
+    },
+    {
+      key: 'fondos',
+      icon: <DollarCircleOutlined />,
+      label: 'Solicitud de Fondos',
+    },
+    {
+      key: 'devolucion',
+      icon: <ReloadOutlined />,
+      label: 'Devolución de Material',
+    },
+    {
+      key: 'contratacion',
+      icon: <CarryOutOutlined />,
+      label: 'Solicitar Contratación',
+    },
+  ];
+
+  const handleActionMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'material') setShowMaterialModal(true);
+    if (key === 'fondos') setShowFundsModal(true);
+    if (key === 'devolucion') setShowReturnModal(true);
+    if (key === 'contratacion') setShowContratacionModal(true);
+  };
+
+  const buildFichaData = () => ({
+    task,
+    subtasks,
+    aggregatedValues,
+    generalStatistics,
+    projectName,
+    fuentesEntradas: fuentesData?.entradas ?? [],
+  });
+
+  const handleExportFichaPDF = () => exportFichaActividadToPDF(buildFichaData());
+  const handleExportFichaWord = () => exportFichaActividadToWord(buildFichaData());
 
   return (
     <>
@@ -562,183 +646,226 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
         </div>
       )}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0 }}>Información de la Actividad</h2>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setShowMaterialModal(true)}
-              className="button-primary"
-              style={{ fontSize: '0.9rem' }}
-            >
-              📋 Solicitud de Material
-            </button>
-            <button
-              onClick={() => setShowFundsModal(true)}
-              className="button-primary"
-              style={{ fontSize: '0.9rem' }}
-            >
-              💰 Solicitud de Fondos
-            </button>
-            <button
-              onClick={() => setShowReturnModal(true)}
-              className="button-primary"
-              style={{ fontSize: '0.9rem' }}
-            >
-              🔄 Devolución de Material
-            </button>
-            <button
-              onClick={() => setShowContratacionModal(true)}
-              className="button-primary"
-              style={{ fontSize: '0.9rem' }}
-            >
-              👔 Solicitar Contratación
-            </button>
+        <Card className="task-ficha-pro" bodyStyle={{ padding: 0 }}>
+          <div className="task-ficha-pro__header">
+            <div className="task-ficha-pro__header-main">
+              <Typography.Text className="task-ficha-pro__due-date" style={{ display: 'block', marginBottom: '0.35rem' }}>
+                Vence: {task.due_on || 'Sin fecha'}
+              </Typography.Text>
+              <div className="task-ficha-pro__title-row">
+                <Tag className={`task-ficha-pro__status-tag task-ficha-pro__status-tag--${estadoClass}`}>
+                  {estadoLabel}
+                </Tag>
+                <Typography.Title level={3} className="task-ficha-pro__title">
+                  {task.name}
+                </Typography.Title>
+              </div>
+            </div>
+
+            <div className="task-ficha-pro__actions">
+              <Space size={8}>
+                <Tooltip title="Exportar a Word">
+                  <Button className="task-ficha-pro__actions-trigger" icon={<FileWordOutlined />} onClick={handleExportFichaWord} />
+                </Tooltip>
+                <Tooltip title="Exportar a PDF">
+                  <Button className="task-ficha-pro__actions-trigger" icon={<PrinterOutlined />} onClick={handleExportFichaPDF} />
+                </Tooltip>
+                <Dropdown
+                  trigger={['click']}
+                  placement="bottomRight"
+                  menu={{ items: actionMenuItems, onClick: handleActionMenuClick }}
+                >
+                  <Button className="task-ficha-pro__actions-trigger" icon={<MoreOutlined />}>
+                    Acciones
+                  </Button>
+                </Dropdown>
+              </Space>
+            </div>
           </div>
+
+          <div className="task-ficha-pro__body">
+            <Row gutter={[24, 24]}>
+              <Col xs={24} md={8} className="task-ficha-pro__logistics-col">
+                <div className="task-ficha-pro__info-group">
+                  <Typography.Text className="task-ficha-pro__label">Responsable de Actividad</Typography.Text>
+                  <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">
+                    {getMainTaskFieldValue('Responsable de Actividad')}
+                  </Typography.Text>
+                </div>
+
+                <div className="task-ficha-pro__info-group">
+                  <Typography.Text className="task-ficha-pro__label">Lugares</Typography.Text>
+                  <Typography.Text className="task-ficha-pro__value">{getMainTaskFieldValue('Lugar')}</Typography.Text>
+                </div>
+
+                <div className="task-ficha-pro__info-group">
+                  <Typography.Text className="task-ficha-pro__label">Sub Actividades</Typography.Text>
+                  <Tag className="task-ficha-pro__subtasks-tag" icon={<DeploymentUnitOutlined />}>
+                    {subtasksCount}
+                  </Tag>
+                </div>
+              </Col>
+
+              <Col xs={24} md={16}>
+                <div className="task-ficha-pro__stats-panel">
+                  <Typography.Text className="task-ficha-pro__stats-heading">Estadísticas</Typography.Text>
+                  <Row gutter={[10, 10]} className="task-ficha-pro__stats-grid">
+                    <Col xs={24} sm={12} lg={6}>
+                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-meta" size="small">
+                        <Statistic
+                          title="Población Meta"
+                          value={aggregatedValues.poblacionMeta === '-' ? 0 : Number(aggregatedValues.poblacionMeta)}
+                          prefix={<FileSearchOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-total" size="small">
+                        <Statistic
+                          title="Total Beneficiarios"
+                          value={aggregatedValues.total === '-' ? 0 : Number(aggregatedValues.total)}
+                          prefix={<TeamOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-mujeres" size="small">
+                        <Statistic
+                          title="Mujeres"
+                          value={aggregatedValues.mujeres === '-' ? 0 : Number(aggregatedValues.mujeres)}
+                          prefix={<HeartOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-hombres" size="small">
+                        <Statistic
+                          title="Hombres"
+                          value={aggregatedValues.hombres === '-' ? 0 : Number(aggregatedValues.hombres)}
+                          prefix={<UserOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                </div>
+
+                {notasActividad && (
+                  <div className="task-ficha-pro__results-box">
+                    <Typography.Text className="task-ficha-pro__results-title">Resultados Obtenidos</Typography.Text>
+                    <Typography.Paragraph className="task-ficha-pro__results-text">
+                      {notasActividad}
+                    </Typography.Paragraph>
+                  </div>
+                )}
+              </Col>
+            </Row>
+          </div>
+
+        <div className="task-ficha-pro__general-stats-outer">
+        <div className="task-ficha-pro__general-stats">
+          <Typography.Text className="task-ficha-pro__stats-heading">Estadísticas</Typography.Text>
+          <Typography.Text className="task-ficha-pro__general-progress-label">Progreso General</Typography.Text>
+          <div className="task-ficha-pro__general-progress-row">
+            <Progress
+              percent={Number(generalStatistics.completionPercentage.toFixed(1))}
+              showInfo={false}
+              strokeColor={{
+                '0%': '#f97316',
+                '50%': '#facc15',
+                '100%': '#22c55e',
+              }}
+              trailColor="#e5e7eb"
+              strokeWidth={10}
+            />
+            <Typography.Text className="task-ficha-pro__general-progress-value">
+              {generalStatistics.completionPercentage.toFixed(1)}%
+              {generalStatistics.completionPercentage >= 100 && (
+                <CheckCircleFilled style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '1rem', verticalAlign: 'middle' }} />
+              )}
+            </Typography.Text>
+          </div>
+
+          <Row gutter={[10, 10]} className="task-ficha-pro__general-stats-grid">
+            <Col xs={12} lg={6}>
+              <div className="task-ficha-pro__general-stat-item">
+                <span className="task-ficha-pro__general-stat-value">{generalStatistics.total}</span>
+                <span className="task-ficha-pro__general-stat-label">Total Sub Actividades</span>
+              </div>
+            </Col>
+            <Col xs={12} lg={6}>
+              <div className="task-ficha-pro__general-stat-item">
+                <span className="task-ficha-pro__general-stat-value">{generalStatistics.completed}</span>
+                <span className="task-ficha-pro__general-stat-label">Completadas</span>
+              </div>
+            </Col>
+            <Col xs={12} lg={6}>
+              <div className="task-ficha-pro__general-stat-item">
+                <span className="task-ficha-pro__general-stat-value">{generalStatistics.pending}</span>
+                <span className="task-ficha-pro__general-stat-label">Pendientes</span>
+              </div>
+            </Col>
+            <Col xs={12} lg={6}>
+              <div className={`task-ficha-pro__general-stat-item task-ficha-pro__general-stat-item--${estadoClass}`}>
+                <span className="task-ficha-pro__general-stat-value">{generalStatistics.completionPercentage.toFixed(1)}%</span>
+                <span className="task-ficha-pro__general-stat-label">Progreso</span>
+              </div>
+            </Col>
+          </Row>
         </div>
-
-        {/* Nombre de la actividad */}
-        <div className="activity-header-compact">
-          <h3 className="activity-title-compact">{task.name}</h3>
         </div>
-
-        {/* Grid compacto con toda la información */}
-        <div className="info-grid-compact">
-          <div className="info-item">
-            <span className="info-label">Estado</span>
-            <span className="info-value">
-              <span
-                className={`status-badge ${
-                  getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'status-completed' : 'status-pending'
-                }`}
-              >
-                {getMainTaskFieldValue('Estado') === 'EJECUTADO' ? 'Completada' : getMainTaskFieldValue('Estado') === 'EN PROCESO' ? 'En Proceso' : 'Pendiente'}
-              </span>
-            </span>
-          </div>
-
-          <div className="info-item">
-            <span className="info-label">Fecha de Vencimiento</span>
-            <span className="info-value">{task.due_on || 'Sin fecha'}</span>
-          </div>
-
-          <div className="info-item">
-            <span className="info-label">Sub Actividades</span>
-            <span className="info-value info-value-highlight">{subtasksCount}</span>
-          </div>
-
-          {task.custom_fields && task.custom_fields.length > 0 && (
-            <>
-              <div className="info-item">
-                <span className="info-label">Lugar</span>
-                <span className="info-value">{getMainTaskFieldValue('Lugar')}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Responsable de Actividad</span>
-                <span className="info-value">{getMainTaskFieldValue('Responsable de Actividad')}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">👥 Mujeres</span>
-                <span className="info-value-beneficiary">{aggregatedValues.mujeres}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">👥 Hombres</span>
-                <span className="info-value-beneficiary">{aggregatedValues.hombres}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">👥 Total Beneficiarios</span>
-                <span className="info-value-beneficiary">{aggregatedValues.total}</span>
-              </div>
-
-              <div className="info-item">
-                <span className="info-label">Población Meta</span>
-                <span className="info-value-beneficiary">{aggregatedValues.poblacionMeta}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Notas en la parte inferior */}
-        {task.notes && (
-          <div className="notes-content-compact">
-            <strong>📝 Resultados:</strong> {task.notes}
-          </div>
-        )}
 
         {/* Fuentes de Verificación */}
-        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+        <div style={{ padding: '1rem 1.25rem 1.25rem', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb' }}>
           <div 
             style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center', 
-              marginBottom: showFuentesVerificacion ? '1rem' : 0,
-              cursor: 'pointer'
+              marginBottom: '1rem'
             }}
-            onClick={() => setShowFuentesVerificacion(!showFuentesVerificacion)}
           >
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#333', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showFuentesVerificacion ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-              📂 Fuentes de Verificación
-            </h3>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowVerificationModal(true);
-              }}
-              className="button-primary"
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+            <Typography.Text className="task-ficha-pro__stats-heading" style={{ fontSize: undefined }}>
+              Fuentes de Verificación
+            </Typography.Text>
+            <Button
+              onClick={() => setShowVerificationModal(true)}
+              className="task-ficha-pro__actions-trigger"
               title={verificationSubtask ? 'Agregar nueva fuente de verificación' : 'Crear subactividad de fuentes de verificación'}
             >
               {verificationSubtask ? '+ Agregar Fuente' : '+ Crear Subactividad'}
-            </button>
+            </Button>
           </div>
 
-          {showFuentesVerificacion && (verificationSubtask ? (
+          {verificationSubtask ? (
             <div>
               {/* Modo nuevo: entradas JSON */}
               {fuentesData ? (
                 fuentesData.entradas.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {fuentesData.entradas.map((entry) => (
-                      <div
-                        key={entry.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.6rem 0.875rem',
-                          backgroundColor: 'white',
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '6px',
-                          fontSize: '0.875rem',
-                        }}
+                  <List
+                    size="small"
+                    dataSource={fuentesData.entradas}
+                    renderItem={(entry) => (
+                      <List.Item
+                        className="task-ficha-pro__fuente-item"
+                        actions={[
+                          <a
+                            key="ver"
+                            href={entry.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="task-ficha-pro__fuente-link"
+                          >
+                            Ver
+                          </a>
+                        ]}
                       >
-                        <span style={{ flex: 1, fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          📎 {entry.nombre}
-                        </span>
-                        <a
-                          href={entry.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            padding: '0.3rem 0.75rem',
-                            borderRadius: '4px',
-                            fontSize: '0.8rem',
-                            color: '#555',
-                            border: '1px solid #ccc',
-                            textDecoration: 'none',
-                            flexShrink: 0,
-                          }}
-                        >
-                          Ver
-                        </a>
-                      </div>
-                    ))}
-                  </div>
+                        <List.Item.Meta
+                          avatar={<PaperClipOutlined className="task-ficha-pro__fuente-icon" />}
+                          title={<span className="task-ficha-pro__fuente-name">{entry.nombre}</span>}
+                        />
+                      </List.Item>
+                    )}
+                  />
                 ) : (
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }}>
                     No hay fuentes registradas. Use el botón "Agregar Fuente".
@@ -809,230 +936,194 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
                 <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
               </p>
             </div>
-          ))}
+          )}
         </div>
+        </Card>
 
         {/* Solicitudes */}
-        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-          <h3 
-            style={{ 
-              margin: showSolicitudes ? '0 0 1rem' : 0, 
-              fontSize: '1rem', 
-              fontWeight: 600, 
-              color: '#333',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer'
-            }}
-            onClick={() => setShowSolicitudes(!showSolicitudes)}
-          >
-            <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showSolicitudes ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-            📋 Solicitudes {solicitudes.length > 0 && `(${solicitudes.length})`}
-          </h3>
-
-          {showSolicitudes && (solicitudes.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#e9ecef', borderBottom: '2px solid #dee2e6' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Nombre</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Tipo</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha Solicitud</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#495057' }}>Fecha Aprobación</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Estado</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#495057' }}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...solicitudes].sort((a, b) => {
-                    const statusOrder = (t: AsanaTask) => {
-                      if (t.completed) return 1;
-                      const obs = extractObservacion(t.notes);
-                      if (obs.observado) return 2;
-                      return 0;
-                    };
-                    return statusOrder(a) - statusOrder(b);
-                  }).map((solicitud) => {
-                    const tipoSolicitud = getCustomFieldValue(solicitud, 'Tipo de Solicitud');
-                    const fechaGeneracion = extractFechaSolicitud(solicitud.notes);
-                    const fechaAprobacion = extractFechaAprobacion(solicitud.notes);
-                    const esFinalizada = solicitud.completed;
-                    const observacion = extractObservacion(solicitud.notes);
-
+        <Collapse
+          className="task-ficha-pro__collapse"
+          activeKey={showSolicitudes ? ['sol'] : []}
+          onChange={(keys) => setShowSolicitudes((keys as string[]).length > 0)}
+          style={{ marginTop: '1.5rem' }}
+          items={[{
+            key: 'sol',
+            label: (
+              <Space align="center">
+                <span style={{ fontWeight: 600, color: '#333' }}>📋 Solicitudes</span>
+                <Badge count={solicitudes.length} showZero={false} color="#4f46e5" />
+              </Space>
+            ),
+            children: (solicitudes.length > 0 ? (
+            <Table
+              size="small"
+              rowKey="gid"
+              pagination={false}
+              rowClassName={(record) => {
+                const obs = extractObservacion(record.notes);
+                if (obs.observado) return 'ant-table-row--observed';
+                if (record.completed) return 'ant-table-row--completed';
+                return '';
+              }}
+              dataSource={[...solicitudes].sort((a, b) => {
+                const statusOrder = (t: AsanaTask) => {
+                  if (t.completed) return 1;
+                  const obs = extractObservacion(t.notes);
+                  if (obs.observado) return 2;
+                  return 0;
+                };
+                return statusOrder(a) - statusOrder(b);
+              })}
+              columns={[
+                {
+                  title: 'Nombre',
+                  dataIndex: 'name',
+                  key: 'name',
+                  render: (_: string, record: AsanaTask) => {
+                    const obs = extractObservacion(record.notes);
                     return (
-                      <tr key={solicitud.gid} style={{ borderBottom: '1px solid #dee2e6', backgroundColor: observacion.observado ? '#fff5f5' : esFinalizada ? '#f0faf0' : undefined }}>
-                        <td style={{ padding: '0.75rem', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{solicitud.name}</div>
-                          {observacion.observado && (
-                            <div style={{ fontSize: '0.75rem', color: '#c0392b', marginTop: '0.25rem', fontStyle: 'italic', whiteSpace: 'normal' }}>
-                              ⚠ {observacion.motivo}
-                              {observacion.fecha && <span style={{ color: '#999', marginLeft: '0.4rem' }}>({observacion.fecha})</span>}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem' }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: '500',
-                              backgroundColor: 
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#f2f2f2' : 
-                                tipoSolicitud === 'Solicitud de Devolucion' ? '#f3e5f5' : 
-                                '#fff3e0',
-                              color: 
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#5a5a5a' : 
-                                tipoSolicitud === 'Solicitud de Devolucion' ? '#7b1fa2' : 
-                                '#f57c00',
-                              border: `1px solid ${
-                                tipoSolicitud === 'Solicitud de Fondos' ? '#b5b5b5' : 
-                                tipoSolicitud === 'Solicitud de Devolucion' ? '#ce93d8' : 
-                                '#ffb74d'
-                              }`,
-                            }}
-                          >
-                            {tipoSolicitud === 'Solicitud de Fondos' ? '💰 Fondos' : 
-                             tipoSolicitud === 'Solicitud de Devolucion' ? '🔄 Dev. Material' : 
-                             '📋 Material'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: '#666' }}>{fechaGeneracion}</td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: fechaAprobacion ? '#2e7d32' : '#bbb' }}>{fechaAprobacion || '—'}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: '500',
-                              backgroundColor: esFinalizada ? '#e8f5e9' : observacion.observado ? '#fdecea' : '#fff3e0',
-                              color: esFinalizada ? '#2e7d32' : observacion.observado ? '#c0392b' : '#f57c00',
-                              border: `1px solid ${esFinalizada ? '#81c784' : observacion.observado ? '#f5c6cb' : '#ffb74d'}`,
-                            }}
-                          >
-                            {esFinalizada ? '✓ Aprobada' : observacion.observado ? '⚠ Observada' : '⏸ Pendiente'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
-                            {!esFinalizada && !observacion.observado && (
-                              <button
-                                onClick={() => handleApproveRequest(solicitud)}
-                                className="button-primary"
-                                style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#2e7d32', borderColor: '#2e7d32' }}
-                              >
-                                ✅ Aprobar
-                              </button>
-                            )}
-                            {!esFinalizada && (
-                              <button
-                                onClick={() => handleObserveRequest(solicitud)}
-                                title={observacion.observado ? 'Actualizar observación' : 'Observar solicitud'}
-                                style={{
-                                  background: observacion.observado ? '#fdecea' : 'none',
-                                  border: '1px solid #f5c6cb',
-                                  borderRadius: '6px',
-                                  padding: '0.35rem 0.6rem',
-                                  cursor: 'pointer',
-                                  color: '#c0392b',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  lineHeight: 1,
-                                  transition: 'background 0.15s'
-                                }}
-                                onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
-                                onMouseLeave={e => (e.currentTarget.style.background = observacion.observado ? '#fdecea' : 'none')}
-                              >
-                                ⚠️
-                              </button>
-                            )}
-                            <button
-                              onClick={() => setDetailTarget(solicitud)}
-                              title="Ver detalle"
-                              style={{
-                                background: 'none',
-                                border: '1px solid #b3c6e0',
-                                borderRadius: '6px',
-                                padding: '0.35rem 0.55rem',
-                                cursor: 'pointer',
-                                color: '#1a5fa8',
-                                fontSize: '0.9rem',
-                                lineHeight: 1,
-                                transition: 'background 0.15s'
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.background = '#e8f0fb')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                            >
-                              📓
-                            </button>
-                            <button
-                              onClick={() => handlePrintRequest(solicitud)}
-                              className="button-primary"
-                              title="Imprimir"
-                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', cursor: 'pointer', lineHeight: 1 }}
-                            >
-                              🖨️
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRequest(solicitud)}
-                              title="Eliminar solicitud"
-                              style={{
-                                background: 'none',
-                                border: '1px solid #f5c6cb',
-                                borderRadius: '6px',
-                                padding: '0.35rem 0.5rem',
-                                cursor: 'pointer',
-                                color: '#c0392b',
-                                fontSize: '0.9rem',
-                                lineHeight: 1,
-                                transition: 'background 0.15s'
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                      <div>
+                        <Typography.Text ellipsis style={{ maxWidth: 240, display: 'block' }}>{record.name}</Typography.Text>
+                        {obs.observado && (
+                          <Typography.Text type="danger" style={{ fontSize: '0.75rem', fontStyle: 'italic', display: 'block', whiteSpace: 'normal' }}>
+                            <WarningOutlined style={{ marginRight: 4 }} />
+                            {obs.motivo}
+                            {obs.fecha && <span style={{ color: '#999', marginLeft: '0.4rem' }}>({obs.fecha})</span>}
+                          </Typography.Text>
+                        )}
+                      </div>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  },
+                },
+                {
+                  title: 'Tipo',
+                  key: 'tipo',
+                  render: (_: unknown, record: AsanaTask) => {
+                    const tipo = getCustomFieldValue(record, 'Tipo de Solicitud');
+                    const colorMap: Record<string, string> = {
+                      'Solicitud de Fondos': 'default',
+                      'Solicitud de Devolucion': 'purple',
+                    };
+                    const labelMap: Record<string, string> = {
+                      'Solicitud de Fondos': 'Fondos',
+                      'Solicitud de Devolucion': 'Dev. Material',
+                    };
+                    return <Tag color={colorMap[tipo] ?? 'orange'}>{labelMap[tipo] ?? 'Material'}</Tag>;
+                  },
+                },
+                {
+                  title: 'Fecha Solicitud',
+                  key: 'fechaSolicitud',
+                  render: (_: unknown, record: AsanaTask) => (
+                    <Typography.Text type="secondary" style={{ fontSize: '0.8rem' }}>
+                      {extractFechaSolicitud(record.notes)}
+                    </Typography.Text>
+                  ),
+                },
+                {
+                  title: 'Fecha Aprobación',
+                  key: 'fechaAprobacion',
+                  render: (_: unknown, record: AsanaTask) => {
+                    const fecha = extractFechaAprobacion(record.notes);
+                    return (
+                      <Typography.Text style={{ fontSize: '0.8rem', color: fecha ? '#2e7d32' : '#bbb' }}>
+                        {fecha || '—'}
+                      </Typography.Text>
+                    );
+                  },
+                },
+                {
+                  title: 'Estado',
+                  key: 'estado',
+                  align: 'center' as const,
+                  render: (_: unknown, record: AsanaTask) => {
+                    const obs = extractObservacion(record.notes);
+                    if (record.completed) return <Tag color="success">Aprobada</Tag>;
+                    if (obs.observado) return <Tag color="error">Observada</Tag>;
+                    return <Tag color="warning">Pendiente</Tag>;
+                  },
+                },
+                {
+                  title: 'Acciones',
+                  key: 'acciones',
+                  align: 'center' as const,
+                  render: (_: unknown, record: AsanaTask) => {
+                    const obs = extractObservacion(record.notes);
+                    return (
+                      <Space size={4}>
+                        {!record.completed && !obs.observado && (
+                          <Tooltip title="Aprobar">
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<CheckOutlined />}
+                              style={{ backgroundColor: '#2e7d32', borderColor: '#2e7d32' }}
+                              onClick={() => handleApproveRequest(record)}
+                            />
+                          </Tooltip>
+                        )}
+                        {!record.completed && (
+                          <Tooltip title={obs.observado ? 'Actualizar observación' : 'Observar solicitud'}>
+                            <Button
+                              size="small"
+                              danger
+                              icon={<WarningOutlined />}
+                              onClick={() => handleObserveRequest(record)}
+                            />
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Ver detalle">
+                          <Button
+                            size="small"
+                            icon={<FileTextOutlined />}
+                            onClick={() => setDetailTarget(record)}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Imprimir">
+                          <Button
+                            size="small"
+                            icon={<PrinterOutlined />}
+                            onClick={() => handlePrintRequest(record)}
+                          />
+                        </Tooltip>
+                        <Popconfirm
+                          title="¿Eliminar esta solicitud?"
+                          onConfirm={() => handleDeleteRequest(record)}
+                          okText="Sí"
+                          cancelText="No"
+                          okButtonProps={{ danger: true }}
+                        >
+                          <Tooltip title="Eliminar">
+                            <Button size="small" danger icon={<DeleteOutlined />} />
+                          </Tooltip>
+                        </Popconfirm>
+                      </Space>
+                    );
+                  },
+                },
+              ]}
+            />
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
-                <strong>ℹ️ Info:</strong> No hay solicitudes generadas para esta actividad. Use los botones superiores para crear solicitudes de material, fondos o devolución.
-              </p>
-            </div>
-          ))}
-        </div>
+            <Empty description="No hay solicitudes para esta actividad. Use el menú de acciones para crear solicitudes de material, fondos o devolución." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )),
+          }]}
+        />
 
         {/* Contrataciones */}
-        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-          <h3 
-            style={{ 
-              margin: showContrataciones ? '0 0 1rem' : 0, 
-              fontSize: '1rem', 
-              fontWeight: 600, 
-              color: '#333',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer'
-            }}
-            onClick={() => setShowContrataciones(!showContrataciones)}
-          >
-            <span style={{ fontSize: '0.9rem', transition: 'transform 0.2s', display: 'inline-block', transform: showContrataciones ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-            👔 Contrataciones {contrataciones.length > 0 && `(${contrataciones.length})`}
-          </h3>
-
-          {showContrataciones && (contrataciones.length > 0 ? (
+        <Collapse
+          className="task-ficha-pro__collapse"
+          activeKey={showContrataciones ? ['con'] : []}
+          onChange={(keys) => setShowContrataciones((keys as string[]).length > 0)}
+          style={{ marginTop: '1.5rem' }}
+          items={[{
+            key: 'con',
+            label: (
+              <Space align="center">
+                <span style={{ fontWeight: 600, color: '#333' }}>👔 Contrataciones</span>
+                <Badge count={contrataciones.length} showZero={false} color="#0ea5e9" />
+              </Space>
+            ),
+            children: (contrataciones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {contrataciones.map((contratacion) => {
                 const nombreContratacion = contratacion.name.replace('CPER - ', '');
@@ -1300,13 +1391,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, onSu
               })}
             </div>
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
-                <strong>ℹ️ Info:</strong> No hay contrataciones registradas para esta actividad. Use el botón "Solicitar Contratación" para crear una nueva.
-              </p>
-            </div>
-          ))}
-        </div>
+            <Empty description="No hay contrataciones para esta actividad. Use el menú de acciones para registrar una contratación." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )),
+          }]}
+        />
       </div>
 
       {showMaterialModal && (

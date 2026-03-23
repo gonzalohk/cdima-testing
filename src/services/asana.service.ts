@@ -100,7 +100,7 @@ class AsanaService {
 
   async getSubtasks(taskGid: string): Promise<AsanaTask[]> {
     return this.fetchAsana<AsanaTask[]>(
-      `/tasks/${taskGid}/subtasks?opt_fields=name,notes,completed,due_on,assignee.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
+      `/tasks/${taskGid}/subtasks?opt_fields=name,notes,completed,due_on,start_on,assignee.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
     );
   }
 
@@ -346,7 +346,8 @@ class AsanaService {
       custom_fields?: { [fieldGid: string]: string | number | null };
     }
   ): Promise<AsanaTask> {
-    return this.fetchAsana<AsanaTask>(`/tasks/${taskGid}`, {
+    const optFields = 'name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.gid,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.enum_options.gid,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value';
+    return this.fetchAsana<AsanaTask>(`/tasks/${taskGid}?opt_fields=${optFields}`, {
       method: 'PUT',
       body: JSON.stringify({ data })
     });
