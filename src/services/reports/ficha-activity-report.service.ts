@@ -7,6 +7,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -43,6 +44,7 @@ export interface FichaExportData {
     completionPercentage: number;
   };
   projectName: string;
+  seccion?: string;
   fuentesEntradas?: FichaFuente[];
 }
 
@@ -74,13 +76,6 @@ const statusLabel = (estado: string): string => {
   return 'Pendiente';
 };
 
-const EXCLUDED_PREFIXES = ['FUENTES DE VERIFICACION', 'SFON', 'SMAT', 'DMAT', 'CPER'];
-const getDisplaySubtasks = (subtasks: AsanaTask[]) =>
-  subtasks.filter(
-    t =>
-      !EXCLUDED_PREFIXES.some(p => t.name.startsWith(p)) &&
-      getField(t, 'Tipo de Solicitud') === '-'
-  );
 const getSolicitudes = (subtasks: AsanaTask[]) =>
   subtasks.filter(t => {
     const tipo = getField(t, 'Tipo de Solicitud');
@@ -99,7 +94,6 @@ const safeValue = (v: string) => (v === '-' ? '0' : v);
 // PDF EXPORT
 // ══════════════════════════════════════════════════════════════════════════════
 const PW = 215.9;
-const PH = 279.4;
 const M = { top: 20, bottom: 20, left: 20, right: 20 };
 
 const C = {
@@ -116,6 +110,7 @@ export const exportFichaActividadToPDF = ({
   aggregatedValues,
   generalStatistics,
   projectName,
+  seccion,
   fuentesEntradas = [],
 }: FichaExportData): void => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
@@ -147,9 +142,14 @@ export const exportFichaActividadToPDF = ({
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...C.black);
   doc.text(`Proyecto: ${projectName}`, PW - M.right, M.top + 12, { align: 'right' });
-  doc.text(`Generado: ${dateStr}`, PW - M.right, M.top + 17, { align: 'right' });
+  if (seccion) {
+    doc.text(`Sección: ${seccion}`, PW - M.right, M.top + 17, { align: 'right' });
+    doc.text(`Generado: ${dateStr}`, PW - M.right, M.top + 22, { align: 'right' });
+  } else {
+    doc.text(`Generado: ${dateStr}`, PW - M.right, M.top + 17, { align: 'right' });
+  }
 
-  let y = M.top + 22;
+  let y = seccion ? M.top + 27 : M.top + 22;
   doc.setDrawColor(...C.headerGray);
   doc.setLineWidth(0.3);
   doc.line(M.left, y, PW - M.right, y);
@@ -189,7 +189,7 @@ export const exportFichaActividadToPDF = ({
     margin: { left: M.left, right: M.right },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 14;
 
   // ── SEC 2: INDICADORES ──────────────────────────────────────────────────────
   y = paginate(y, 30);
@@ -223,7 +223,7 @@ export const exportFichaActividadToPDF = ({
     doc.text(labelLines, bx + boxW / 2, y + 14, { align: 'center' });
   });
 
-  y += boxH + 8;
+  y += boxH + 14;
 
   // ── SEC 3: PROGRESO ─────────────────────────────────────────────────────────
   y = paginate(y, 28);
@@ -234,48 +234,35 @@ export const exportFichaActividadToPDF = ({
   y += 5;
 
   const pct = generalStatistics.completionPercentage;
-  const barW = uw - 22;
-  const barH = 5;
-  const fillW = barW * (Math.min(pct, 100) / 100);
-
-  doc.setFillColor(...C.lightGray);
-  doc.roundedRect(M.left, y, barW, barH, barH / 2, barH / 2, 'F');
-  if (fillW > 0) {
-    doc.setFillColor(...C.black);
-    doc.roundedRect(M.left, y, fillW, barH, barH / 2, barH / 2, 'F');
-  }
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...C.black);
-  doc.text(`${pct.toFixed(1)}%${pct >= 100 ? ' Completado' : ''}`, M.left + barW + 4, y + 4);
-  y += barH + 7;
-
-  const statItems = [
+  const progBoxW = (uw - 6) / 4;
+  const progBoxH = 18;
+  const progItems = [
     { label: 'Total Sub Actividades', value: generalStatistics.total.toString() },
     { label: 'Completadas',           value: generalStatistics.completed.toString() },
     { label: 'Pendientes',            value: generalStatistics.pending.toString() },
+    { label: 'Progreso',              value: `${pct.toFixed(1)}%` },
   ];
-  const colW = uw / 3;
-  statItems.forEach(({ label, value }, i) => {
-    const sx = M.left + i * colW;
-    doc.setFontSize(13);
+
+  progItems.forEach(({ label, value }, i) => {
+    const bx = M.left + i * (progBoxW + 2);
+    doc.setFillColor(...C.lightGray);
+    doc.roundedRect(bx, y, progBoxW, progBoxH, 2, 2, 'F');
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...C.black);
-    doc.text(value, sx + 3, y + 5);
-    doc.setFontSize(7.5);
+    doc.text(value, bx + progBoxW / 2, y + 9, { align: 'center' });
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...C.black);
-    doc.text(label, sx + 3, y + 10);
+    const labelLines = doc.splitTextToSize(label, progBoxW - 6);
+    doc.text(labelLines, bx + progBoxW / 2, y + 14, { align: 'center' });
   });
-  y += 18;
+
+  y += progBoxH + 14;
 
   // ── SEC 4: RESULTADOS ───────────────────────────────────────────────────────
   if (notasClean) {
     y = paginate(y, 20);
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, y, PW - M.right, y);
-    y += 6;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
@@ -299,9 +286,6 @@ export const exportFichaActividadToPDF = ({
   // ── SEC 5: FUENTES DE VERIFICACIÓN ──────────────────────────────────────────
   if (fuentesEntradas.length > 0) {
     y = paginate(y, 20);
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, y, PW - M.right, y);
     y += 6;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
@@ -333,53 +317,15 @@ export const exportFichaActividadToPDF = ({
     y += 2;
   }
 
-  // ── SEC 6: SUB ACTIVIDADES ──────────────────────────────────────────────────
-  const displaySubs = getDisplaySubtasks(subtasks);
-  if (displaySubs.length > 0) {
-    y = paginate(y, 20);
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, y, PW - M.right, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...C.black);
-    doc.text(`SUB ACTIVIDADES (${displaySubs.length})`, M.left, y);
-    y += 3;
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Nombre', 'Vencimiento', 'Lugar', 'Estado', 'Responsable']],
-      body: displaySubs.map(t => [
-        t.name,
-        t.due_on || '-',
-        getField(t, 'Lugar'),
-        statusLabel(getField(t, 'Estado')),
-        getField(t, 'Responsable de Actividad'),
-      ]),
-      theme: 'plain',
-      headStyles: { fillColor: C.headerGray, textColor: C.black, fontSize: 9, fontStyle: 'bold', cellPadding: 5 },
-      styles: { fontSize: 8.5, cellPadding: 4, lineColor: C.borderGray, lineWidth: 0.2 },
-      bodyStyles: { fillColor: C.white, textColor: C.black },
-      columnStyles: { 0: { cellWidth: 58 }, 1: { cellWidth: 24 }, 2: { cellWidth: 40 }, 3: { cellWidth: 26 }, 4: { cellWidth: 36 } },
-      margin: { left: M.left, right: M.right },
-    });
-
-    y = (doc as any).lastAutoTable.finalY + 8;
-  }
-
   // ── SEC 7: SOLICITUDES ──────────────────────────────────────────────────────
   const solicitudes = getSolicitudes(subtasks);
   if (solicitudes.length > 0) {
     y = paginate(y, 20);
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, y, PW - M.right, y);
     y += 6;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...C.black);
-    doc.text(`SOLICITUDES (${solicitudes.length})`, M.left, y);
+    doc.text(`SOLICITUDES`, M.left, y);
     y += 3;
 
     autoTable(doc, {
@@ -399,6 +345,7 @@ export const exportFichaActividadToPDF = ({
       headStyles: { fillColor: C.headerGray, textColor: C.black, fontSize: 9, fontStyle: 'bold', cellPadding: 5 },
       styles: { fontSize: 8.5, cellPadding: 4, lineColor: C.borderGray, lineWidth: 0.2 },
       bodyStyles: { fillColor: C.white, textColor: C.black },
+      columnStyles: { 0: { cellWidth: 75 }, 1: { cellWidth: 46 }, 2: { cellWidth: 30 }, 3: { cellWidth: 25 } },
       margin: { left: M.left, right: M.right },
     });
 
@@ -409,24 +356,24 @@ export const exportFichaActividadToPDF = ({
   const contrataciones = getContrataciones(subtasks);
   if (contrataciones.length > 0) {
     y = paginate(y, 20);
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, y, PW - M.right, y);
     y += 6;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...C.black);
-    doc.text(`CONTRATACIONES (${contrataciones.length})`, M.left, y);
+    doc.text(`CONTRATACIONES`, M.left, y);
     y += 3;
 
     autoTable(doc, {
       startY: y,
-      head: [['Nombre', 'Estado Actual', 'Descripción']],
+      head: [['Nombre', 'Estado Actual', 'Fecha Estado', 'Descripción']],
       body: contrataciones.map(t => {
         const d = extractJsonData(t.notes) as Record<string, unknown> | null;
+        const historial = (d?.historialEstados as { fecha: string; estado: string }[] | undefined) ?? [];
+        const fechaEstado = historial.length > 0 ? historial[historial.length - 1].fecha : '-';
         return [
           t.name.replace('CPER - ', ''),
           (d?.estadoActual as string) || '-',
+          fechaEstado,
           (d?.descripcion as string) || '-',
         ];
       }),
@@ -434,24 +381,12 @@ export const exportFichaActividadToPDF = ({
       headStyles: { fillColor: C.headerGray, textColor: C.black, fontSize: 9, fontStyle: 'bold', cellPadding: 5 },
       styles: { fontSize: 8.5, cellPadding: 4, lineColor: C.borderGray, lineWidth: 0.2 },
       bodyStyles: { fillColor: C.white, textColor: C.black },
+      columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 46 }, 2: { cellWidth: 30 }, 3: { cellWidth: 45 } },
       margin: { left: M.left, right: M.right },
     });
   }
 
-  // ── FOOTER (all pages) ──────────────────────────────────────────────────────
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    const fy = PH - M.bottom + 2;
-    doc.setDrawColor(...C.headerGray);
-    doc.setLineWidth(0.3);
-    doc.line(M.left, fy - 1, PW - M.right, fy - 1);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...C.black);
-    doc.text('CDIMA — Ficha de Actividad', M.left, fy + 4);
-    doc.text(`Página ${i} de ${pageCount}`, PW - M.right, fy + 4, { align: 'right' });
-  }
+  
 
   window.open(doc.output('bloburl'), '_blank');
 };
@@ -460,25 +395,19 @@ export const exportFichaActividadToPDF = ({
 // WORD EXPORT
 // ══════════════════════════════════════════════════════════════════════════════
 const WC = {
-  black:    '111827',
-  navy:     '2E5090',
-  gray:     '6B7280',
-  lightGray:'E5E7EB',
-  headerBg: 'EDF2FF',
-  altRow:   'F9FAFB',
-  green:    '16A34A',
-  orange:   'EA580C',
-  blue:     '0EA5E9',
-  pink:     'DB2777',
-  teal:     '10B981',
-  white:    'FFFFFF',
+  black:      '000000',
+  white:      'FFFFFF',
+  lightGray:  'F5F5F5',
+  headerGray: 'DCDCDC',
+  borderGray: 'B4B4B4',
+  textGray:   '555555',
 };
 
 const WB = {
-  top:    { style: BorderStyle.SINGLE, size: 2, color: 'E5E7EB' },
-  bottom: { style: BorderStyle.SINGLE, size: 2, color: 'E5E7EB' },
-  left:   { style: BorderStyle.SINGLE, size: 2, color: 'E5E7EB' },
-  right:  { style: BorderStyle.SINGLE, size: 2, color: 'E5E7EB' },
+  top:    { style: BorderStyle.SINGLE, size: 2, color: 'B4B4B4' },
+  bottom: { style: BorderStyle.SINGLE, size: 2, color: 'B4B4B4' },
+  left:   { style: BorderStyle.SINGLE, size: 2, color: 'B4B4B4' },
+  right:  { style: BorderStyle.SINGLE, size: 2, color: 'B4B4B4' },
 };
 
 interface CellOpts { bold?: boolean; color?: string; bg?: string; center?: boolean; size?: number; }
@@ -499,28 +428,29 @@ const wCell = (text: string, widthPct: number, opts: CellOpts = {}): TableCell =
 const wSection = (text: string): Paragraph =>
   new Paragraph({
     spacing: { before: 280, after: 120 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: WC.navy } },
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, size: 22, color: WC.navy, font: 'Arial' })],
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: WC.headerGray } },
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, size: 22, color: WC.black, font: 'Arial' })],
   });
 
 const wSep = (): Paragraph =>
   new Paragraph({
-    border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: WC.lightGray } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: WC.headerGray } },
     spacing: { after: 120 },
     children: [],
   });
 
-export const exportFichaActividadToWord = ({
+export const exportFichaActividadToWord = async ({
   task,
   subtasks,
   aggregatedValues,
   generalStatistics,
   projectName,
+  seccion,
   fuentesEntradas = [],
-}: FichaExportData): void => {
+}: FichaExportData): Promise<void> => {
   const now = new Date();
   const dateStr = format(now, "d 'de' MMMM 'de' yyyy", { locale: es });
-
+  const pct = generalStatistics.completionPercentage;
   const estado = getField(task, 'Estado');
   const responsable = getField(task, 'Responsable de Actividad');
   const lugar = getField(task, 'Lugar');
@@ -528,24 +458,66 @@ export const exportFichaActividadToWord = ({
     .replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '')
     .trim();
 
+  // ── Logo ──────────────────────────────────────────────────────────────────
+  let logoRun: ImageRun | null = null;
+  try {
+    const resp = await fetch(logoInicial);
+    const buf = await resp.arrayBuffer();
+    const tmpBlob = new Blob([buf], { type: 'image/png' });
+    const objUrl = URL.createObjectURL(tmpBlob);
+    const dims = await new Promise<{ w: number; h: number }>((res, rej) => {
+      const img = new Image();
+      img.onload = () => { res({ w: img.naturalWidth, h: img.naturalHeight }); URL.revokeObjectURL(objUrl); };
+      img.onerror = rej;
+      img.src = objUrl;
+    });
+    const targetW = 106;
+    const targetH = Math.round(targetW * dims.h / dims.w);
+    logoRun = new ImageRun({ data: buf, transformation: { width: targetW, height: targetH }, type: 'png' });
+  } catch { /* no logo */ }
+
+  const NB = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
   const children: (Paragraph | Table)[] = [];
 
   // ── ENCABEZADO ────────────────────────────────────────────────────────────
+  const metaLines: string[] = [
+    `Proyecto: ${projectName}`,
+    ...(seccion ? [`Sección: ${seccion}`] : []),
+    `Generado: ${dateStr}`,
+  ];
   children.push(
-    new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      spacing: { after: 60 },
-      children: [new TextRun({ text: 'FICHA DE ACTIVIDAD', bold: true, size: 30, color: WC.navy, font: 'Arial' })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      spacing: { after: 40 },
-      children: [new TextRun({ text: `Proyecto: ${projectName}`, size: 18, color: WC.gray, font: 'Arial' })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      spacing: { after: 100 },
-      children: [new TextRun({ text: `Generado: ${dateStr}`, size: 18, color: WC.gray, font: 'Arial' })],
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: { top: NB, bottom: NB, left: NB, right: NB },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: { top: NB, bottom: NB, left: NB, right: NB },
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: logoRun
+                ? [new Paragraph({ children: [logoRun] })]
+                : [new Paragraph({ children: [new TextRun({ text: 'CDIMA', bold: true, size: 24, color: WC.black, font: 'Arial' })] })],
+            }),
+            new TableCell({
+              borders: { top: NB, bottom: NB, left: NB, right: NB },
+              width: { size: 70, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  spacing: { after: 60 },
+                  children: [new TextRun({ text: 'FICHA DE ACTIVIDAD', bold: true, size: 28, color: WC.black, font: 'Arial' })],
+                }),
+                ...metaLines.map(line => new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  spacing: { after: 40 },
+                  children: [new TextRun({ text: line, size: 18, color: WC.textGray, font: 'Arial' })],
+                })),
+              ],
+            }),
+          ],
+        }),
+      ],
     }),
     wSep()
   );
@@ -556,11 +528,11 @@ export const exportFichaActividadToWord = ({
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
-        new TableRow({ children: [wCell('Nombre',      25, { bold: true, bg: WC.headerBg }), wCell(task.name,                   75)] }),
-        new TableRow({ children: [wCell('Estado',      25, { bold: true, bg: WC.headerBg }), wCell(statusLabel(estado),         75, { bg: WC.altRow })] }),
-        new TableRow({ children: [wCell('Responsable', 25, { bold: true, bg: WC.headerBg }), wCell(responsable,                  75)] }),
-        new TableRow({ children: [wCell('Lugar',       25, { bold: true, bg: WC.headerBg }), wCell(lugar,                       75, { bg: WC.altRow })] }),
-        new TableRow({ children: [wCell('Fecha',       25, { bold: true, bg: WC.headerBg }), wCell([task.start_on, task.due_on].filter(Boolean).join(' – ') || 'Sin fecha', 75)] }),
+        new TableRow({ children: [wCell('Nombre',      25, { bold: true, bg: WC.headerGray }), wCell(task.name, 75)] }),
+        new TableRow({ children: [wCell('Estado',      25, { bold: true, bg: WC.headerGray }), wCell(statusLabel(estado), 75, { bg: WC.lightGray })] }),
+        new TableRow({ children: [wCell('Responsable', 25, { bold: true, bg: WC.headerGray }), wCell(responsable, 75)] }),
+        new TableRow({ children: [wCell('Lugar',       25, { bold: true, bg: WC.headerGray }), wCell(lugar, 75, { bg: WC.lightGray })] }),
+        new TableRow({ children: [wCell('Fecha',       25, { bold: true, bg: WC.headerGray }), wCell([task.start_on, task.due_on].filter(Boolean).join(' – ') || 'Sin fecha', 75)] }),
       ],
     })
   );
@@ -573,16 +545,16 @@ export const exportFichaActividadToWord = ({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({ children: [
-          wCell('Población Meta',       25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Total Beneficiarios',  25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Mujeres',              25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Hombres',              25, { bold: true, bg: WC.headerBg, center: true }),
+          wCell('Población Meta',       25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Total Beneficiarios',  25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Mujeres',              25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Hombres',              25, { bold: true, bg: WC.headerGray, center: true }),
         ]}),
         new TableRow({ children: [
-          wCell(safeValue(aggregatedValues.poblacionMeta), 25, { center: true, bold: true, size: 26, color: '4F46E5' }),
-          wCell(safeValue(aggregatedValues.total),         25, { center: true, bold: true, size: 26, color: WC.blue }),
-          wCell(safeValue(aggregatedValues.mujeres),       25, { center: true, bold: true, size: 26, color: WC.pink }),
-          wCell(safeValue(aggregatedValues.hombres),       25, { center: true, bold: true, size: 26, color: WC.teal }),
+          wCell(safeValue(aggregatedValues.poblacionMeta), 25, { center: true, bold: true, size: 26 }),
+          wCell(safeValue(aggregatedValues.total),         25, { center: true, bold: true, size: 26 }),
+          wCell(safeValue(aggregatedValues.mujeres),       25, { center: true, bold: true, size: 26 }),
+          wCell(safeValue(aggregatedValues.hombres),       25, { center: true, bold: true, size: 26 }),
         ]}),
       ],
     })
@@ -590,24 +562,22 @@ export const exportFichaActividadToWord = ({
   children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
 
   // ── SEC 3: PROGRESO ───────────────────────────────────────────────────────
-  const pct = generalStatistics.completionPercentage;
-  const progColor = pct >= 80 ? WC.green : pct >= 40 ? 'CA8A04' : WC.orange;
   children.push(wSection('Progreso General'));
   children.push(
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({ children: [
-          wCell('Total Sub Actividades', 25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Completadas',           25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Pendientes',            25, { bold: true, bg: WC.headerBg, center: true }),
-          wCell('Progreso',              25, { bold: true, bg: WC.headerBg, center: true }),
+          wCell('Total Sub Actividades', 25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Completadas',           25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Pendientes',            25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Progreso',              25, { bold: true, bg: WC.headerGray, center: true }),
         ]}),
         new TableRow({ children: [
-          wCell(generalStatistics.total.toString(),                 25, { center: true, bold: true, size: 26 }),
-          wCell(generalStatistics.completed.toString(),             25, { center: true, bold: true, size: 26, color: WC.green }),
-          wCell(generalStatistics.pending.toString(),               25, { center: true, bold: true, size: 26, color: WC.orange }),
-          wCell(`${pct.toFixed(1)}%${pct >= 100 ? '(V)' : ''}`,     25, { center: true, bold: true, size: 26, color: progColor }),
+          wCell(generalStatistics.total.toString(),     25, { center: true, bold: true, size: 26 }),
+          wCell(generalStatistics.completed.toString(), 25, { center: true, bold: true, size: 26 }),
+          wCell(generalStatistics.pending.toString(),   25, { center: true, bold: true, size: 26 }),
+          wCell(`${pct.toFixed(1)}%`,                   25, { center: true, bold: true, size: 26 }),
         ]}),
       ],
     })
@@ -630,7 +600,7 @@ export const exportFichaActividadToWord = ({
           bullet: { level: 0 },
           children: [
             new TextRun({ text: f.nombre, bold: true, size: 18, color: WC.black, font: 'Arial' }),
-            ...(f.link ? [new TextRun({ text: ` — ${f.link}`, size: 16, color: '4F46E5', font: 'Arial' })] : []),
+            ...(f.link ? [new TextRun({ text: ` — ${f.link}`, size: 16, color: WC.textGray, font: 'Arial' })] : []),
           ],
         })
       );
@@ -638,46 +608,10 @@ export const exportFichaActividadToWord = ({
     children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
   }
 
-  // ── SEC 6: SUB ACTIVIDADES ────────────────────────────────────────────────
-  const displaySubs = getDisplaySubtasks(subtasks);
-  if (displaySubs.length > 0) {
-    children.push(wSection(`Sub Actividades (${displaySubs.length})`));
-    children.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            tableHeader: true,
-            children: [
-              wCell('Nombre',      36, { bold: true, bg: WC.headerBg }),
-              wCell('Vencimiento', 14, { bold: true, bg: WC.headerBg, center: true }),
-              wCell('Lugar',       20, { bold: true, bg: WC.headerBg }),
-              wCell('Estado',      15, { bold: true, bg: WC.headerBg, center: true }),
-              wCell('Responsable', 15, { bold: true, bg: WC.headerBg }),
-            ],
-          }),
-          ...displaySubs.map((t, i) => {
-            const bg = i % 2 ? WC.altRow : WC.white;
-            const estLabel = statusLabel(getField(t, 'Estado'));
-            const estColor = estLabel === 'Ejecutado' ? WC.green : estLabel === 'En Proceso' ? WC.blue : WC.orange;
-            return new TableRow({ children: [
-              wCell(t.name,                                   36, { bg }),
-              wCell(t.due_on || '-',                          14, { bg, center: true }),
-              wCell(getField(t, 'Lugar'),                     20, { bg }),
-              wCell(estLabel,                                 15, { bg, center: true, bold: true, color: estColor }),
-              wCell(getField(t, 'Responsable de Actividad'), 15, { bg }),
-            ]});
-          }),
-        ],
-      })
-    );
-    children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
-  }
-
   // ── SEC 7: SOLICITUDES ────────────────────────────────────────────────────
   const solicitudes = getSolicitudes(subtasks);
   if (solicitudes.length > 0) {
-    children.push(wSection(`Solicitudes (${solicitudes.length})`));
+    children.push(wSection(`Solicitudes`));
     children.push(
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -685,23 +619,22 @@ export const exportFichaActividadToWord = ({
           new TableRow({
             tableHeader: true,
             children: [
-              wCell('Nombre',          40, { bold: true, bg: WC.headerBg }),
-              wCell('Tipo',            25, { bold: true, bg: WC.headerBg }),
-              wCell('Fecha Solicitud', 20, { bold: true, bg: WC.headerBg, center: true }),
-              wCell('Estado',          15, { bold: true, bg: WC.headerBg, center: true }),
+              wCell('Nombre',          40, { bold: true, bg: WC.headerGray }),
+              wCell('Tipo',            25, { bold: true, bg: WC.headerGray }),
+              wCell('Fecha Solicitud', 20, { bold: true, bg: WC.headerGray, center: true }),
+              wCell('Estado',          15, { bold: true, bg: WC.headerGray, center: true }),
             ],
           }),
           ...solicitudes.map((t, i) => {
             const d = extractJsonData(t.notes);
             const obs = (d?.observado as boolean) ? 'Observada' : undefined;
             const estLabel = obs ?? (t.completed ? 'Aprobada' : 'Pendiente');
-            const estColor = estLabel === 'Aprobada' ? WC.green : estLabel === 'Observada' ? WC.orange : WC.gray;
-            const bg = i % 2 ? WC.altRow : WC.white;
+            const bg = i % 2 ? WC.lightGray : WC.white;
             return new TableRow({ children: [
-              wCell(t.name,                              40, { bg }),
-              wCell(getField(t, 'Tipo de Solicitud'),   25, { bg }),
+              wCell(t.name,                               40, { bg }),
+              wCell(getField(t, 'Tipo de Solicitud'),    25, { bg }),
               wCell((d?.fechaSolicitud as string) || '-', 20, { bg, center: true }),
-              wCell(estLabel,                            15, { bg, center: true, bold: true, color: estColor }),
+              wCell(estLabel,                             15, { bg, center: true, bold: true }),
             ]});
           }),
         ],
@@ -713,7 +646,7 @@ export const exportFichaActividadToWord = ({
   // ── SEC 8: CONTRATACIONES ─────────────────────────────────────────────────
   const contrataciones = getContrataciones(subtasks);
   if (contrataciones.length > 0) {
-    children.push(wSection(`Contrataciones (${contrataciones.length})`));
+    children.push(wSection(`Contrataciones`));
     children.push(
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -721,18 +654,22 @@ export const exportFichaActividadToWord = ({
           new TableRow({
             tableHeader: true,
             children: [
-              wCell('Nombre',        40, { bold: true, bg: WC.headerBg }),
-              wCell('Estado Actual', 30, { bold: true, bg: WC.headerBg }),
-              wCell('Descripción',   30, { bold: true, bg: WC.headerBg }),
+              wCell('Nombre',        35, { bold: true, bg: WC.headerGray }),
+              wCell('Estado Actual', 25, { bold: true, bg: WC.headerGray }),
+              wCell('Fecha Estado',  20, { bold: true, bg: WC.headerGray, center: true }),
+              wCell('Descripción',   20, { bold: true, bg: WC.headerGray }),
             ],
           }),
           ...contrataciones.map((t, i) => {
             const d = extractJsonData(t.notes) as Record<string, unknown> | null;
-            const bg = i % 2 ? WC.altRow : WC.white;
+            const historial = (d?.historialEstados as { fecha: string; estado: string }[] | undefined) ?? [];
+            const fechaEstado = historial.length > 0 ? historial[historial.length - 1].fecha : '-';
+            const bg = i % 2 ? WC.lightGray : WC.white;
             return new TableRow({ children: [
-              wCell(t.name.replace('CPER - ', ''),      40, { bg }),
-              wCell((d?.estadoActual as string) || '-', 30, { bg }),
-              wCell((d?.descripcion as string) || '-',  30, { bg }),
+              wCell(t.name.replace('CPER - ', ''),      35, { bg }),
+              wCell((d?.estadoActual as string) || '-', 25, { bg }),
+              wCell(fechaEstado,                        20, { bg, center: true }),
+              wCell((d?.descripcion as string) || '-',  20, { bg }),
             ]});
           }),
         ],
@@ -743,16 +680,22 @@ export const exportFichaActividadToWord = ({
 
   // ── PIE ───────────────────────────────────────────────────────────────────
   children.push(
-    wSep(),
     new Paragraph({
+      border: { top: { style: BorderStyle.SINGLE, size: 4, color: WC.headerGray } },
+      spacing: { before: 120 },
       alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: 'CDIMA — Ficha de Actividad', size: 16, color: WC.gray, font: 'Arial' })],
+      children: [new TextRun({ text: 'CDIMA — Ficha de Actividad', size: 16, color: WC.textGray, font: 'Arial' })],
     })
   );
 
   const doc = new Document({
     sections: [{
-      properties: { page: { margin: { top: 1020, bottom: 1020, left: 1020, right: 1020 } } },
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 },
+        },
+      },
       children,
     }],
   });
@@ -763,12 +706,11 @@ export const exportFichaActividadToWord = ({
     .substring(0, 50)
     .replace(/\s+/g, '_');
 
-  Packer.toBlob(doc).then(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Ficha_Actividad_${safeName}.docx`;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  const docBlob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(docBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Ficha_Actividad_${safeName}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
 };

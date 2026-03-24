@@ -83,15 +83,17 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
   const totalsWithReplicantes = tasksWithReplicantes.reduce((acc, task) => {
     const mujeres = getCustomFieldValue(task, 'Mujeres ');
     const hombres = getCustomFieldValue(task, 'Hombres');
+    const replicantes = getCustomFieldValue(task, 'Replicantes');
     
     acc.mujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
     acc.hombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
+    acc.replicantes += replicantes !== '-' ? parseInt(replicantes) || 0 : 0;
     
     return acc;
-  }, { mujeres: 0, hombres: 0 });
+  }, { mujeres: 0, hombres: 0, replicantes: 0 });
 
   const totalWithoutReplicantes = totalsWithoutReplicantes.mujeres + totalsWithoutReplicantes.hombres;
-  const totalWithReplicantes = totalsWithReplicantes.mujeres + totalsWithReplicantes.hombres;
+  const totalWithReplicantes = totalsWithReplicantes.mujeres + totalsWithReplicantes.hombres + totalsWithReplicantes.replicantes;
 
   const handleExportPDF = () => {
     exportBeneficiariesToPDF(
@@ -208,9 +210,11 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                 {tasksWithReplicantes.map((task) => {
                   const mujeres = getCustomFieldValue(task, 'Mujeres ');
                   const hombres = getCustomFieldValue(task, 'Hombres');
+                  const replicantes = getCustomFieldValue(task, 'Replicantes');
                   const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
                   const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
-                  const total = mujeresNum + hombresNum;
+                  const replicantesNum = replicantes !== '-' ? parseInt(replicantes) || 0 : 0;
+                  const total = mujeresNum + hombresNum + replicantesNum;
                   return (
                     <tr key={task.gid}>
                       <td>{task.name}</td>
@@ -224,7 +228,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
                 })}
                 <tr className="section-card__table-total">
                   <td colSpan={2}>TOTAL</td>
-                  <td>-</td>
+                  <td>{totalsWithReplicantes.replicantes}</td>
                   <td>{totalsWithReplicantes.mujeres}</td>
                   <td>{totalsWithReplicantes.hombres}</td>
                   <td>{totalWithReplicantes}</td>

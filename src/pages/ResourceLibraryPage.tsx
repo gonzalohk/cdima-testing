@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Badge, Button, Card, Col, Empty, Input, Row, Space, Spin, Statistic, Tag, Tooltip, Typography, Collapse,
+} from 'antd';
+import {
+  FolderOutlined, FileTextOutlined, FileExcelOutlined, FilePptOutlined, FileImageOutlined,
+  VideoCameraOutlined, PaperClipOutlined, FilePdfOutlined, SearchOutlined,
+  CheckCircleOutlined, FolderOpenOutlined, LinkOutlined, DownloadOutlined,
+  AppstoreOutlined, DatabaseOutlined, UnorderedListOutlined,
+} from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaProject, AsanaTask, AsanaAttachment } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
+
+const { Text, Title } = Typography;
+const { Panel } = Collapse;
 
 interface Link {
   id: string;
@@ -207,225 +219,171 @@ const convertAsanaTaskToTask = (asanaTask: AsanaTask): Task => {
   };
 };
 
-// Componente para enlaces de Google Drive mejorado
+// Icono Ant Design por tipo de archivo
+const getAntIcon = (fileType: string): React.ReactNode => {
+  const map: Record<string, React.ReactNode> = {
+    folder: <FolderOutlined />,
+    pdf: <FilePdfOutlined />,
+    doc: <FileTextOutlined />,
+    sheet: <FileExcelOutlined />,
+    slide: <FilePptOutlined />,
+    image: <FileImageOutlined />,
+    video: <VideoCameraOutlined />,
+    other: <PaperClipOutlined />,
+  };
+  return map[fileType] ?? map.other;
+};
+
+// Componente para enlace de archivo
 const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
   const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
-  const fileIcon = getFileTypeIcon(fileType);
   const fileLabel = getFileTypeLabel(fileType);
   const fileColors = getFileTypeColors(fileType);
 
   return (
-    <div className="drive-link-container" style={{ borderColor: fileColors.border }}>
-      <div className="drive-link-info">
-        <span className="drive-link-icon-bubble" style={{ background: fileColors.bg, color: fileColors.text }}>
-          {fileIcon}
-        </span>
-        <div className="drive-link-meta">
-          <span className="drive-link-label">{link.label}</span>
-          <span className="drive-link-type-pill" style={{ backgroundColor: fileColors.bg, borderColor: fileColors.border, color: fileColors.text }}>
-            {fileLabel}
-          </span>
-        </div>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      border: `1px solid ${fileColors.border}`, borderRadius: 8,
+      padding: '8px 12px', background: '#fafafa',
+    }}>
+      <span style={{
+        fontSize: 18, background: fileColors.bg, color: fileColors.text,
+        borderRadius: 6, padding: '4px 7px', lineHeight: 1,
+      }}>
+        {getAntIcon(fileType)}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Text ellipsis style={{ display: 'block', fontSize: 13 }}>{link.label}</Text>
+        <Tag color={fileColors.bg} style={{ color: fileColors.text, borderColor: fileColors.border, fontSize: 11, marginTop: 2 }}>
+          {fileLabel}
+        </Tag>
       </div>
-      <div className="drive-link-actions">
-          {link.viewUrl && (
-            <a
-              href={link.viewUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="drive-link-btn"
-              title="Abrir"
-              style={{ backgroundColor: accentColor, color: 'white', borderColor: accentColor }}
+      <Space size={4}>
+        {link.viewUrl && (
+          <Tooltip title="Abrir">
+            <Button
+              size="small" type="primary" icon={<LinkOutlined />}
+              href={link.viewUrl} target="_blank"
+              style={{ background: accentColor, borderColor: accentColor }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
-                <line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              <span>Abrir</span>
-            </a>
-          )}
-          {link.downloadUrl && (
-            <a
-              href={link.downloadUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="drive-link-btn drive-link-btn-soft"
-              title="Descargar"
-              style={{ color: accentColor, borderColor: `${accentColor}66` }}
+              Abrir
+            </Button>
+          </Tooltip>
+        )}
+        {link.downloadUrl && (
+          <Tooltip title="Descargar">
+            <Button
+              size="small" icon={<DownloadOutlined />}
+              href={link.downloadUrl} target="_blank"
+              style={{ color: accentColor, borderColor: `${accentColor}88` }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span>Descargar</span>
-            </a>
-          )}
-      </div>
-      </div>
+              Descargar
+            </Button>
+          </Tooltip>
+        )}
+      </Space>
+    </div>
   );
 };
 
-// Componente para fila de subtarea
+// Componente para subtarea
 const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subtask, accentColor }) => {
   const hasLinks = subtask.links.length > 0;
-  const subtaskDominantType = getDominantFileType(subtask.links);
-  const subtaskTypeColors = getFileTypeColors(subtaskDominantType);
 
   return (
-    <div className="subtask-row">
-      <div className="subtask-name" style={{ borderLeftColor: hasLinks ? subtaskTypeColors.border : `${accentColor}44` }}>
-        <span className="subtask-folder-icon">📁</span>
-        <span>{subtask.name}</span>
-        {hasLinks && (
-          <span className="subtask-count-pill" style={{ backgroundColor: subtaskTypeColors.bg, color: subtaskTypeColors.text }}>
-            {subtask.links.length}
-          </span>
-        )}
+    <div style={{ borderLeft: `3px solid ${accentColor}44`, paddingLeft: 12, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: hasLinks ? 8 : 0 }}>
+        <FolderOpenOutlined style={{ color: accentColor }} />
+        <Text strong style={{ fontSize: 13 }}>{subtask.name}</Text>
+        {hasLinks && <Badge count={subtask.links.length} style={{ backgroundColor: accentColor }} />}
       </div>
-      <div className="subtask-links">
-        {hasLinks
-          ? <div className="subtask-links-grid">{subtask.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}</div>
-          : <span className="no-resources">Sin recursos</span>
-        }
-      </div>
+      {hasLinks ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {subtask.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+        </div>
+      ) : (
+        <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos</Text>
+      )}
     </div>
   );
 };
 
 // Componente para fila de tarea
 const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentColor }) => {
-  const [expanded, setExpanded] = useState(false);
   const hasSubtasks = task.subtasks.length > 0;
   const hasLinks = task.links.length > 0;
   const allLinks = [...task.links, ...task.subtasks.flatMap(st => st.links)];
-  const dominantType = getDominantFileType(allLinks);
-  const dominantTypeLabel = getFileTypeLabel(dominantType);
-  const dominantTypeIcon = getFileTypeIcon(dominantType);
   const typeCounts = allLinks.reduce<Record<string, number>>((acc, link) => {
     const type = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
 
-  return (
-    <div className="task-row">
-      {/* Header */}
-      <div className="task-header" style={{ borderBottomColor: `${accentColor}33` }}>
-        <div className="task-header-title">
-          <div
-            className="task-status-circle"
-            style={{
-              borderColor: task.estado ? accentColor : '#aaa',
-              backgroundColor: task.estado ? `${accentColor}20` : 'transparent',
-            }}
-          >
-            {task.estado && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="3">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            )}
-          </div>
-          <span className={`task-name ${task.estado ? 'completed' : ''}`}>
-            {task.name}
-          </span>
-          {allLinks.length > 0 && (
-            <span className="task-main-type" style={{ backgroundColor: `${accentColor}15`, borderColor: `${accentColor}44`, color: accentColor }}>
-              {dominantTypeIcon} {dominantTypeLabel}
-            </span>
-          )}
-        </div>
-        <div className="task-header-right">
-          {task.estado && (
-            <span className="task-estado-badge" style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}40` }}>
-              {task.estado}
-            </span>
-          )}
-          <div className="task-metrics">
-            <span>📎 {task.links.length}</span>
-            <span>🗂️ {task.subtasks.length}</span>
-          </div>
-        </div>
-      </div>
+  const titleNode = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {task.estado
+        ? <CheckCircleOutlined style={{ color: accentColor }} />
+        : <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid #ccc` }} />}
+      <Text strong style={{ fontSize: 14, color: task.estado ? '#999' : '#222', textDecoration: task.estado ? 'line-through' : 'none' }}>
+        {task.name}
+      </Text>
+      {task.estado && <Tag color="success" style={{ marginLeft: 4 }}>{task.estado}</Tag>}
+    </div>
+  );
 
-      {/* Content */}
-      <div className="task-content">
-        {allLinks.length > 0 && (
-          <div className="task-type-chips">
+  return (
+    <Card
+      size="small"
+      style={{ marginBottom: 10, borderRadius: 8, border: `1px solid ${accentColor}33` }}
+      styles={{ header: { borderBottom: `1px solid ${accentColor}22`, background: `${accentColor}08` } }}
+      title={titleNode}
+      extra={
+        allLinks.length > 0 && (
+          <Space size={4} wrap>
             {Object.entries(typeCounts).map(([type, count]) => {
               const colors = getFileTypeColors(type);
               return (
-                <span
-                  key={type}
-                  className="task-type-chip"
-                  style={{ backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }}
-                >
+                <Tag key={type} style={{ background: colors.bg, borderColor: colors.border, color: colors.text, fontSize: 11 }}>
                   {getFileTypeIcon(type)} {getFileTypeLabel(type)} ({count})
-                </span>
+                </Tag>
               );
             })}
-          </div>
-        )}
+          </Space>
+        )
+      }
+    >
+      {hasLinks && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: hasSubtasks ? 12 : 0 }}>
+          {task.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+        </div>
+      )}
 
-        {/* Links de la tarea */}
-        {hasLinks && (
-          <div className="task-links-section">
-            <span className="task-links-label">📎 Recursos</span>
-            <div className="task-links-grid">
-              {task.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+      {!hasLinks && !hasSubtasks && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          <PaperClipOutlined style={{ marginRight: 4 }} />Sin recursos adjuntos
+        </Text>
+      )}
+
+      {hasSubtasks && (
+        <Collapse ghost size="small">
+          <Panel
+            key="subtasks"
+            header={
+              <Space>
+                <FolderOutlined style={{ color: accentColor }} />
+                <Text style={{ fontSize: 13 }}>
+                  {task.subtasks.length} {task.subtasks.length === 1 ? 'Sub Carpeta' : 'Sub Carpetas'}
+                </Text>
+              </Space>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {task.subtasks.map(st => <SubtaskRow key={st.id} subtask={st} accentColor={accentColor} />)}
             </div>
-          </div>
-        )}
-
-        {/* Sin recursos */}
-        {!hasLinks && !hasSubtasks && (
-          <div className="no-resources-card">
-            <span style={{ fontSize: '1.35rem' }}>🗃️</span>
-            <span className="no-resources">Sin recursos adjuntos</span>
-          </div>
-        )}
-
-        {/* Subtareas */}
-        {hasSubtasks && (
-          <div className="task-subtasks-section">
-            <div
-              className="task-subtasks-header"
-              onClick={() => setExpanded(!expanded)}
-            >
-              <span className="task-subtasks-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 11l3 3L22 4" />
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-                </svg>
-                {task.subtasks.length} {task.subtasks.length === 1 ? 'Sub Carpeta' : 'Sub Carpetas'}
-              </span>
-              <div className="task-expand-btn">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
-                >
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </div>
-            </div>
-
-            {expanded && (
-              <div className="task-subtasks-list">
-                {task.subtasks.map(st => (
-                  <SubtaskRow key={st.id} subtask={st} accentColor={accentColor} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+          </Panel>
+        </Collapse>
+      )}
+    </Card>
   );
 };
 
@@ -437,33 +395,37 @@ const SectionCard: React.FC<{
 }> = ({ section, isActive, onClick }) => {
   const allLinks = section.tasks.flatMap(task => [...task.links, ...task.subtasks.flatMap(st => st.links)]);
   const dominantSectionType = getDominantFileType(allLinks);
-  const totalLinks = section.tasks.reduce((acc, t) => {
-    return acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0);
-  }, 0);
+  const totalLinks = section.tasks.reduce((acc, t) =>
+    acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0);
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className={`section-card ${isActive ? 'active' : ''}`}
       style={{
-        borderColor: isActive ? section.tipoColor : '#dee2e6',
-        backgroundColor: isActive ? `${section.tipoColor}10` : '#fff',
+        cursor: 'pointer',
+        padding: '10px 14px',
+        borderRadius: 8,
+        border: `1px solid ${isActive ? section.tipoColor : '#e8e8e8'}`,
+        background: isActive ? `${section.tipoColor}10` : '#fff',
+        marginBottom: 6,
+        transition: 'border-color .2s, background .2s',
       }}
     >
-      <div className="section-card-header">
-        <span className="section-tipo-badge" style={{ backgroundColor: `${section.tipoColor}20`, color: section.tipoColor, borderColor: `${section.tipoColor}40` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <Tag style={{
+          background: `${section.tipoColor}18`, color: section.tipoColor,
+          borderColor: `${section.tipoColor}44`, fontSize: 11,
+        }}>
           {getFileTypeIcon(dominantSectionType)} {section.tipo}
-        </span>
+        </Tag>
         {totalLinks > 0 && (
-          <span className="section-resource-count">
-            {totalLinks} {totalLinks === 1 ? 'recurso' : 'recursos'}
-          </span>
+          <Badge count={totalLinks} overflowCount={99} style={{ backgroundColor: section.tipoColor, fontSize: 10 }} />
         )}
       </div>
-      <div className={`section-name ${isActive ? 'active' : ''}`}>
+      <Text strong={isActive} style={{ fontSize: 13, color: isActive ? section.tipoColor : '#333', display: 'block', lineHeight: '1.4' }}>
         {section.name}
-      </div>
-    </button>
+      </Text>
+    </div>
   );
 };
 
@@ -629,148 +591,158 @@ const ResourceLibraryPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="planning-page">
-        <h1 className="page-title">Biblioteca de Recursos</h1>
-        <div className="alert alert-error">{error}</div>
+      <div style={{ padding: '2rem' }}>
+        <Card>
+          <Empty description={error} />
+        </Card>
       </div>
     );
   }
 
   if (sections.length === 0) {
     return (
-      <div className="planning-page">
-        <h1 className="page-title">Biblioteca de Recursos</h1>
-        <div className="card">
-          <p>No se encontraron secciones con recursos en el proyecto "{projectName}".</p>
-          <p style={{ marginTop: '1rem', color: '#666' }}>
-            Verifica que el proyecto "Comunicación CDIMA" tenga secciones y tareas con archivos adjuntos.
-          </p>
-        </div>
+      <div style={{ padding: '2rem' }}>
+        <Card>
+          <Empty
+            description={
+              <>
+                <Text>No se encontraron secciones con recursos en el proyecto "{projectName}".</Text><br />
+                <Text type="secondary" style={{ fontSize: 13 }}>Verifica que el proyecto "Comunicación CDIMA" tenga secciones y tareas con archivos adjuntos.</Text>
+              </>
+            }
+          />
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="planning-page resource-library">
-      {/* Header */}
-      <div className="planning-header">
-        <div className="planning-header-left">
-          <div className="planning-icon">📚</div>
-          <div className="planning-info">
-            <h1 className="planning-title">{projectName}</h1>
-            <p className="planning-subtitle">
-              {sections.length} {sections.length === 1 ? 'sección' : 'secciones'} · Portal de recursos técnicos
-            </p>
-          </div>
-        </div>
+    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <div className="rl-search-container">
-          <span className="rl-search-icon">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Buscar tarea o recurso..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="rl-search-input"
-          />
-        </div>
-      </div>
+      {/* Header */}
+      <Card styles={{ body: { padding: '16px 20px' } }}>
+        <Row align="middle" justify="space-between" gutter={[16, 12]}>
+          <Col>
+            <Space align="center">
+              <span style={{ fontSize: 28 }}>📡</span>
+              <div>
+                <Title level={4} style={{ margin: 0 }}>{projectName}</Title>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {sections.length} {sections.length === 1 ? 'sección' : 'secciones'} · Portal de recursos técnicos
+                </Text>
+              </div>
+            </Space>
+          </Col>
+          <Col xs={24} sm={10} md={8}>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+              placeholder="Buscar tarea o recurso..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              allowClear
+              style={{ borderRadius: 8 }}
+            />
+          </Col>
+        </Row>
+      </Card>
 
       {/* Estadísticas */}
-      <div className="rl-stats-grid">
-        <div className="rl-stat-card rl-stat-card-blue">
-          <div className="rl-stat-card-header">📦 Recursos</div>
-          <div className="rl-stat-value">
-            {totalRecursos}
-          </div>
-          <div className="rl-stat-label">
-            Total de Recursos
-          </div>
-        </div>
-
-        <div className="rl-stat-card rl-stat-card-green">
-          <div className="rl-stat-card-header">🧩 Secciones</div>
-          <div className="rl-stat-value">
-            {sections.length}
-          </div>
-          <div className="rl-stat-label">
-            Categorías
-          </div>
-        </div>
-
-        <div className="rl-stat-card rl-stat-card-amber">
-          <div className="rl-stat-card-header">📚 Carpetas</div>
-          <div className="rl-stat-value">
-            {totalTareas}
-          </div>
-          <div className="rl-stat-label">
-            Carpetas de Recursos
-          </div>
-        </div>
-      </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Statistic
+              title="Total de Recursos"
+              value={totalRecursos}
+              prefix={<DatabaseOutlined style={{ color: '#1677ff' }} />}
+              valueStyle={{ color: '#1677ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Statistic
+              title="Categorías"
+              value={sections.length}
+              prefix={<AppstoreOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Statistic
+              title="Carpetas de Recursos"
+              value={totalTareas}
+              prefix={<UnorderedListOutlined style={{ color: '#fa8c16' }} />}
+              valueStyle={{ color: '#fa8c16' }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Body: sidebar + main */}
-      <div className="rl-layout">
-        {/* Sidebar: sections */}
-        <aside className="rl-sidebar">
-          <div className="rl-sidebar-label">SECCIONES</div>
-          <div className="rl-sections-list">
-            {sections.map(s => (
-              <SectionCard
-                key={s.id}
-                section={s}
-                isActive={s.id === activeSection}
-                onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
-              />
-            ))}
-          </div>
-        </aside>
+      <Row gutter={16} align="top">
+        {/* Sidebar */}
+        <Col xs={24} md={6}>
+          <Card
+            size="small"
+            title={<Text strong style={{ fontSize: 11, color: '#888', letterSpacing: 1 }}>SECCIONES</Text>}
+            styles={{ body: { padding: '8px 12px' } }}
+            style={{ borderRadius: 8, position: 'sticky', top: 16 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {sections.map(s => (
+                <SectionCard
+                  key={s.id}
+                  section={s}
+                  isActive={s.id === activeSection}
+                  onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
+                />
+              ))}
+            </div>
+          </Card>
+        </Col>
 
-        {/* Main: tasks */}
-        <main className="rl-main-panel">
+        {/* Main panel */}
+        <Col xs={24} md={18}>
           {currentSection && (
-            <>
-              {/* Section header */}
-              <div className="rl-panel-header">
-                <div className="rl-panel-header-top">
-                  <span className="rl-panel-tipo-badge" style={{ backgroundColor: `${currentSection.tipoColor}20`, color: currentSection.tipoColor, borderColor: `${currentSection.tipoColor}40` }}>
+            <Card
+              style={{ borderRadius: 8 }}
+              styles={{ header: { borderBottom: `2px solid ${currentSection.tipoColor}33`, background: `${currentSection.tipoColor}08` } }}
+              title={
+                <Space>
+                  <Tag style={{ background: `${currentSection.tipoColor}18`, color: currentSection.tipoColor, borderColor: `${currentSection.tipoColor}44` }}>
                     {currentSection.tipo}
-                  </span>
-                  <span className="rl-panel-resource-count">
-                    <span className="rl-panel-resource-count-number">{totalLinks}</span> recursos disponibles
-                  </span>
+                  </Tag>
+                  <Text strong style={{ fontSize: 15 }}>{currentSection.name}</Text>
+                </Space>
+              }
+              extra={
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  <strong>{totalLinks}</strong> recursos disponibles
+                </Text>
+              }
+            >
+              {sectionLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <Spin tip="Cargando recursos..." />
                 </div>
-                <h2 className="rl-panel-title">{currentSection.name}</h2>
-              </div>
-
-              {/* Task list */}
-              <div className="rl-tasks-list">
-                {sectionLoading ? (
-                  <div className="rl-empty-state">
-                    <div className="rl-empty-text" style={{ color: '#6b7280' }}>Cargando recursos...</div>
-                  </div>
-                ) : filteredTasks.length === 0 ? (
-                  <div className="rl-empty-state">
-                    <div className="rl-empty-icon">🔍</div>
-                    <div className="rl-empty-text">
-                      {search ? `No se encontraron resultados para "${search}"` : 'No hay tareas en esta sección'}
-                    </div>
-                  </div>
-                ) : (
-                  filteredTasks.map(task => (
+              ) : filteredTasks.length === 0 ? (
+                <Empty
+                  description={search ? `No se encontraron resultados para "${search}"` : 'No hay tareas en esta sección'}
+                  style={{ padding: '2rem 0' }}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {filteredTasks.map(task => (
                     <TaskRow key={task.id} task={task} accentColor={currentSection.tipoColor} />
-                  ))
-                )}
-              </div>
-            </>
+                  ))}
+                </div>
+              )}
+            </Card>
           )}
-        </main>
-      </div>
+        </Col>
+      </Row>
     </div>
   );
 };

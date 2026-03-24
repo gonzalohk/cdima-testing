@@ -10,31 +10,22 @@ import config from '../config/env';
 const BASE_URL = 'https://app.asana.com/api/1.0';
 
 class AsanaService {
-  private token: string = '';
+  private token: string = config.asanaToken || '';
   private workspacesCache: AsanaWorkspace[] | null = null;
   private workspacesCachePromise: Promise<AsanaWorkspace[]> | null = null;
 
   setToken(token: string) {
     this.token = token;
-    localStorage.setItem('asana_token', token);
   }
 
   getToken(): string {
-    if (!this.token) {
-      // Primero intenta obtener el token desde localStorage
-      const storedToken = localStorage.getItem('asana_token');
-      
-      // Si no hay token en localStorage, usa el de las variables de entorno
-      this.token = storedToken || config.asanaToken || '';
-    }
     return this.token;
   }
 
   clearToken() {
-    this.token = '';
+    this.token = config.asanaToken || '';
     this.workspacesCache = null;
     this.workspacesCachePromise = null;
-    localStorage.removeItem('asana_token');
   }
 
   private async fetchAsana<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -94,7 +85,7 @@ class AsanaService {
 
   async getTask(taskGid: string): Promise<AsanaTask> {
     return this.fetchAsana<AsanaTask>(
-      `/tasks/${taskGid}?opt_fields=name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,workspace.gid,projects.gid,projects.name,projects.workspace.gid,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
+      `/tasks/${taskGid}?opt_fields=name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,workspace.gid,projects.gid,projects.name,projects.workspace.gid,memberships,memberships.section,memberships.section.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
     );
   }
 

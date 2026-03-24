@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Card, Checkbox, Dropdown, Empty, Form, Input, InputNumber, MenuProps, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Input, InputNumber, MenuProps, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, EyeOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 
@@ -38,6 +38,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   onTaskUpdate,
 }) => {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<AsanaTask | null>(null);
   const [benefModal, setBenefModal] = useState<AsanaTask | null>(null);
   const [hasReplicantes, setHasReplicantes] = useState(false);
   const [benefForm] = Form.useForm();
@@ -187,13 +188,6 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
       },
     },
     {
-      title: 'Población Meta',
-      dataIndex: 'poblacionMeta',
-      key: 'poblacionMeta',
-      width: 140,
-      render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
-    },
-    {
       title: 'Responsable',
       dataIndex: 'responsable',
       key: 'responsable',
@@ -223,6 +217,14 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
         ];
         return (
           <Space size={4}>
+            <Tooltip title="Ver detalles">
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => setDetailModal(task)}
+                style={{ fontSize: 13 }}
+              />
+            </Tooltip>
             <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="bottomRight">
               <Tooltip title="Cambiar estado">
                 <Button
@@ -330,6 +332,121 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
         )}
       </div>
     </Card>
+
+      {/* Modal: Ver Detalles */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined style={{ color: '#1677ff' }} />
+            <span>Detalle de Sub Actividad</span>
+          </Space>
+        }
+        open={!!detailModal}
+        onCancel={() => setDetailModal(null)}
+        footer={<Button onClick={() => setDetailModal(null)}>Cerrar</Button>}
+        width={680}
+        destroyOnClose
+      >
+        {detailModal && (() => {
+          const estado = getCustomFieldValue(detailModal, 'Estado');
+          const estadoUpper = estado.toUpperCase();
+          const estadoTag = estadoUpper === 'EJECUTADO'
+            ? <Tag color="success">Ejecutado</Tag>
+            : estadoUpper === 'EN PROCESO'
+            ? <Tag color="processing">En Proceso</Tag>
+            : <Tag color="default">Pendiente</Tag>;
+
+          const hombres    = getCustomFieldValue(detailModal, 'Hombres');
+          const mujeres    = getCustomFieldValue(detailModal, 'Mujeres ');
+          const replicantes = getCustomFieldValue(detailModal, 'Replicantes');
+          const poblacion  = getCustomFieldValue(detailModal, 'Población Meta');
+          const lugar      = getCustomFieldValue(detailModal, 'Lugar');
+          const responsable = getCustomFieldValue(detailModal, 'Responsable de Actividad');
+          const responsables = getCustomFieldValue(detailModal, 'Responsables de actividad');
+          const tipo       = getCustomFieldValue(detailModal, 'Tipo');
+          const area       = getCustomFieldValue(detailModal, 'Area');
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
+              {/* Bloque principal */}
+              <Descriptions bordered size="small" column={1}>
+                <Descriptions.Item label="Nombre">
+                  <Typography.Text strong>{detailModal.name}</Typography.Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Estado">{estadoTag}</Descriptions.Item>
+                {detailModal.start_on && (
+                  <Descriptions.Item label="Fecha de inicio">{detailModal.start_on}</Descriptions.Item>
+                )}
+                {detailModal.due_on && (
+                  <Descriptions.Item label="Fecha de finalización">{detailModal.due_on}</Descriptions.Item>
+                )}
+                {lugar !== '-' && (
+                  <Descriptions.Item label="Lugar">{lugar}</Descriptions.Item>
+                )}
+                {area !== '-' && (
+                  <Descriptions.Item label="Área">{area}</Descriptions.Item>
+                )}
+                {tipo !== '-' && (
+                  <Descriptions.Item label="Tipo">{tipo}</Descriptions.Item>
+                )}
+                {(responsable !== '-' || responsables !== '-') && (
+                  <Descriptions.Item label="Responsable">
+                    {responsable !== '-' ? responsable : responsables}
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+
+              {/* Beneficiarios */}
+              {(poblacion !== '-' || hombres !== '-' || mujeres !== '-' || replicantes !== '-') && (
+                <div>
+                  <Typography.Text strong style={{ fontSize: 13, color: '#555', display: 'block', marginBottom: 8 }}>
+                    Beneficiarios
+                  </Typography.Text>
+                  <Descriptions bordered size="small" column={2}>
+                    {poblacion !== '-' && (
+                      <Descriptions.Item label="Población Meta" span={2}>
+                        <Tag color="blue">{poblacion}</Tag>
+                      </Descriptions.Item>
+                    )}
+                    {hombres !== '-' && (
+                      <Descriptions.Item label="Varones">
+                        <Tag color="geekblue">{hombres}</Tag>
+                      </Descriptions.Item>
+                    )}
+                    {mujeres !== '-' && (
+                      <Descriptions.Item label="Mujeres">
+                        <Tag color="magenta">{mujeres}</Tag>
+                      </Descriptions.Item>
+                    )}
+                    {replicantes !== '-' && replicantes !== '0' && (
+                      <Descriptions.Item label="Replicantes" span={2}>
+                        <Tag color="purple">{replicantes}</Tag>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </div>
+              )}
+
+              {/* Descripción / notas */}
+              {detailModal.notes && detailModal.notes.trim() && (
+                <div>
+                  <Typography.Text strong style={{ fontSize: 13, color: '#555', display: 'block', marginBottom: 6 }}>
+                    Descripción
+                  </Typography.Text>
+                  <div style={{
+                    background: '#fafafa', border: '1px solid #f0f0f0',
+                    borderRadius: 6, padding: '10px 14px',
+                  }}>
+                    <Typography.Text style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                      {detailModal.notes}
+                    </Typography.Text>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </Modal>
 
       {/* Modal: Agregar Beneficiarios */}
       <Modal

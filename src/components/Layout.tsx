@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Popconfirm } from 'antd';
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection } from '../types/asana.types';
+import { useAuth } from '../context/AuthContext';
 import logoCdima from '../assets/logocdima.png';
 
 const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
   const [showEscuelasSubmenu, setShowEscuelasSubmenu] = useState(false);
@@ -59,6 +64,11 @@ const Layout: React.FC = () => {
     setShowDiplomadosSubmenu(false);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   const toggleEscuelasSubmenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setShowEscuelasSubmenu(!showEscuelasSubmenu);
@@ -74,11 +84,44 @@ const Layout: React.FC = () => {
   return (
     <div className="app-container">
       <header className="header">
-        <div className="header-content">
-          <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
-          <div className="header-text">
-            <h1>CDIMA Amta</h1>
-            <p>Sistema de Gestión de Proyectos y Control Académico</p>
+        <div className="header-content" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
+            <div className="header-text">
+              <h1>CDIMA Amta</h1>
+              <p>Sistema de Gestión de Proyectos y Control Académico</p>
+            </div>
+          </div>
+          {/* User info + logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: 13 }}>
+            <UserOutlined />
+            <span>{user?.name}</span>
+            <Popconfirm
+              title="¿Cerrar sesión?"
+              description="Se cerrará tu sesión actual."
+              onConfirm={handleLogout}
+              okText="Salir"
+              cancelText="Cancelar"
+              placement="bottomRight"
+            >
+              <button
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  borderRadius: 6,
+                  color: 'white',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                }}
+              >
+                <LogoutOutlined />
+                Salir
+              </button>
+            </Popconfirm>
           </div>
         </div>
       </header>
@@ -87,6 +130,7 @@ const Layout: React.FC = () => {
       
       <nav className="nav">
         <ul className="nav-links">
+          {isAdmin && (
           <li>
             <Link 
               to="/" 
@@ -95,6 +139,7 @@ const Layout: React.FC = () => {
               🏠 Inicio
             </Link>
           </li>
+          )}
           <li>
             <Link 
               to="/report" 
@@ -120,8 +165,8 @@ const Layout: React.FC = () => {
             </Link>
           </li>
           
-          {/* Escuela de Formación con submenú */}
-          <li 
+          {/* Escuela de Formación con submenú — solo admin */}
+          {isAdmin && <li 
             className="nav-item-submenu"
             onMouseLeave={() => setShowEscuelasSubmenu(false)}
           >
@@ -148,6 +193,7 @@ const Layout: React.FC = () => {
                 {escuelas.map(escuela => (
                   <li key={escuela.gid}>
                     <button
+
                       className="submenu-link"
                       onClick={() => handleEscuelaClick(escuela)}
                     >
@@ -157,10 +203,10 @@ const Layout: React.FC = () => {
                 ))}
               </ul>
             )}
-          </li>
+          </li>}
 
-          {/* Diplomados con submenú */}
-          <li 
+          {/* Diplomados con submenú — solo admin */}
+          {isAdmin && <li 
             className="nav-item-submenu"
             onMouseLeave={() => setShowDiplomadosSubmenu(false)}
           >
@@ -196,8 +242,9 @@ const Layout: React.FC = () => {
                 ))}
               </ul>
             )}
-          </li>
+          </li>}
 
+          {isAdmin && (
           <li>
             <Link 
               to="/produccion-alto-nivel" 
@@ -206,7 +253,9 @@ const Layout: React.FC = () => {
               🚀 Produccion de Alto Nivel
             </Link>
           </li>
+          )}
 
+          {isAdmin && (
           <li>
             <Link 
               to="/investigacion-e-incidencia" 
@@ -215,6 +264,7 @@ const Layout: React.FC = () => {
               🔎 Investigacion e incidencia
             </Link>
           </li>
+          )}
         </ul>
       </nav>
       

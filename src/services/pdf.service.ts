@@ -934,19 +934,26 @@ export const exportBeneficiariesToPDF = (
     const indirectosData = tasksWithReplicantes.map(task => {
       const mujeres = getCustomFieldValue(task, 'Mujeres ');
       const hombres = getCustomFieldValue(task, 'Hombres');
+      const replicantes = getCustomFieldValue(task, 'Replicantes');
       const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
       const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
-      const total = mujeresNum + hombresNum;
+      const replicantesNum = replicantes !== '-' ? parseInt(replicantes) || 0 : 0;
+      const total = mujeresNum + hombresNum + replicantesNum;
 
       return [
         task.name,
         getCustomFieldValue(task, 'Lugar'),
-        getCustomFieldValue(task, 'Replicantes'),
+        replicantes,
         mujeres,
         hombres,
         total > 0 ? total.toString() : '-'
       ];
     });
+
+    const totalReplicantesPDF = tasksWithReplicantes.reduce((sum, task) => {
+      const r = getCustomFieldValue(task, 'Replicantes');
+      return sum + (r !== '-' ? parseInt(r) || 0 : 0);
+    }, 0);
 
     autoTable(doc, {
       startY: yPos,
@@ -955,7 +962,7 @@ export const exportBeneficiariesToPDF = (
       foot: [[
         'TOTAL',
         '',
-        '-',
+        totalReplicantesPDF.toString(),
         totalsWithReplicantes.mujeres.toString(),
         totalsWithReplicantes.hombres.toString(),
         totalWithReplicantes.toString()

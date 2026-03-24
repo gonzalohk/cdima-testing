@@ -47,7 +47,7 @@ const ConfiguracionPage: React.FC = () => {
         },
         // Callback cuando se completa un proyecto
         (projectName: string, index: number, total: number) => {
-          addProgressMessage(`✓ Completado (${index}/${total}): ${projectName}`);
+          addProgressMessage(`✓ (${index}/${total}): ${projectName}`);
         }
       );
 

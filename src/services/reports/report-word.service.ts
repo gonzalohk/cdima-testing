@@ -486,7 +486,12 @@ export const exportBeneficiariesToWord = (
 
     const totalsRow = new TableRow({
       children: [
-        mkCell('TOTAL', 49, true),
+        new TableCell({
+          borders: CELL_BORDER,
+          shading: { type: ShadingType.SOLID, color: COLORS.headerGray, fill: COLORS.headerGray },
+          columnSpan: 2,
+          children: [new Paragraph({ children: [new TextRun({ text: 'TOTAL', bold: true, size: 18, color: COLORS.black, font: 'Arial' })] })],
+        }),
         mkCell(totalsWithoutReplicantes.poblacionMeta.toString(), 12, true, true),
         mkCell(totalsWithoutReplicantes.mujeres.toString(), 13, true, true),
         mkCell(totalsWithoutReplicantes.hombres.toString(), 13, true, true),
@@ -524,9 +529,11 @@ export const exportBeneficiariesToWord = (
     const dataRows2 = tasksWithReplicantes.map(task => {
       const mujeres = getCustomFieldValue(task, 'Mujeres ');
       const hombres = getCustomFieldValue(task, 'Hombres');
+      const replicantes = getCustomFieldValue(task, 'Replicantes');
       const mujeresNum = mujeres !== '-' ? parseInt(mujeres) : 0;
       const hombresNum = hombres !== '-' ? parseInt(hombres) : 0;
-      const total = mujeresNum + hombresNum;
+      const replicantesNum = replicantes !== '-' ? parseInt(replicantes) || 0 : 0;
+      const total = mujeresNum + hombresNum + replicantesNum;
       return new TableRow({
         children: [
           mkCell(task.name, 30),
@@ -539,10 +546,20 @@ export const exportBeneficiariesToWord = (
       });
     });
 
+    const totalReplicantes2 = tasksWithReplicantes.reduce((sum, task) => {
+      const r = getCustomFieldValue(task, 'Replicantes');
+      return sum + (r !== '-' ? parseInt(r) || 0 : 0);
+    }, 0);
+
     const totalsRow2 = new TableRow({
       children: [
-        mkCell('TOTAL', 49, true),
-        mkCell('-', 12, true, true),
+        new TableCell({
+          borders: CELL_BORDER,
+          shading: { type: ShadingType.SOLID, color: COLORS.headerGray, fill: COLORS.headerGray },
+          columnSpan: 2,
+          children: [new Paragraph({ children: [new TextRun({ text: 'TOTAL', bold: true, size: 18, color: COLORS.black, font: 'Arial' })] })],
+        }),
+        mkCell(totalReplicantes2.toString(), 12, true, true),
         mkCell(totalsWithReplicantes.mujeres.toString(), 13, true, true),
         mkCell(totalsWithReplicantes.hombres.toString(), 13, true, true),
         mkCell(totalWithReplicantes.toString(), 13, true, true),

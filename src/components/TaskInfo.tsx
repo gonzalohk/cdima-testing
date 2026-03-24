@@ -466,6 +466,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     aggregatedValues,
     generalStatistics,
     projectName,
+    seccion: task.memberships?.[0]?.section?.name,
     fuentesEntradas: fuentesData?.entradas ?? [],
   });
 
@@ -1021,7 +1022,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   ),
                 },
                 {
-                  title: 'Fecha Aprobación',
+                  title: 'Fecha Respuesta',
                   key: 'fechaAprobacion',
                   render: (_: unknown, record: AsanaTask) => {
                     const fecha = extractFechaAprobacion(record.notes);
@@ -1044,8 +1045,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   },
                 },
                 {
-                  title: 'Acciones',
-                  key: 'acciones',
+                  title: 'Aprobar',
+                  key: 'aprobar',
                   align: 'center' as const,
                   render: (_: unknown, record: AsanaTask) => {
                     const obs = extractObservacion(record.notes);
@@ -1072,6 +1073,17 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                             />
                           </Tooltip>
                         )}
+                      </Space>
+                    );
+                  },
+                },
+                {
+                  title: 'Acciones',
+                  key: 'acciones',
+                  align: 'center' as const,
+                  render: (_: unknown, record: AsanaTask) => {
+                    return (
+                      <Space size={4}>
                         <Tooltip title="Ver detalle">
                           <Button
                             size="small"
