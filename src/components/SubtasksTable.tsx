@@ -367,10 +367,10 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
           const area       = getCustomFieldValue(detailModal, 'Area');
 
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4, overflow: 'hidden', wordBreak: 'break-word' }}>
               {/* Bloque principal */}
-              <Descriptions bordered size="small" column={1}>
-                <Descriptions.Item label="Nombre">
+              <Descriptions bordered size="small" column={1} style={{ tableLayout: 'fixed', width: '100%' }}>
+                <Descriptions.Item label="Nombre" labelStyle={{ width: 140 }}>
                   <Typography.Text strong>{detailModal.name}</Typography.Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Estado">{estadoTag}</Descriptions.Item>
@@ -402,7 +402,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
                   <Typography.Text strong style={{ fontSize: 13, color: '#555', display: 'block', marginBottom: 8 }}>
                     Beneficiarios
                   </Typography.Text>
-                  <Descriptions bordered size="small" column={2}>
+                  <Descriptions bordered size="small" column={2} style={{ tableLayout: 'fixed', width: '100%' }}>
                     {poblacion !== '-' && (
                       <Descriptions.Item label="Población Meta" span={2}>
                         <Tag color="blue">{poblacion}</Tag>

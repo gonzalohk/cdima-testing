@@ -2,10 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer, View, Event as BigCalendarEvent } from 'react-big-calendar';
 import moment from 'moment';
-// IMPORTANTE: Importar locale español ANTES de configurarlo
 import 'moment/locale/es';
-// Configurar moment globalmente en español
-moment.locale('es');
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -14,7 +11,7 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import { getTaskColor } from '../utils/colors';
-import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule, exportMonthlyCalendarScheduleWord } from '../services/reports/planning-reports.service';
+import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule } from '../services/reports/planning-reports.service';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -45,20 +42,6 @@ const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
 
 // Configurar moment en español (para formateo de fechas)
 moment.locale('es');
-
-// Función helper para formatear mes y año en español
-const formatMonthYear = (date: Date): string => {
-  // Array de nombres de meses en español
-  const mesesEspanol = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  
-  const mes = date.getMonth();
-  const anio = date.getFullYear();
-  
-  return `${mesesEspanol[mes]} ${anio}`;
-};
 
 // Configurar localizer de date-fns para el calendario
 const locales = {
@@ -104,12 +87,6 @@ const PlanningPage: React.FC = () => {
   const [exportingTables, setExportingTables] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
-  const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
-
-  // Forzar locale español cada vez que el componente se monta o actualiza
-  useEffect(() => {
-    moment.locale('es');
-  }, []);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -190,27 +167,18 @@ const PlanningPage: React.FC = () => {
 
   // Convertir tareas de Asana a eventos del calendario
   const events: CalendarEvent[] = useMemo(() => {
-    // Parsea un string YYYY-MM-DD como fecha local (Bolivia UTC-4).
-    // Usar new Date(y, m, d) en vez de moment/Date(string) evita que el
-    // navegador interprete la fecha en UTC y la desplace un día atrás.
-    const parseLocalDate = (dateStr: string, dayOffset = 0): Date => {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      return new Date(y, m - 1, d + dayOffset);
-    };
-
     return tasks
       .filter(task => task.start_on || task.due_on) // Solo tareas con fechas
       .map(task => {
         // Usar start_on si existe, si no usar due_on
-        const startDate = task.start_on
-          ? parseLocalDate(task.start_on)
-          : parseLocalDate(task.due_on!);
-
-        // react-big-calendar trata end como exclusivo en eventos multi-día:
-        // end = medianoche del día siguiente para que el último día se pinte completo.
-        const endDate = task.due_on
-          ? parseLocalDate(task.due_on, 1)
-          : parseLocalDate(task.start_on!, 1);
+        const startDate = task.start_on 
+          ? moment(task.start_on).toDate()
+          : moment(task.due_on).toDate();
+        
+        // Usar due_on como fecha fin, si no existe usar start_on
+        const endDate = task.due_on 
+          ? moment(task.due_on).toDate()
+          : moment(task.start_on).toDate();
 
         // Agregar responsables al título si existe
         const responsables = getCustomFieldValue(task, 'Responsables de actividad');
@@ -410,22 +378,6 @@ const PlanningPage: React.FC = () => {
     }
   };
 
-  const handleExportScheduleWord = async () => {
-    setExportingScheduleWord(true);
-    try {
-      await exportMonthlyCalendarScheduleWord({
-        tasks: currentMonthTasks,
-        date,
-        projectName
-      });
-    } catch (error) {
-      console.error('Error al exportar cronograma Word:', error);
-      alert('Error al generar el documento Word. Por favor, intenta de nuevo.');
-    } finally {
-      setExportingScheduleWord(false);
-    }
-  };
-
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isEjecutado = event.resource.estado === 'Ejecutado';
@@ -504,7 +456,7 @@ const PlanningPage: React.FC = () => {
           <div className="planning-info">
             <h1 className="planning-title">{projectName}</h1>
             <p className="planning-subtitle">
-              {formatMonthYear(date)} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'actividad programada' : 'actividades programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
+              {moment(date).format('MMMM YYYY')} · {currentMonthTasks.length} {currentMonthTasks.length === 1 ? 'actividad programada' : 'actividades programadas'} · {statistics.completed} ejecutadas · {statistics.pending} en proceso
             </p>
           </div>
         </div>
@@ -541,23 +493,19 @@ const PlanningPage: React.FC = () => {
             disabled={exportingCalendar || events.length === 0}
             title="Exportar vista de calendario a PDF (lista por día)"
           >
-            {exportingCalendar ? 'Exportando...' : '📅 Lista de Actividades'}
+            {exportingCalendar ? 'Exportando...' : '� Exportar Actividades'}
           </button>
           <button
             className="btn-export"
             onClick={handleExportSchedule}
             disabled={exportingSchedule || currentMonthTasks.length === 0}
             title="Exportar cronograma mensual (tabla semanal por área)"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none'
+            }}
           >
-            {exportingSchedule ? 'Exportando...' : '📋 Cronograma Mensual'}
-          </button>
-          <button
-            className="btn-export"
-            onClick={handleExportScheduleWord}
-            disabled={exportingScheduleWord || currentMonthTasks.length === 0}
-            title="Exportar cronograma mensual a Word"
-          >
-            {exportingScheduleWord ? 'Exportando...' : '📄'}
+            {exportingSchedule ? 'Exportando...' : '📋 Exportar Cronograma Mensual'}
           </button>
         </div>
         
@@ -654,10 +602,9 @@ const PlanningPage: React.FC = () => {
 
           {/* Tabla 1: Actividades En Proceso (Atrasadas) */}
           <div className="card">
-            <h2 style={{ marginBottom: '0.25rem' }}>Actividades En Proceso (Atrasadas)</h2>
-            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
-              {formatMonthYear(date)}
-            </p>
+            <h2 style={{ color: '#d32f2f', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚠️ Actividades En Proceso (Atrasadas) - {moment(date).format('MMMM YYYY')}
+            </h2>
             
             {overdueTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -735,10 +682,7 @@ const PlanningPage: React.FC = () => {
 
           {/* Tabla 2: Actividades En Proceso */}
           <div className="card">
-            <h2 style={{ marginBottom: '0.25rem' }}>Actividades En Proceso</h2>
-            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
-              {formatMonthYear(date)}
-            </p>
+            <h2>Actividades En Proceso - {moment(date).format('MMMM YYYY')}</h2>
             
             {inProcessTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -815,10 +759,7 @@ const PlanningPage: React.FC = () => {
 
           {/* Tabla 3: Actividades Ejecutadas */}
           <div className="card">
-            <h2 style={{ marginBottom: '0.25rem' }}>Actividades Ejecutadas</h2>
-            <p style={{ fontSize: '1rem', color: '#666', marginTop: '0.25rem', marginBottom: '1rem' }}>
-              {formatMonthYear(date)}
-            </p>
+            <h2>Actividades Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
             
             {executedTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
