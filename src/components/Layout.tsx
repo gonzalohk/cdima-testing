@@ -88,7 +88,7 @@ const Layout: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
             <div className="header-text">
-              <h1>CDIMA Amta</h1>
+              <h1>CDIMA Amuyt'a</h1>
               <p>Sistema de Gestión de Proyectos y Control Académico</p>
             </div>
           </div>
@@ -272,14 +272,11 @@ const Layout: React.FC = () => {
         <Outlet />
       </main>
 
-      {location.pathname !== '/biblioteca' && (
-        <>
           <div className="header-divider-line" aria-hidden="true"></div>
           <footer className="app-footer">
             <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
           </footer>
-        </>
-      )}
+        
     </div>
   );
 };

@@ -61,7 +61,7 @@ const detectFileType = (url: string, label: string): string => {
 };
 
 const FILE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  folder: { bg: '#fffbe6', border: '#ffe58f', text: '#ad6800' },
+  folder: { bg: '#fdf0eb', border: '#d4886a', text: '#a84020' },
   pdf:    { bg: '#fff1f0', border: '#ffa39e', text: '#cf1322' },
   doc:    { bg: '#e6f4ff', border: '#91caff', text: '#0958d9' },
   sheet:  { bg: '#f6ffed', border: '#b7eb8f', text: '#389e0d' },
@@ -108,13 +108,30 @@ const getSectionTypeColor = (sectionName: string): { tipo: string; color: string
   if (n.includes('módulo') || n.includes('estudio'))        return { tipo: 'Módulos',      color: '#cf1322' };
   if (n.includes('archivo') || n.includes('fotográfi'))     return { tipo: 'Fotografía',   color: '#0958d9' };
   if (n.includes('informe'))                                 return { tipo: 'Informes',     color: '#c41d7f' };
-  return { tipo: 'Recursos', color: '#389e0d' };
+  return { tipo: 'Material Comunicacional', color: '#389e0d' };
 };
+
+// Colores de la Wiphala (bandera del pueblo andino) — experimental
+const WIPHALA_COLORS = [
+  '#C8161D', // rojo
+  '#D46200', // naranja
+  '#B8860B', // dorado
+  '#007A3D', // verde
+  '#003DA5', // azul
+  '#3B0CBD', // índigo
+  '#7B2FBE', // violeta
+];
 
 const convertAttachmentsToLinks = (attachments?: AsanaAttachment[]): Link[] =>
   (attachments ?? [])
     .filter(a => a.view_url || a.download_url)
     .map(a => ({ id: a.gid, label: a.name, viewUrl: a.view_url, downloadUrl: a.download_url }));
+
+// Separa un código técnico del nombre legible: "2025-SAIH-1-1 BANNERS" → { code, label }
+const parseTaskName = (name: string): { code: string | null; label: string } => {
+  const m = name.match(/^(\d{4}[-–][\w.-]+(?:[-–][\w.-]+)*)\s+(.+)$/);
+  return m ? { code: m[1], label: m[2] } : { code: null, label: name };
+};
 
 const convertAsanaTaskToTask = (t: AsanaTask): Task => ({
   id: t.gid,
@@ -127,7 +144,7 @@ const convertAsanaTaskToTask = (t: AsanaTask): Task => ({
 });
 
 // ─── DriveLink: Avatar + texto + botón ghost ───────────────────────────────
-const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
+const DriveLink: React.FC<{ link: Link }> = ({ link }) => {
   const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
   const colors   = getFileTypeColors(fileType);
   return (
@@ -146,7 +163,7 @@ const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accent
       <Space size={2}>
         {link.viewUrl && (
           <Button type="link" size="small" icon={<LinkOutlined />} href={link.viewUrl} target="_blank"
-            style={{ padding: '0 6px', fontSize: 12, color: accentColor }}>
+            style={{ padding: '0 6px', fontSize: 12, color: '#a84020' }}>
             Abrir
           </Button>
         )}
@@ -180,8 +197,8 @@ const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subta
         {hasLinks && <Badge count={subtask.links.length} style={{ background: accentColor, fontSize: 10 }} />}
       </div>
       {expanded && hasLinks && (
-        <div style={{ paddingLeft: 22, borderLeft: `2px solid ${accentColor}30`, marginLeft: 10, paddingBottom: 4 }}>
-          {subtask.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+        <div style={{ paddingLeft: 28, borderLeft: `2px solid ${accentColor}30`, marginLeft: 12, paddingBottom: 6 }}>
+          {subtask.links.map(l => <DriveLink key={l.id} link={l} />)}
         </div>
       )}
     </div>
@@ -195,9 +212,14 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
   const domType    = getDominantFileType(allLinks);
   const colors     = getFileTypeColors(domType);
   const hasContent = task.links.length > 0 || task.subtasks.length > 0;
+  const { code, label } = parseTaskName(task.name);
 
   return (
-    <div style={{ borderBottom: '1px solid #f0f0f0' }}>
+    <div
+      style={{ borderBottom: '1px solid #f0f0f0', background: expanded ? '#f5f7ff' : 'transparent', transition: 'background .2s' }}
+      onMouseEnter={e => { if (!expanded) (e.currentTarget as HTMLDivElement).style.background = '#fafbff'; }}
+      onMouseLeave={e => { if (!expanded) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+    >
       <div
         onClick={() => hasContent && setExpanded(x => !x)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', cursor: hasContent ? 'pointer' : 'default', userSelect: 'none' }}
@@ -209,8 +231,11 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <span>
+            {code && (
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2, marginBottom: 1 }}>{code}</Text>
+            )}
             <Text strong style={{ fontSize: 14, color: task.estado ? '#aaa' : '#1a1a1a', textDecoration: task.estado ? 'line-through' : 'none' }}>
-              {task.name}
+              {label}
             </Text>
             {task.estado && <Tag color="success" style={{ marginLeft: 6, fontSize: 11 }}>{task.estado}</Tag>}
           </span>
@@ -229,7 +254,7 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
         <div style={{ paddingLeft: 50, paddingBottom: 12 }}>
           {task.links.length > 0 && (
             <div style={{ marginBottom: task.subtasks.length > 0 ? 8 : 0 }}>
-              {task.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+              {task.links.map(l => <DriveLink key={l.id} link={l} />)}
             </div>
           )}
           {task.subtasks.length > 0 && (
@@ -364,12 +389,17 @@ const ResourceLibraryPage: React.FC = () => {
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1280, margin: '0 auto' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+        padding: '1.25rem 1.75rem',
+        background: 'white', borderRadius: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      }}>
         <Space align="center">
-          <span style={{ fontSize: 26 }}>📡</span>
+          <span style={{ fontSize: 32 }}>📡</span>
           <div>
             <Title level={4} style={{ margin: 0 }}>{projectName}</Title>
-            <Space size={16}>
+            <Space size={16} style={{ marginTop: 2 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 <DatabaseOutlined style={{ marginRight: 4 }} />{totalRecursos} recursos
               </Text>
@@ -408,9 +438,10 @@ const ResourceLibraryPage: React.FC = () => {
                 Secciones
               </Text>
             </div>
-            <div style={{ padding: '6px 8px', maxHeight: '72vh', overflowY: 'auto' }}>
-              {sections.map(s => {
+            <div style={{ padding: '6px 8px' }}>
+              {sections.map((s, idx) => {
                 const isActive = s.id === activeSection;
+                const wipColor = WIPHALA_COLORS[idx % WIPHALA_COLORS.length];
                 const rCount = s.tasks.reduce((acc, t) =>
                   acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0);
                 return (
@@ -420,17 +451,19 @@ const ResourceLibraryPage: React.FC = () => {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '8px 10px', borderRadius: 7, cursor: 'pointer', marginBottom: 2,
-                      background: isActive ? `${s.tipoColor}14` : 'transparent',
-                      borderLeft: `3px solid ${isActive ? s.tipoColor : 'transparent'}`,
+                      background: isActive ? `${wipColor}18` : 'transparent',
+                      borderLeft: `3px solid ${isActive ? wipColor : 'transparent'}`,
                       transition: 'all .15s',
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <Tag style={{ fontSize: 10, padding: '0 5px', borderColor: `${s.tipoColor}55`, background: `${s.tipoColor}12`, color: s.tipoColor, marginBottom: 2, display: 'inline-block' }}>
-                        {s.tipo}
-                      </Tag>
+                      {s.tipo !== 'Material Comunicacional' && (
+                        <Tag style={{ fontSize: 10, padding: '0 5px', borderColor: `${wipColor}66`, background: `${wipColor}15`, color: wipColor, marginBottom: 2, display: 'inline-block' }}>
+                          {s.tipo}
+                        </Tag>
+                      )}
                       <Text
-                        style={{ fontSize: 13, color: isActive ? s.tipoColor : '#333', fontWeight: isActive ? 600 : 400, display: 'block', lineHeight: 1.3 }}
+                        style={{ fontSize: 13, color: isActive ? wipColor : '#333', fontWeight: isActive ? 600 : 400, display: 'block', lineHeight: 1.3 }}
                         ellipsis={{ tooltip: s.name }}
                       >
                         {s.name}
@@ -438,7 +471,7 @@ const ResourceLibraryPage: React.FC = () => {
                     </div>
                     {rCount > 0 && (
                       <Badge count={rCount} overflowCount={99}
-                        style={{ background: isActive ? s.tipoColor : '#d9d9d9', fontSize: 10, marginLeft: 6, flexShrink: 0 }}
+                        style={{ background: isActive ? wipColor : '#d9d9d9', fontSize: 10, marginLeft: 6, flexShrink: 0 }}
                       />
                     )}
                   </div>
