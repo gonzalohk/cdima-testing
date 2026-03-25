@@ -36,7 +36,7 @@ const LoginPage: React.FC = () => {
         </div>
         <div style={styles.titleRow}>
           <Title level={3} style={{ margin: 0, color: '#2C3E50' }}>
-            CDIMA Amta
+            CDIMA Amuyt'a
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
             Sistema de Gestión de Proyectos y Control Académico

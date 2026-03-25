@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge, Button, Card, Col, Empty, Input, Row, Space, Spin, Statistic, Tag, Tooltip, Typography, Collapse,
+  Avatar, Badge, Button, Col, Divider, Empty, Input, Row, Space, Spin, Tag, Tooltip, Typography,
 } from 'antd';
 import {
   FolderOutlined, FileTextOutlined, FileExcelOutlined, FilePptOutlined, FileImageOutlined,
   VideoCameraOutlined, PaperClipOutlined, FilePdfOutlined, SearchOutlined,
-  CheckCircleOutlined, FolderOpenOutlined, LinkOutlined, DownloadOutlined,
-  AppstoreOutlined, DatabaseOutlined, UnorderedListOutlined,
+  FolderOpenOutlined, LinkOutlined, DownloadOutlined, RightOutlined,
+  DatabaseOutlined, AppstoreOutlined, UnorderedListOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaProject, AsanaTask, AsanaAttachment } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 
 const { Text, Title } = Typography;
-const { Panel } = Collapse;
 
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 interface Link {
   id: string;
   label: string;
@@ -45,240 +45,115 @@ interface Section {
   tasks: Task[];
 }
 
-// Detectar tipo de archivo
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const detectFileType = (url: string, label: string): string => {
-  const urlLower = url.toLowerCase();
-  const labelLower = label.toLowerCase();
-  
-  if (urlLower.includes('/folders/')) return 'folder';
-  if (urlLower.includes('.pdf') || labelLower.includes('.pdf')) return 'pdf';
-  if (urlLower.match(/\.(doc|docx)/) || labelLower.match(/\.(doc|docx)/)) return 'doc';
-  if (urlLower.match(/\.(xls|xlsx)/) || labelLower.match(/\.(xls|xlsx)/) || urlLower.includes('spreadsheet')) return 'sheet';
-  if (urlLower.match(/\.(ppt|pptx)/) || labelLower.match(/\.(ppt|pptx)/) || urlLower.includes('presentation')) return 'slide';
-  if (urlLower.match(/\.(jpg|jpeg|png|gif|svg|webp)/) || labelLower.match(/\.(jpg|jpeg|png|gif|svg|webp)/)) return 'image';
-  if (urlLower.match(/\.(mp4|mov|avi|webm)/) || labelLower.match(/\.(mp4|mov|avi|webm)/)) return 'video';
-  if (urlLower.includes('document')) return 'doc';
-  
+  const u = url.toLowerCase();
+  const l = label.toLowerCase();
+  if (u.includes('/folders/')) return 'folder';
+  if (u.includes('.pdf') || l.includes('.pdf')) return 'pdf';
+  if (u.match(/\.(doc|docx)/) || l.match(/\.(doc|docx)/)) return 'doc';
+  if (u.match(/\.(xls|xlsx)/) || l.match(/\.(xls|xlsx)/) || u.includes('spreadsheet')) return 'sheet';
+  if (u.match(/\.(ppt|pptx)/) || l.match(/\.(ppt|pptx)/) || u.includes('presentation')) return 'slide';
+  if (u.match(/\.(jpg|jpeg|png|gif|svg|webp)/) || l.match(/\.(jpg|jpeg|png|gif|svg|webp)/)) return 'image';
+  if (u.match(/\.(mp4|mov|avi|webm)/) || l.match(/\.(mp4|mov|avi|webm)/)) return 'video';
+  if (u.includes('document')) return 'doc';
   return 'other';
 };
 
-// Iconos por tipo de archivo
-const getFileTypeIcon = (fileType: string): string => {
-  const icons: { [key: string]: string } = {
-    folder: '📁',
-    pdf: '📄',
-    doc: '📝',
-    sheet: '📊',
-    slide: '📽️',
-    image: '🖼️',
-    video: '🎥',
-    other: '📎'
-  };
-  return icons[fileType] || icons.other;
+const FILE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  folder: { bg: '#fffbe6', border: '#ffe58f', text: '#ad6800' },
+  pdf:    { bg: '#fff1f0', border: '#ffa39e', text: '#cf1322' },
+  doc:    { bg: '#e6f4ff', border: '#91caff', text: '#0958d9' },
+  sheet:  { bg: '#f6ffed', border: '#b7eb8f', text: '#389e0d' },
+  slide:  { bg: '#fff7e6', border: '#ffd591', text: '#d46b08' },
+  image:  { bg: '#f9f0ff', border: '#d3adf7', text: '#531dab' },
+  video:  { bg: '#fff0f6', border: '#ffadd2', text: '#c41d7f' },
+  other:  { bg: '#f5f5f5', border: '#d9d9d9', text: '#595959' },
 };
 
-const getFileTypeLabel = (fileType: string): string => {
-  const labels: { [key: string]: string } = {
-    folder: 'Carpeta',
-    pdf: 'PDF',
-    doc: 'Documento',
-    sheet: 'Hoja',
-    slide: 'Presentacion',
-    image: 'Imagen',
-    video: 'Video',
-    other: 'Recurso',
-  };
-
-  return labels[fileType] || labels.other;
+const FILE_LABELS: Record<string, string> = {
+  folder: 'Carpeta', pdf: 'PDF', doc: 'Documento', sheet: 'Hoja de cálculo',
+  slide: 'Presentación', image: 'Imagen', video: 'Video', other: 'Recurso',
 };
 
-const getFileTypeColors = (fileType: string): { bg: string; border: string; text: string } => {
-  const colorMap: { [key: string]: { bg: string; border: string; text: string } } = {
-    folder: { bg: '#fff5d9', border: '#f5c76e', text: '#8a5a00' },
-    pdf: { bg: '#ffe8e8', border: '#ffb5b5', text: '#a01717' },
-    doc: { bg: '#e8f0ff', border: '#b9cdff', text: '#1d4ed8' },
-    sheet: { bg: '#e8f8ef', border: '#b8e5cb', text: '#0f7a3b' },
-    slide: { bg: '#fff2e8', border: '#ffc9a6', text: '#b45309' },
-    image: { bg: '#f4eaff', border: '#dcc4ff', text: '#7e22ce' },
-    video: { bg: '#ffeaf5', border: '#ffc3e1', text: '#be185d' },
-    other: { bg: '#f3f4f6', border: '#d1d5db', text: '#4b5563' },
-  };
+const getFileTypeColors = (type: string) => FILE_COLORS[type] ?? FILE_COLORS.other;
+const getFileTypeLabel  = (type: string) => FILE_LABELS[type] ?? FILE_LABELS.other;
 
-  return colorMap[fileType] || colorMap.other;
-};
+const getAntIcon = (fileType: string): React.ReactNode => ({
+  folder: <FolderOutlined />,
+  pdf:    <FilePdfOutlined />,
+  doc:    <FileTextOutlined />,
+  sheet:  <FileExcelOutlined />,
+  slide:  <FilePptOutlined />,
+  image:  <FileImageOutlined />,
+  video:  <VideoCameraOutlined />,
+  other:  <PaperClipOutlined />,
+}[fileType] ?? <PaperClipOutlined />);
 
 const getDominantFileType = (links: Link[]): string => {
-  if (links.length === 0) return 'other';
-
-  const counters = links.reduce<Record<string, number>>((acc, link) => {
-    const type = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
-    acc[type] = (acc[type] || 0) + 1;
+  if (!links.length) return 'other';
+  const counts = links.reduce<Record<string, number>>((acc, l) => {
+    const t = detectFileType(l.viewUrl || l.downloadUrl || '', l.label);
+    acc[t] = (acc[t] || 0) + 1;
     return acc;
   }, {});
-
-  return Object.entries(counters).sort((a, b) => b[1] - a[1])[0]?.[0] || 'other';
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other';
 };
 
-// Mapeador de tipos de sección a colores con gradientes
-const getSectionTypeColor = (sectionName: string): { tipo: string; color: string; gradient: string } => {
-  const nameLower = sectionName.toLowerCase();
-  
-  if (nameLower.includes('campaña') || nameLower.includes('comunicacional')) {
-    return { 
-      tipo: 'Campaña Comuni.', 
-      color: '#C084FC',
-      gradient: 'linear-gradient(135deg, #C084FC 0%, #9333EA 100%)'
-    };
-  }
-  if (nameLower.includes('testimonio')) {
-    return { 
-      tipo: 'Testimonios', 
-      color: '#6EE7B7',
-      gradient: 'linear-gradient(135deg, #6EE7B7 0%, #10B981 100%)'
-    };
-  }
-  if (nameLower.includes('diseño') || nameLower.includes('material')) {
-    return { 
-      tipo: 'Diseño de Materi.', 
-      color: '#FCD34D',
-      gradient: 'linear-gradient(135deg, #FCD34D 0%, #F59E0B 100%)'
-    };
-  }
-  if (nameLower.includes('módulo') || nameLower.includes('estudio')) {
-    return { 
-      tipo: 'Módulos de Estu.', 
-      color: '#FCA5A5',
-      gradient: 'linear-gradient(135deg, #FCA5A5 0%, #EF4444 100%)'
-    };
-  }
-  if (nameLower.includes('archivo') || nameLower.includes('fotográfi')) {
-    return { 
-      tipo: 'Archivo Fotográfi.', 
-      color: '#93C5FD',
-      gradient: 'linear-gradient(135deg, #93C5FD 0%, #3B82F6 100%)'
-    };
-  }
-  if (nameLower.includes('informe')) {
-    return { 
-      tipo: 'Informes', 
-      color: '#FDA4AF',
-      gradient: 'linear-gradient(135deg, #FDA4AF 0%, #F43F5E 100%)'
-    };
-  }
-  
-  // Tipo por defecto
-  return { 
-    tipo: 'Recursos', 
-    color: '#A8E6CF',
-    gradient: 'linear-gradient(135deg, #A8E6CF 0%, #34D399 100%)'
-  };
+const getSectionTypeColor = (sectionName: string): { tipo: string; color: string } => {
+  const n = sectionName.toLowerCase();
+  if (n.includes('campaña') || n.includes('comunicacional')) return { tipo: 'Campaña',     color: '#722ed1' };
+  if (n.includes('testimonio'))                              return { tipo: 'Testimonios',  color: '#08979c' };
+  if (n.includes('diseño') || n.includes('material'))       return { tipo: 'Materiales',   color: '#d46b08' };
+  if (n.includes('módulo') || n.includes('estudio'))        return { tipo: 'Módulos',      color: '#cf1322' };
+  if (n.includes('archivo') || n.includes('fotográfi'))     return { tipo: 'Fotografía',   color: '#0958d9' };
+  if (n.includes('informe'))                                 return { tipo: 'Informes',     color: '#c41d7f' };
+  return { tipo: 'Recursos', color: '#389e0d' };
 };
 
-// Convertir attachments de Asana a Links
-const convertAttachmentsToLinks = (attachments?: AsanaAttachment[]): Link[] => {
-  if (!attachments || attachments.length === 0) return [];
-  
-  const links = attachments
-    .filter(att => att.view_url || att.download_url)
-    .map(att => ({
-      id: att.gid,
-      label: att.name,
-      viewUrl: att.view_url,
-      downloadUrl: att.download_url
-    }));
-  
-  // Log para debugging
-  if (links.length > 0) {
-    console.log('Converted links:', links.map(l => ({
-      label: l.label,
-      hasView: !!l.viewUrl,
-      hasDownload: !!l.downloadUrl
-    })));
-  }
-  
-  return links;
-};
+const convertAttachmentsToLinks = (attachments?: AsanaAttachment[]): Link[] =>
+  (attachments ?? [])
+    .filter(a => a.view_url || a.download_url)
+    .map(a => ({ id: a.gid, label: a.name, viewUrl: a.view_url, downloadUrl: a.download_url }));
 
-// Convertir tarea de Asana a Task del componente
-const convertAsanaTaskToTask = (asanaTask: AsanaTask): Task => {
-  const links = convertAttachmentsToLinks(asanaTask.attachments);
-  const subtasks: Subtask[] = asanaTask.subtasks
-    ? asanaTask.subtasks.map(st => ({
-        id: st.gid,
-        name: st.name,
-        links: convertAttachmentsToLinks(st.attachments)
-      }))
-    : [];
+const convertAsanaTaskToTask = (t: AsanaTask): Task => ({
+  id: t.gid,
+  name: t.name,
+  estado: t.completed ? 'Entregado' : null,
+  links: convertAttachmentsToLinks(t.attachments),
+  subtasks: (t.subtasks ?? []).map(st => ({
+    id: st.gid, name: st.name, links: convertAttachmentsToLinks(st.attachments),
+  })),
+});
 
-  return {
-    id: asanaTask.gid,
-    name: asanaTask.name,
-    estado: asanaTask.completed ? 'Entregado' : null,
-    links,
-    subtasks
-  };
-};
-
-// Icono Ant Design por tipo de archivo
-const getAntIcon = (fileType: string): React.ReactNode => {
-  const map: Record<string, React.ReactNode> = {
-    folder: <FolderOutlined />,
-    pdf: <FilePdfOutlined />,
-    doc: <FileTextOutlined />,
-    sheet: <FileExcelOutlined />,
-    slide: <FilePptOutlined />,
-    image: <FileImageOutlined />,
-    video: <VideoCameraOutlined />,
-    other: <PaperClipOutlined />,
-  };
-  return map[fileType] ?? map.other;
-};
-
-// Componente para enlace de archivo
+// ─── DriveLink: Avatar + texto + botón ghost ───────────────────────────────
 const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accentColor }) => {
   const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
-  const fileLabel = getFileTypeLabel(fileType);
-  const fileColors = getFileTypeColors(fileType);
-
+  const colors   = getFileTypeColors(fileType);
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      border: `1px solid ${fileColors.border}`, borderRadius: 8,
-      padding: '8px 12px', background: '#fafafa',
-    }}>
-      <span style={{
-        fontSize: 18, background: fileColors.bg, color: fileColors.text,
-        borderRadius: 6, padding: '4px 7px', lineHeight: 1,
-      }}>
-        {getAntIcon(fileType)}
-      </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+      <Avatar
+        size={30}
+        icon={getAntIcon(fileType)}
+        style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0 }}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <Text ellipsis style={{ display: 'block', fontSize: 13 }}>{link.label}</Text>
-        <Tag color={fileColors.bg} style={{ color: fileColors.text, borderColor: fileColors.border, fontSize: 11, marginTop: 2 }}>
-          {fileLabel}
-        </Tag>
+        <Text ellipsis={{ tooltip: link.label }} style={{ fontSize: 13, display: 'block', lineHeight: 1.3 }}>
+          {link.label}
+        </Text>
+        <Text type="secondary" style={{ fontSize: 11 }}>{getFileTypeLabel(fileType)}</Text>
       </div>
-      <Space size={4}>
+      <Space size={2}>
         {link.viewUrl && (
-          <Tooltip title="Abrir">
-            <Button
-              size="small" type="primary" icon={<LinkOutlined />}
-              href={link.viewUrl} target="_blank"
-              style={{ background: accentColor, borderColor: accentColor }}
-            >
-              Abrir
-            </Button>
-          </Tooltip>
+          <Button type="link" size="small" icon={<LinkOutlined />} href={link.viewUrl} target="_blank"
+            style={{ padding: '0 6px', fontSize: 12, color: accentColor }}>
+            Abrir
+          </Button>
         )}
         {link.downloadUrl && (
           <Tooltip title="Descargar">
-            <Button
-              size="small" icon={<DownloadOutlined />}
-              href={link.downloadUrl} target="_blank"
-              style={{ color: accentColor, borderColor: `${accentColor}88` }}
-            >
-              Descargar
-            </Button>
+            <Button type="text" size="small" icon={<DownloadOutlined />} href={link.downloadUrl} target="_blank"
+              style={{ color: '#8c8c8c', padding: '0 4px' }} />
           </Tooltip>
         )}
       </Space>
@@ -286,150 +161,93 @@ const DriveLink: React.FC<{ link: Link; accentColor: string }> = ({ link, accent
   );
 };
 
-// Componente para subtarea
+// ─── SubtaskRow: expandible dentro de TaskRow ─────────────────────────────
 const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subtask, accentColor }) => {
+  const [expanded, setExpanded] = useState(false);
   const hasLinks = subtask.links.length > 0;
-
   return (
-    <div style={{ borderLeft: `3px solid ${accentColor}44`, paddingLeft: 12, marginBottom: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: hasLinks ? 8 : 0 }}>
-        <FolderOpenOutlined style={{ color: accentColor }} />
-        <Text strong style={{ fontSize: 13 }}>{subtask.name}</Text>
-        {hasLinks && <Badge count={subtask.links.length} style={{ backgroundColor: accentColor }} />}
+    <div style={{ marginBottom: 2 }}>
+      <div
+        onClick={() => hasLinks && setExpanded(x => !x)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: hasLinks ? 'pointer' : 'default' }}
+      >
+        <RightOutlined style={{
+          fontSize: 10, color: accentColor,
+          transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s',
+        }} />
+        <FolderOpenOutlined style={{ color: accentColor, fontSize: 13 }} />
+        <Text style={{ fontSize: 13, flex: 1 }}>{subtask.name}</Text>
+        {hasLinks && <Badge count={subtask.links.length} style={{ background: accentColor, fontSize: 10 }} />}
       </div>
-      {hasLinks ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {expanded && hasLinks && (
+        <div style={{ paddingLeft: 22, borderLeft: `2px solid ${accentColor}30`, marginLeft: 10, paddingBottom: 4 }}>
           {subtask.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
         </div>
-      ) : (
-        <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos</Text>
       )}
     </div>
   );
 };
 
-// Componente para fila de tarea
+// ─── TaskRow: fila expandible sin card anidada ────────────────────────────
 const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentColor }) => {
-  const hasSubtasks = task.subtasks.length > 0;
-  const hasLinks = task.links.length > 0;
-  const allLinks = [...task.links, ...task.subtasks.flatMap(st => st.links)];
-  const typeCounts = allLinks.reduce<Record<string, number>>((acc, link) => {
-    const type = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {});
-
-  const titleNode = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      {task.estado
-        ? <CheckCircleOutlined style={{ color: accentColor }} />
-        : <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid #ccc` }} />}
-      <Text strong style={{ fontSize: 14, color: task.estado ? '#999' : '#222', textDecoration: task.estado ? 'line-through' : 'none' }}>
-        {task.name}
-      </Text>
-      {task.estado && <Tag color="success" style={{ marginLeft: 4 }}>{task.estado}</Tag>}
-    </div>
-  );
+  const [expanded, setExpanded] = useState(false);
+  const allLinks   = [...task.links, ...task.subtasks.flatMap(st => st.links)];
+  const domType    = getDominantFileType(allLinks);
+  const colors     = getFileTypeColors(domType);
+  const hasContent = task.links.length > 0 || task.subtasks.length > 0;
 
   return (
-    <Card
-      size="small"
-      style={{ marginBottom: 10, borderRadius: 8, border: `1px solid ${accentColor}33` }}
-      styles={{ header: { borderBottom: `1px solid ${accentColor}22`, background: `${accentColor}08` } }}
-      title={titleNode}
-      extra={
-        allLinks.length > 0 && (
-          <Space size={4} wrap>
-            {Object.entries(typeCounts).map(([type, count]) => {
-              const colors = getFileTypeColors(type);
-              return (
-                <Tag key={type} style={{ background: colors.bg, borderColor: colors.border, color: colors.text, fontSize: 11 }}>
-                  {getFileTypeIcon(type)} {getFileTypeLabel(type)} ({count})
-                </Tag>
-              );
-            })}
-          </Space>
-        )
-      }
-    >
-      {hasLinks && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: hasSubtasks ? 12 : 0 }}>
-          {task.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+    <div style={{ borderBottom: '1px solid #f0f0f0' }}>
+      <div
+        onClick={() => hasContent && setExpanded(x => !x)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', cursor: hasContent ? 'pointer' : 'default', userSelect: 'none' }}
+      >
+        <Avatar
+          size={38}
+          icon={getAntIcon(domType)}
+          style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0 }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span>
+            <Text strong style={{ fontSize: 14, color: task.estado ? '#aaa' : '#1a1a1a', textDecoration: task.estado ? 'line-through' : 'none' }}>
+              {task.name}
+            </Text>
+            {task.estado && <Tag color="success" style={{ marginLeft: 6, fontSize: 11 }}>{task.estado}</Tag>}
+          </span>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 1 }}>
+            {allLinks.length > 0
+              ? `${allLinks.length} ${allLinks.length === 1 ? 'recurso' : 'recursos'}${task.subtasks.length > 0 ? ` · ${task.subtasks.length} subcarpetas` : ''}`
+              : 'Sin recursos adjuntos'}
+          </Text>
         </div>
-      )}
-
-      {!hasLinks && !hasSubtasks && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          <PaperClipOutlined style={{ marginRight: 4 }} />Sin recursos adjuntos
-        </Text>
-      )}
-
-      {hasSubtasks && (
-        <Collapse ghost size="small">
-          <Panel
-            key="subtasks"
-            header={
-              <Space>
-                <FolderOutlined style={{ color: accentColor }} />
-                <Text style={{ fontSize: 13 }}>
-                  {task.subtasks.length} {task.subtasks.length === 1 ? 'Sub Carpeta' : 'Sub Carpetas'}
-                </Text>
-              </Space>
-            }
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {task.subtasks.map(st => <SubtaskRow key={st.id} subtask={st} accentColor={accentColor} />)}
-            </div>
-          </Panel>
-        </Collapse>
-      )}
-    </Card>
-  );
-};
-
-// Componente para tarjeta de sección en sidebar
-const SectionCard: React.FC<{
-  section: Section;
-  isActive: boolean;
-  onClick: () => void;
-}> = ({ section, isActive, onClick }) => {
-  const allLinks = section.tasks.flatMap(task => [...task.links, ...task.subtasks.flatMap(st => st.links)]);
-  const dominantSectionType = getDominantFileType(allLinks);
-  const totalLinks = section.tasks.reduce((acc, t) =>
-    acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0);
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        cursor: 'pointer',
-        padding: '10px 14px',
-        borderRadius: 8,
-        border: `1px solid ${isActive ? section.tipoColor : '#e8e8e8'}`,
-        background: isActive ? `${section.tipoColor}10` : '#fff',
-        marginBottom: 6,
-        transition: 'border-color .2s, background .2s',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <Tag style={{
-          background: `${section.tipoColor}18`, color: section.tipoColor,
-          borderColor: `${section.tipoColor}44`, fontSize: 11,
-        }}>
-          {getFileTypeIcon(dominantSectionType)} {section.tipo}
-        </Tag>
-        {totalLinks > 0 && (
-          <Badge count={totalLinks} overflowCount={99} style={{ backgroundColor: section.tipoColor, fontSize: 10 }} />
+        {hasContent && (
+          <RightOutlined style={{ color: '#bbb', fontSize: 13, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />
         )}
       </div>
-      <Text strong={isActive} style={{ fontSize: 13, color: isActive ? section.tipoColor : '#333', display: 'block', lineHeight: '1.4' }}>
-        {section.name}
-      </Text>
+
+      {expanded && (
+        <div style={{ paddingLeft: 50, paddingBottom: 12 }}>
+          {task.links.length > 0 && (
+            <div style={{ marginBottom: task.subtasks.length > 0 ? 8 : 0 }}>
+              {task.links.map(l => <DriveLink key={l.id} link={l} accentColor={accentColor} />)}
+            </div>
+          )}
+          {task.subtasks.length > 0 && (
+            <>
+              {task.links.length > 0 && <Divider dashed style={{ margin: '6px 0' }} />}
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                <FolderOutlined style={{ marginRight: 4 }} />Subcarpetas
+              </Text>
+              {task.subtasks.map(st => <SubtaskRow key={st.id} subtask={st} accentColor={accentColor} />)}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-// Componente principal
+// ─── Página principal ─────────────────────────────────────────────────────────
 const ResourceLibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<AsanaProject[]>([]);
@@ -441,122 +259,75 @@ const ResourceLibraryPage: React.FC = () => {
   const [error, setError] = useState('');
   const [sectionLoading, setSectionLoading] = useState(false);
   const rawTasksBySectionId = useRef<Map<string, AsanaTask[]>>(new Map());
-  const loadedSectionIds = useRef<Set<string>>(new Set());
+  const loadedSectionIds    = useRef<Set<string>>(new Set());
 
-  // Verificar token al cargar
   useEffect(() => {
     const token = asanaService.getToken();
-    if (!token) {
-      navigate('/');
-      return;
-    }
+    if (!token) { navigate('/'); return; }
     loadWorkspaces();
   }, [navigate]);
 
   const loadWorkspaces = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const data = await asanaService.getWorkspaces();
-      
-      // Auto-seleccionar "CDIMA"
       const cdima = data.find(ws => ws.name === 'CDIMA');
-      if (cdima) {
-        await loadProjects(cdima.gid);
-      }
+      if (cdima) await loadProjects(cdima.gid);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar workspaces');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const loadProjects = async (workspaceGid: string) => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const data = await asanaService.getProjects(workspaceGid);
       setProjects(data);
-      
-      // Auto-seleccionar "Comunicación CDIMA"
-      const comunicacion = data.find(p => p.name.toLowerCase().includes('comunicación') || p.name.toLowerCase().includes('comunicacion'));
-      if (comunicacion) {
-        setSelectedProject(comunicacion.gid);
-        await loadResourceLibrary(comunicacion.gid);
-      }
+      const comunicacion = data.find(p =>
+        p.name.toLowerCase().includes('comunicación') || p.name.toLowerCase().includes('comunicacion')
+      );
+      if (comunicacion) { setSelectedProject(comunicacion.gid); await loadResourceLibrary(comunicacion.gid); }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar proyectos');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const loadSectionAttachments = useCallback(async (sectionId: string) => {
     if (loadedSectionIds.current.has(sectionId)) return;
     const rawTasks = rawTasksBySectionId.current.get(sectionId);
-    if (!rawTasks || rawTasks.length === 0) {
-      loadedSectionIds.current.add(sectionId);
-      return;
-    }
+    if (!rawTasks?.length) { loadedSectionIds.current.add(sectionId); return; }
     setSectionLoading(true);
     try {
-      const tasksWithAttachments = await asanaService.getSectionTasksWithAttachments(rawTasks);
+      const withAtt = await asanaService.getSectionTasksWithAttachments(rawTasks);
       loadedSectionIds.current.add(sectionId);
-      setSections(prev =>
-        prev.map(s =>
-          s.id === sectionId
-            ? { ...s, tasks: tasksWithAttachments.map(convertAsanaTaskToTask) }
-            : s
-        )
-      );
+      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, tasks: withAtt.map(convertAsanaTaskToTask) } : s));
     } catch (err) {
-      console.error('Error cargando adjuntos para sección:', err);
-    } finally {
-      setSectionLoading(false);
-    }
+      console.error('Error cargando adjuntos:', err);
+    } finally { setSectionLoading(false); }
   }, []);
 
   const loadResourceLibrary = async (projectGid: string) => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     rawTasksBySectionId.current.clear();
     loadedSectionIds.current.clear();
     try {
       const { sections: asanaSections, tasksBySection } = await asanaService.getProjectSectionsAndTasks(projectGid);
-
-      const convertedSections: Section[] = asanaSections
-        .map(asanaSection => {
-          const sectionTasks = tasksBySection.get(asanaSection.gid) || [];
-          rawTasksBySectionId.current.set(asanaSection.gid, sectionTasks);
-          const { tipo, color } = getSectionTypeColor(asanaSection.name);
-
+      const converted: Section[] = asanaSections
+        .map(s => {
+          const sectionTasks = tasksBySection.get(s.gid) || [];
+          rawTasksBySectionId.current.set(s.gid, sectionTasks);
+          const { tipo, color } = getSectionTypeColor(s.name);
           return {
-            id: asanaSection.gid,
-            name: asanaSection.name,
-            tipo,
-            tipoColor: color,
-            tasks: sectionTasks.map(t => ({
-              id: t.gid,
-              name: t.name,
-              estado: t.completed ? 'Entregado' : null,
-              links: [],
-              subtasks: []
-            }))
+            id: s.gid, name: s.name, tipo, tipoColor: color,
+            tasks: sectionTasks.map(t => ({ id: t.gid, name: t.name, estado: t.completed ? 'Entregado' : null, links: [], subtasks: [] })),
           };
         })
-        .filter(section => section.tasks.length > 0);
-
-      setSections(convertedSections);
-      if (convertedSections.length > 0) {
-        const firstId = convertedSections[0].id;
-        setActiveSection(firstId);
-        await loadSectionAttachments(firstId);
-      }
+        .filter(s => s.tasks.length > 0);
+      setSections(converted);
+      if (converted.length > 0) { setActiveSection(converted[0].id); await loadSectionAttachments(converted[0].id); }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar biblioteca de recursos');
-    } finally {
-      setLoading(false);
-    }
+      setError(err instanceof Error ? err.message : 'Error al cargar biblioteca');
+    } finally { setLoading(false); }
   };
 
   const currentSection = sections.find(s => s.id === activeSection);
@@ -564,182 +335,162 @@ const ResourceLibraryPage: React.FC = () => {
   const filteredTasks = useMemo(() => {
     if (!currentSection) return [];
     if (!search) return currentSection.tasks;
-    
     const q = search.toLowerCase();
-    return currentSection.tasks.filter(t => {
-      return t.name.toLowerCase().includes(q) ||
-        t.links.some(l => l.label.toLowerCase().includes(q)) ||
-        t.subtasks.some(st => st.name.toLowerCase().includes(q) || st.links.some(l => l.label.toLowerCase().includes(q)));
-    });
+    return currentSection.tasks.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.links.some(l => l.label.toLowerCase().includes(q)) ||
+      t.subtasks.some(st => st.name.toLowerCase().includes(q) || st.links.some(l => l.label.toLowerCase().includes(q)))
+    );
   }, [currentSection, search]);
 
-  const totalLinks = currentSection ? currentSection.tasks.reduce((acc, t) =>
-    acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0) : 0;
+  const sectionResourceCount = currentSection
+    ? currentSection.tasks.reduce((acc, t) => acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0)
+    : 0;
 
-  // Calcular estadísticas generales
-  const totalRecursos = sections.reduce((acc, section) => 
-    acc + section.tasks.reduce((a, t) => 
-      a + t.links.length + t.subtasks.reduce((b, st) => b + st.links.length, 0), 0), 0);
-  
-  const totalTareas = sections.reduce((acc, section) => acc + section.tasks.length, 0);
+  const totalRecursos = sections.reduce((acc, s) =>
+    acc + s.tasks.reduce((a, t) => a + t.links.length + t.subtasks.reduce((b, st) => b + st.links.length, 0), 0), 0);
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
 
-  if (loading) {
-    return <LoadingOverlay message="Cargando biblioteca de recursos..." />;
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <Card>
-          <Empty description={error} />
-        </Card>
-      </div>
-    );
-  }
-
-  if (sections.length === 0) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <Card>
-          <Empty
-            description={
-              <>
-                <Text>No se encontraron secciones con recursos en el proyecto "{projectName}".</Text><br />
-                <Text type="secondary" style={{ fontSize: 13 }}>Verifica que el proyecto "Comunicación CDIMA" tenga secciones y tareas con archivos adjuntos.</Text>
-              </>
-            }
-          />
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <LoadingOverlay message="Cargando biblioteca de recursos..." />;
+  if (error)   return <div style={{ padding: '2rem' }}><Empty description={error} /></div>;
+  if (!sections.length) return (
+    <div style={{ padding: '2rem' }}>
+      <Empty description={`No se encontraron secciones con recursos en "${projectName}".`} />
+    </div>
+  );
 
   return (
-    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1280, margin: '0 auto' }}>
 
-      {/* Header */}
-      <Card styles={{ body: { padding: '16px 20px' } }}>
-        <Row align="middle" justify="space-between" gutter={[16, 12]}>
-          <Col>
-            <Space align="center">
-              <span style={{ fontSize: 28 }}>📡</span>
-              <div>
-                <Title level={4} style={{ margin: 0 }}>{projectName}</Title>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  {sections.length} {sections.length === 1 ? 'sección' : 'secciones'} · Portal de recursos técnicos
-                </Text>
-              </div>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <Space align="center">
+          <span style={{ fontSize: 26 }}>📡</span>
+          <div>
+            <Title level={4} style={{ margin: 0 }}>{projectName}</Title>
+            <Space size={16}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                <DatabaseOutlined style={{ marginRight: 4 }} />{totalRecursos} recursos
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                <AppstoreOutlined style={{ marginRight: 4 }} />{sections.length} secciones
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                <UnorderedListOutlined style={{ marginRight: 4 }} />
+                {sections.reduce((acc, s) => acc + s.tasks.length, 0)} carpetas
+              </Text>
             </Space>
-          </Col>
-          <Col xs={24} sm={10} md={8}>
-            <Input
-              prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-              placeholder="Buscar tarea o recurso..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              allowClear
-              style={{ borderRadius: 8 }}
-            />
-          </Col>
-        </Row>
-      </Card>
+          </div>
+        </Space>
+        <Input
+          prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+          placeholder="Buscar tarea o recurso..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          allowClear
+          style={{ width: 320, borderRadius: 8 }}
+        />
+      </div>
 
-      {/* Estadísticas */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Statistic
-              title="Total de Recursos"
-              value={totalRecursos}
-              prefix={<DatabaseOutlined style={{ color: '#1677ff' }} />}
-              valueStyle={{ color: '#1677ff' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Statistic
-              title="Categorías"
-              value={sections.length}
-              prefix={<AppstoreOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Statistic
-              title="Carpetas de Recursos"
-              value={totalTareas}
-              prefix={<UnorderedListOutlined style={{ color: '#fa8c16' }} />}
-              valueStyle={{ color: '#fa8c16' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* ── Body ────────────────────────────────────────────────────────────── */}
+      <Row gutter={20} align="top">
 
-      {/* Body: sidebar + main */}
-      <Row gutter={16} align="top">
         {/* Sidebar */}
-        <Col xs={24} md={6}>
-          <Card
-            size="small"
-            title={<Text strong style={{ fontSize: 11, color: '#888', letterSpacing: 1 }}>SECCIONES</Text>}
-            styles={{ body: { padding: '8px 12px' } }}
-            style={{ borderRadius: 8, position: 'sticky', top: 16 }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {sections.map(s => (
-                <SectionCard
-                  key={s.id}
-                  section={s}
-                  isActive={s.id === activeSection}
-                  onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
-                />
-              ))}
+        <Col xs={24} md={6} lg={5}>
+          <div style={{
+            position: 'sticky', top: 16,
+            background: '#fafafa', borderRadius: 10,
+            border: '1px solid #f0f0f0', overflow: 'hidden',
+          }}>
+            <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f0f0f0' }}>
+              <Text style={{ fontSize: 11, fontWeight: 600, color: '#8c8c8c', letterSpacing: 1, textTransform: 'uppercase' }}>
+                Secciones
+              </Text>
             </div>
-          </Card>
+            <div style={{ padding: '6px 8px', maxHeight: '72vh', overflowY: 'auto' }}>
+              {sections.map(s => {
+                const isActive = s.id === activeSection;
+                const rCount = s.tasks.reduce((acc, t) =>
+                  acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0);
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 10px', borderRadius: 7, cursor: 'pointer', marginBottom: 2,
+                      background: isActive ? `${s.tipoColor}14` : 'transparent',
+                      borderLeft: `3px solid ${isActive ? s.tipoColor : 'transparent'}`,
+                      transition: 'all .15s',
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Tag style={{ fontSize: 10, padding: '0 5px', borderColor: `${s.tipoColor}55`, background: `${s.tipoColor}12`, color: s.tipoColor, marginBottom: 2, display: 'inline-block' }}>
+                        {s.tipo}
+                      </Tag>
+                      <Text
+                        style={{ fontSize: 13, color: isActive ? s.tipoColor : '#333', fontWeight: isActive ? 600 : 400, display: 'block', lineHeight: 1.3 }}
+                        ellipsis={{ tooltip: s.name }}
+                      >
+                        {s.name}
+                      </Text>
+                    </div>
+                    {rCount > 0 && (
+                      <Badge count={rCount} overflowCount={99}
+                        style={{ background: isActive ? s.tipoColor : '#d9d9d9', fontSize: 10, marginLeft: 6, flexShrink: 0 }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </Col>
 
-        {/* Main panel */}
-        <Col xs={24} md={18}>
+        {/* Panel principal */}
+        <Col xs={24} md={18} lg={19}>
           {currentSection && (
-            <Card
-              style={{ borderRadius: 8 }}
-              styles={{ header: { borderBottom: `2px solid ${currentSection.tipoColor}33`, background: `${currentSection.tipoColor}08` } }}
-              title={
+            <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
+              {/* Panel header */}
+              <div style={{
+                padding: '14px 20px',
+                background: `${currentSection.tipoColor}08`,
+                borderBottom: `2px solid ${currentSection.tipoColor}30`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+              }}>
                 <Space>
-                  <Tag style={{ background: `${currentSection.tipoColor}18`, color: currentSection.tipoColor, borderColor: `${currentSection.tipoColor}44` }}>
+                  <Tag style={{
+                    background: `${currentSection.tipoColor}18`, color: currentSection.tipoColor,
+                    borderColor: `${currentSection.tipoColor}55`, fontWeight: 600,
+                  }}>
                     {currentSection.tipo}
                   </Tag>
                   <Text strong style={{ fontSize: 15 }}>{currentSection.name}</Text>
                 </Space>
-              }
-              extra={
                 <Text type="secondary" style={{ fontSize: 13 }}>
-                  <strong>{totalLinks}</strong> recursos disponibles
+                  {sectionResourceCount} recursos · {filteredTasks.length} carpetas
                 </Text>
-              }
-            >
-              {sectionLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                  <Spin tip="Cargando recursos..." />
-                </div>
-              ) : filteredTasks.length === 0 ? (
-                <Empty
-                  description={search ? `No se encontraron resultados para "${search}"` : 'No hay tareas en esta sección'}
-                  style={{ padding: '2rem 0' }}
-                />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {filteredTasks.map(task => (
+              </div>
+
+              {/* Lista de tareas */}
+              <div style={{ padding: '0 20px' }}>
+                {sectionLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <Spin tip="Cargando recursos..." />
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <Empty
+                    description={search ? `Sin resultados para "${search}"` : 'No hay tareas en esta sección'}
+                    style={{ padding: '2rem 0' }}
+                  />
+                ) : (
+                  filteredTasks.map(task => (
                     <TaskRow key={task.id} task={task} accentColor={currentSection.tipoColor} />
-                  ))}
-                </div>
-              )}
-            </Card>
+                  ))
+                )}
+              </div>
+            </div>
           )}
         </Col>
       </Row>

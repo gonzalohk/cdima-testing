@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Actividad Rediseñada</title>
+    <style>
+        /* DEFINICIÓN DE VARIABLES DE COLOR Y ESTILO (Fácil de personalizar) */
+        :root {
+            --primary-bg: #2d3748;       /* Gris azulado oscuro (slate-800) */
+            --text-on-primary: #ffffff;
+            --success: #10b981;          /* Verde (green-500) */
+            --body-bg: #f7fafc;          /* Gris muy claro de fondo */
+            --card-bg: #ffffff;          /* Blanco de la tarjeta */
+            --text-main: #1a202c;         /* Negro suave */
+            --text-muted: #718096;       /* Gris para etiquetas */
+            --border-color: #e2e8f0;     /* Gris claro para bordes */
+            
+            /* Colores de acento para las métricas */
+            --accent-pink: #fdf2f8;      /* Fondo Rosa suave */
+            --accent-pink-text: #db2777; /* Texto Rosa fuerte */
+            --accent-indigo: #eef2ff;    /* Fondo Indigo suave */
+            --accent-indigo-text: #4f46e5;/* Texto Indigo fuerte */
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--body-bg);
+            padding: 2rem;
+            margin: 0;
+            color: var(--text-main);
+        }
+        
+        /* 1. CONTENEDOR PRINCIPAL DE LA FICHA */
+        .ficha-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            border-radius: 16px; /* Bordes más suaves */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            overflow: hidden; /* Mantiene el fondo del header dentro de los bordes redondeados */
+            border: 1px solid var(--border-color);
+        }
+
+        /* 2. HEADER (Título, Estado y Acciones) */
+        .ficha-header {
+            background-color: var(--primary-bg);
+            color: var(--text-on-primary);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between; /* Título izquierda, Botones derecha */
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        /* Barra superior interna del header (Estado y Fecha) */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .badg-completed {
+            background-color: var(--success);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .fecha-vencimiento {
+            font-size: 0.85rem;
+            color: #cbd5e0; /* Gris azulado claro */
+        }
+
+        .ficha-titulo {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        /* Grupo de botones de acción */
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0; /* Evita que los botones se encojan en pantallas pequeñas */
+        }
+
+        .btn-icon {
+            background-color: #4a5568; /* slate-600 */
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 1.1rem;
+        }
+        .btn-icon:hover { background-color: #718096; }
+
+        .btn-primary {
+            background-color: #3182ce; /* blue-600 */
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background-color: #2b6cb0; }
+
+        /* 3. CUERPO PRINCIPAL (Uso de Grid para dos columnas) */
+        .ficha-body {
+            display: grid;
+            grid-template-columns: 280px 1fr; /* Columna logística fija, resto impacto */
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        /* Responsive para móviles */
+        @media (max-width: 768px) {
+            .ficha-body { grid-template-columns: 1fr; }
+            .ficha-header { flex-direction: column; align-items: flex-start; }
+            .col-logistica { border-right: none !important; border-bottom: 1px solid var(--border-color); padding-right: 0 !important; padding-bottom: 1.5rem; }
+        }
+
+        /* A. Columna Izquierda: Logística (Responsable, Lugar) */
+        .col-logistica {
+            border-right: 1px solid var(--border-color);
+            padding-right: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        
+        /* Estilos genéricos para etiquetas y valores */
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin: 0 0 0.25rem 0;
+        }
+        .info-value {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: 500;
+            margin: 0;
+            line-height: 1.4;
+        }
+        .info-value-lg {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .sub-actividades-count {
+            display: inline-block;
+            background-color: #edf2f7; /* slate-100 */
+            color: #2d3748;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* B. Columna Derecha: Impacto y Resultados */
+        .col-impacto {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Grid de Tarjetas de Métricas (Dashboard) */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .metric-card {
+            padding: 1.25rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid transparent;
+        }
+
+        /* Variaciones de tarjetas por color */
+        .metric-card.total { background-color: #f0f4f8; /* Un gris sutil */ }
+        .metric-card.mujeres { background-color: var(--accent-pink); border-color: #fbcfe8; }
+        .metric-card.meta { background-color: var(--accent-indigo); border-color: #c7d2fe; }
+
+        .metric-value {
+            font-size: 2.25rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        
+        /* Colores específicos de texto para las métricas */
+        .metric-card.total .metric-value { color: #1a202c; }
+        .metric-card.mujeres .metric-value { color: var(--accent-pink-text); }
+        .metric-card.meta .metric-value { color: var(--accent-indigo-text); }
+
+        .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* 4. SECCIÓN DE RESULTADOS (Estilo Nota/Quote) */
+        .resultados-box {
+            background-color: #fffaf0; /* yellow-50 */
+            border-left: 4px solid #f6ad55; /* yellow-400 */
+            padding: 1.25rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .resultados-titulo {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #9c4221; /* yellow-900 */
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .resultados-texto {
+            font-size: 0.9rem;
+            color: #744210; /* yellow-900 suave */
+            line-height: 1.6;
+            margin: 0;
+            font-style: italic; /* Da sensación de testimonio/resumen */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="ficha-container">
+        
+        <header class="ficha-header">
+            <div class="header-info-main">
+                <div class="status-bar">
+                    <span class="badg-completed">Completada</span>
+                    <span class="fecha-vencimiento">Vence: 31-08-2024</span>
+                </div>
+                <h1 class="ficha-titulo">R1.A1. Formación de Lideresas de lucha contra la violencia</h1>
+            </div>
+            
+            <div class="header-actions">
+                <button class="btn-icon" title="Solicitar Material">📦</button>
+                <button class="btn-icon" title="Solicitar Fondos">💰</button>
+                <button class="btn-primary">Gestionar</button>
+            </div>
+        </header>
+
+        <div class="ficha-body">
+            
+            <aside class="col-logistica">
+                <div class="info-group">
+                    <p class="info-label">Responsable Actividad</p>
+                    <p class="info-value info-value-lg">Delma Lopez</p>
+                </div>
+                
+                <div class="info-group">
+                    <p class="info-label">Lugares</p>
+                    <p class="info-value">La Asunta, Luribay, Calacoto, Guaqui, Oficina</p>
+                </div>
+
+                <div class="info-group">
+                    <p class="info-label">Sub Actividades</p>
+                    <p class="info-value"><span class="sub-actividades-count">14</span></p>
+                </div>
+            </aside>
+
+            <section class="col-impacto">
+                
+                <div class="metrics-grid">
+                    <div class="metric-card total">
+                        <span class="metric-value">171</span>
+                        <span class="metric-label">Total Beneficiarios</span>
+                    </div>
+                    <div class="metric-card mujeres">
+                        <span class="metric-value">171</span>
+                        <span class="metric-label">Mujeres</span>
+                    </div>
+                    <div class="metric-card meta">
+                        <span class="metric-value">160</span>
+                        <span class="metric-label">Población Meta</span>
+                    </div>
+                </div>
+
+                <div class="resultados-box">
+                    <h4 class="resultados-titulo">
+                        <span>📝</span> Resultados Obtenidos
+                    </h4>
+                    <p class="resultados-texto">
+                        "Fortalecer los conocimientos de las mujeres indígena originarias sobre sus derechos y dotarlas de herramientas para enfrentar situaciones de todo tipo de violencia para la toma de decisiones en sus vidas que les permita construir un plan de vida..."
+                    </p>
+                </div>
+            </section>
+        </div>
+    </div>
+    </body>
+</html>
