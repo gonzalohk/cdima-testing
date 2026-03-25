@@ -39,6 +39,12 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
     role: 'tecnico',
     name: 'Técnico EV',
   },
+    {
+    email: 'sandraveragutierrez@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_TECNICO as string,
+    role: 'tecnico',
+    name: 'Técnico EV',
+  },
 ];
 
 const STORAGE_KEY = 'cdima_auth_user';
