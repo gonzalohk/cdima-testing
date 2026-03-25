@@ -130,7 +130,6 @@ const Layout: React.FC = () => {
       
       <nav className="nav">
         <ul className="nav-links">
-          {isAdmin && (
           <li>
             <Link 
               to="/" 
@@ -139,7 +138,6 @@ const Layout: React.FC = () => {
               🏠 Inicio
             </Link>
           </li>
-          )}
           <li>
             <Link 
               to="/report" 

@@ -149,11 +149,17 @@ const DriveLink: React.FC<{ link: Link }> = ({ link }) => {
   const colors   = getFileTypeColors(fileType);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
-      <Avatar
-        size={30}
-        icon={getAntIcon(fileType)}
-        style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0 }}
-      />
+      {fileType === 'folder' ? (
+        <span style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <FolderOutlined style={{ fontSize: 22, color: colors.text }} />
+        </span>
+      ) : (
+        <Avatar
+          size={30}
+          icon={getAntIcon(fileType)}
+          style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0 }}
+        />
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <Text ellipsis={{ tooltip: link.label }} style={{ fontSize: 13, display: 'block', lineHeight: 1.3 }}>
           {link.label}
@@ -450,20 +456,31 @@ const ResourceLibraryPage: React.FC = () => {
                     onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 10px', borderRadius: 7, cursor: 'pointer', marginBottom: 2,
-                      background: isActive ? `${wipColor}18` : 'transparent',
-                      borderLeft: `3px solid ${isActive ? wipColor : 'transparent'}`,
+                      padding: '9px 12px', borderRadius: 7, cursor: 'pointer', marginBottom: 3,
+                      background: isActive ? wipColor : `${wipColor}22`,
+                      borderLeft: `${isActive ? 6 : 4}px solid ${wipColor}`,
+                      boxShadow: isActive ? `inset 0 0 0 1px rgba(255,255,255,0.3), 0 2px 6px ${wipColor}55` : 'none',
                       transition: 'all .15s',
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
                       {s.tipo !== 'Material Comunicacional' && (
-                        <Tag style={{ fontSize: 10, padding: '0 5px', borderColor: `${wipColor}66`, background: `${wipColor}15`, color: wipColor, marginBottom: 2, display: 'inline-block' }}>
+                        <Tag style={{
+                          fontSize: 10, padding: '0 5px', marginBottom: 2, display: 'inline-block',
+                          background: isActive ? 'rgba(255,255,255,0.25)' : `${wipColor}30`,
+                          borderColor: isActive ? 'rgba(255,255,255,0.4)' : `${wipColor}66`,
+                          color: isActive ? '#fff' : wipColor,
+                        }}>
                           {s.tipo}
                         </Tag>
                       )}
                       <Text
-                        style={{ fontSize: 13, color: isActive ? wipColor : '#333', fontWeight: isActive ? 600 : 400, display: 'block', lineHeight: 1.3 }}
+                        style={{
+                          fontSize: 13, display: 'block', lineHeight: 1.3,
+                          color: isActive ? '#fff' : '#1a1a1a',
+                          fontWeight: isActive ? 700 : 500,
+                          textShadow: isActive ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                        }}
                         ellipsis={{ tooltip: s.name }}
                       >
                         {s.name}
@@ -471,7 +488,12 @@ const ResourceLibraryPage: React.FC = () => {
                     </div>
                     {rCount > 0 && (
                       <Badge count={rCount} overflowCount={99}
-                        style={{ background: isActive ? wipColor : '#d9d9d9', fontSize: 10, marginLeft: 6, flexShrink: 0 }}
+                        style={{
+                          background: isActive ? 'rgba(255,255,255,0.35)' : wipColor,
+                          color: isActive ? wipColor : '#fff',
+                          fontSize: 10, marginLeft: 6, flexShrink: 0,
+                          boxShadow: 'none',
+                        }}
                       />
                     )}
                   </div>
