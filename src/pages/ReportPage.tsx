@@ -89,7 +89,7 @@ const ReportPage: React.FC = () => {
         <div className="planning-header-left">
           <div className="planning-icon">📊</div>
           <div className="planning-info">
-            <Typography.Title level={3} style={{ margin: 0 }}>Reporte de Proyectos</Typography.Title>
+            <Typography.Title level={3} style={{ margin: 0 }}>Gestión de Proyectos</Typography.Title>
             <Typography.Text type="secondary">
               {selectedProject 
                 ? `${projectName} · ${statistics.total} ${statistics.total === 1 ? 'actividad' : 'actividades'}`

@@ -1,4 +1,5 @@
 import React from 'react';
+import { HtmlModalHeader } from './ModalShared';
 
 interface InfoPrimariaModalProps {
   nombre: string;
@@ -42,30 +43,7 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '450px', padding: 0 }}
       >
-        <div 
-          className="modal-header"
-          style={{ 
-            backgroundColor: '#f5f5f5',
-            borderBottom: '1px solid #e0e0e0',
-            padding: '1rem 1.5rem'
-          }}
-        >
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#333' }}>
-              📋 Información Primaria
-            </h3>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#666' }}>
-              {tipo}: {nombre}
-            </p>
-          </div>
-          <button 
-            className="modal-close" 
-            onClick={onClose}
-            style={{ fontSize: '1.5rem', color: '#999' }}
-          >
-            &times;
-          </button>
-        </div>
+        <HtmlModalHeader icon="📋" title="Información Primaria" subtitle={`${tipo}: ${nombre}`} onClose={onClose} />
 
         <div className="modal-body" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

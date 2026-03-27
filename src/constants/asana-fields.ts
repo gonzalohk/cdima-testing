@@ -45,7 +45,7 @@ export const ASANA_CUSTOM_FIELDS = {
   ESTADO_VALORES: {
     EJECUTADO: 'Ejecutado',
     EN_PROCESO: 'En Proceso',
-    PENDIENTE: 'Pendiente',
+    PENDIENTE: 'En Proceso',
   },
   
   // ============================================

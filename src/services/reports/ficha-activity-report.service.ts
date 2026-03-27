@@ -73,7 +73,7 @@ const statusLabel = (estado: string): string => {
   const up = estado.toUpperCase();
   if (up === 'EJECUTADO') return 'Ejecutado';
   if (up === 'EN PROCESO') return 'En Proceso';
-  return 'Pendiente';
+  return 'En Proceso';
 };
 
 const getSolicitudes = (subtasks: AsanaTask[]) =>
@@ -238,8 +238,8 @@ export const exportFichaActividadToPDF = ({
   const progBoxH = 18;
   const progItems = [
     { label: 'Total Sub Actividades', value: generalStatistics.total.toString() },
-    { label: 'Completadas',           value: generalStatistics.completed.toString() },
-    { label: 'Pendientes',            value: generalStatistics.pending.toString() },
+    { label: 'Ejecutadas',           value: generalStatistics.completed.toString() },
+    { label: 'En Proceso',            value: generalStatistics.pending.toString() },
     { label: 'Progreso',              value: `${pct.toFixed(1)}%` },
   ];
 
@@ -338,7 +338,7 @@ export const exportFichaActividadToPDF = ({
           t.name,
           getField(t, 'Tipo de Solicitud'),
           (d?.fechaSolicitud as string) || '-',
-          obs ?? (t.completed ? 'Aprobada' : 'Pendiente'),
+          obs ?? (t.completed ? 'Aprobada' : 'En Proceso'),
         ];
       }),
       theme: 'plain',
@@ -569,8 +569,8 @@ export const exportFichaActividadToWord = async ({
       rows: [
         new TableRow({ children: [
           wCell('Total Sub Actividades', 25, { bold: true, bg: WC.headerGray, center: true }),
-          wCell('Completadas',           25, { bold: true, bg: WC.headerGray, center: true }),
-          wCell('Pendientes',            25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('Ejecutadas',           25, { bold: true, bg: WC.headerGray, center: true }),
+          wCell('En Proceso',            25, { bold: true, bg: WC.headerGray, center: true }),
           wCell('Progreso',              25, { bold: true, bg: WC.headerGray, center: true }),
         ]}),
         new TableRow({ children: [
@@ -628,7 +628,7 @@ export const exportFichaActividadToWord = async ({
           ...solicitudes.map((t, i) => {
             const d = extractJsonData(t.notes);
             const obs = (d?.observado as boolean) ? 'Observada' : undefined;
-            const estLabel = obs ?? (t.completed ? 'Aprobada' : 'Pendiente');
+            const estLabel = obs ?? (t.completed ? 'Aprobada' : 'En Proceso');
             const bg = i % 2 ? WC.lightGray : WC.white;
             return new TableRow({ children: [
               wCell(t.name,                               40, { bg }),

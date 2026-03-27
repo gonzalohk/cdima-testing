@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Typography } from 'antd';
-import { DeleteOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Typography } from 'antd';
+import { DeleteOutlined, PlusOutlined, RollbackOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { ModalTitle, modalCloseIcon, modalStyles, SectionHeader, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -22,7 +23,7 @@ interface MaterialReturnModalProps {
 
 const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
-  const [titulo, setTitulo] = useState(task.name);
+  const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
   const [fechaDevolucion, setFechaDevolucion] = useState('');
   const [materiales, setMateriales] = useState<MaterialItem[]>([
@@ -192,22 +193,13 @@ ${JSON.stringify(jsonData, null, 2)}
         />
       )}
       <Modal
-        title={
-          <Space>
-            <RollbackOutlined style={{ color: '#b45309' }} />
-            <span>Devolución de Material</span>
-          </Space>
-        }
+        title={<ModalTitle icon={<RollbackOutlined />} title="Devolución de Material" subtitle="Registre los materiales a devolver" />}
         open={true}
         onCancel={onClose}
         width={720}
-        styles={{ body: { maxHeight: '70vh', overflowY: 'auto', paddingTop: 12 } }}
-        footer={[
-          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
-          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-            Crear Solicitud
-          </Button>,
-        ]}
+        closeIcon={modalCloseIcon}
+        styles={modalStyles}
+        footer={modalFooterButtons(onClose, handleSubmit, loading, 'Crear Solicitud')}
       >
         {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
@@ -220,7 +212,7 @@ ${JSON.stringify(jsonData, null, 2)}
             />
           </Form.Item>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Información General</Typography.Title>
+          <SectionHeader title="Información General" color="#1565C0" icon={<InfoCircleOutlined />} />
 
           <Row gutter={16}>
             <Col span={12}>
@@ -260,7 +252,7 @@ ${JSON.stringify(jsonData, null, 2)}
             />
           </Form.Item>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Materiales a Devolver</Typography.Title>
+          <SectionHeader title="Materiales a Devolver" color="#b45309" icon={<AppstoreOutlined />} />
 
           {materiales.map((material, index) => (
             <Card

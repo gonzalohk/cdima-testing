@@ -344,7 +344,7 @@ export const exportDistributionReportToPDF = (
   
   autoTable(doc, {
     startY: yPos,
-    head: [[columnName, 'Total', 'Completadas', 'Pendientes', 'Progreso']],
+    head: [[columnName, 'Total', 'Ejecutadas', 'En Proceso', 'Progreso']],
     body: tableData,
     theme: 'plain',
     headStyles: {

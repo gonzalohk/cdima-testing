@@ -116,7 +116,7 @@ const ProjectTasksListPage: React.FC<ProjectTasksListPageProps> = ({
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>{project?.name || projectQuery}</h2>
           <p style={{ margin: '0.4rem 0 0 0', color: '#666' }}>
-            Tareas: {tasks.length} | Completadas: {completedCount} | Pendientes: {tasks.length - completedCount}
+            Tareas: {tasks.length} | Ejecutadas: {completedCount} | En Proceso: {tasks.length - completedCount}
           </p>
         </div>
 
@@ -138,7 +138,7 @@ const ProjectTasksListPage: React.FC<ProjectTasksListPageProps> = ({
                   <tr key={task.gid}>
                     <td style={{ textAlign: 'center' }}>{index + 1}</td>
                     <td>{task.name}</td>
-                    <td style={{ textAlign: 'center' }}>{task.completed ? 'Completada' : 'Pendiente'}</td>
+                    <td style={{ textAlign: 'center' }}>{task.completed ? 'Ejecutada' : 'En Proceso'}</td>
                     <td style={{ textAlign: 'center' }}>{task.due_on || 'Sin fecha'}</td>
                   </tr>
                 ))}

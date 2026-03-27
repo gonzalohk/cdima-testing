@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Form, Input, Modal, Select, Space, Typography, message } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
+import { ModalTitle, modalCloseIcon, modalStyles, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 
@@ -120,16 +121,12 @@ const ContratacionUpdateModal: React.FC<ContratacionUpdateModalProps> = ({
   return (
     <Modal
       open
-      title={<><span style={{ marginRight: 8 }}>📋</span>Actualizar Estado — {currentData.subarea}</>}
+      title={<ModalTitle icon={<SyncOutlined />} title={`Actualizar Estado — ${currentData.subarea}`} subtitle="Registre el nuevo estado de la contratación" />}
       onCancel={onClose}
       width={640}
-      footer={[
-        <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
-        <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-          Guardar actualización
-        </Button>,
-      ]}
-      styles={{ body: { maxHeight: '70vh', overflowY: 'auto', paddingTop: 8 } }}
+      closeIcon={modalCloseIcon}
+      styles={modalStyles}
+      footer={modalFooterButtons(onClose, handleSubmit, loading, 'Guardar actualización')}
     >
       <Form
         form={form}

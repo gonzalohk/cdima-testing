@@ -101,7 +101,7 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({ statistics }) => 
             <Statistic
               title={
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Pendientes
+                  En Proceso
                 </Typography.Text>
               }
               value={statistics.pending}

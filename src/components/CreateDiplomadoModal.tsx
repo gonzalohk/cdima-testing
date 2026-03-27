@@ -3,6 +3,7 @@ import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
 import { serializeEstudianteData, parseAsistenciaRecords, updateNotasWithAsistencia } from '../utils/asana-helpers';
 import { validateData, EstudianteDataSchema, DocenteDataSchema } from '../schemas/diplomado.schemas';
+import { HtmlModalHeader } from './ModalShared';
 
 interface DiplomadoEditData {
   gid: string;
@@ -482,10 +483,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           onClick={(e) => e.stopPropagation()} 
           style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}
         >
-          <div className="modal-header">
-            <h2>{editMode ? 'Editar Diplomado' : 'Crear Nuevo Diplomado'}</h2>
-            <button className="modal-close" onClick={onClose}>&times;</button>
-          </div>
+          <HtmlModalHeader icon="🎓" title={editMode ? 'Editar Diplomado' : 'Crear Nuevo Diplomado'} onClose={onClose} />
 
           {error && (
             <div className="alert alert-error" style={{ marginBottom: '1rem' }}>

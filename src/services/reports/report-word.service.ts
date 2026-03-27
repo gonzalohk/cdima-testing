@@ -316,8 +316,8 @@ export const exportDistributionReportToWord = (
     children: [
       mkCell(columnName, 40, true),
       mkCell('Total', 15, true, true),
-      mkCell('Completadas', 15, true, true),
-      mkCell('Pendientes', 15, true, true),
+      mkCell('Ejecutadas', 15, true, true),
+      mkCell('En Proceso', 15, true, true),
       mkCell('Progreso', 15, true, true),
     ],
   });

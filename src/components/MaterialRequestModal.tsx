@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Typography } from 'antd';
-import { DeleteOutlined, PlusOutlined, ShoppingOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined, PlusOutlined, ShoppingOutlined,
+  EnvironmentOutlined, AppstoreOutlined, InfoCircleOutlined,
+} from '@ant-design/icons';
+import { ModalTitle, modalCloseIcon, modalStyles, SectionHeader, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportMaterialRequestToPDF } from '../services/pdf.service';
 import Notification from './Notification';
+
 
 interface MaterialItem {
   id: number;
@@ -20,9 +25,10 @@ interface MaterialRequestModalProps {
   onSuccess: () => void;
 }
 
+
 const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
-  const [titulo, setTitulo] = useState(task.name);
+  const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFinalizacion, setFechaFinalizacion] = useState('');
@@ -206,35 +212,35 @@ ${JSON.stringify(jsonData, null, 2)}
         />
       )}
       <Modal
-        title={
-          <Space>
-            <ShoppingOutlined style={{ color: '#1677ff' }} />
-            <span>Solicitud de Material</span>
-          </Space>
-        }
+        title={<ModalTitle icon={<ShoppingOutlined />} title="Solicitud de Material" subtitle="Complete los datos para generar la solicitud" />}
         open={true}
         onCancel={onClose}
-        width={720}
-        styles={{ body: { maxHeight: '70vh', overflowY: 'auto', paddingTop: 12 } }}
-        footer={[
-          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
-          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-            Crear Solicitud
-          </Button>,
-        ]}
+        width={740}
+        closeIcon={modalCloseIcon}
+        styles={modalStyles}
+        footer={modalFooterButtons(onClose, handleSubmit, loading, 'Crear Solicitud')}
       >
-        {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
+        {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16, borderRadius: 8 }} />}
 
         <Form layout="vertical">
-          <Form.Item label={<strong>Título de la solicitud</strong>} required>
+          {/* Título de la solicitud */}
+          <Form.Item
+            label={<Typography.Text strong style={{ color: '#374151' }}>Título de la solicitud</Typography.Text>}
+            required
+            style={{ marginBottom: 20 }}
+          >
             <Input
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               maxLength={200}
+              size="large"
+              style={{ borderRadius: 8 }}
+              placeholder="Nombre descriptivo de la solicitud"
             />
           </Form.Item>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Información General</Typography.Title>
+          {/* Sección: Información General */}
+          <SectionHeader title="Información General" color="#1565C0" icon={<InfoCircleOutlined />} />
 
           <Row gutter={16}>
             <Col span={12}>
@@ -243,13 +249,15 @@ ${JSON.stringify(jsonData, null, 2)}
                   value={area || undefined}
                   onChange={setArea}
                   placeholder="Seleccione un área"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', borderRadius: 8 }}
                   options={[
                     { value: 'Erradicación de Violencia', label: 'Erradicación de Violencia' },
                     { value: 'Empoderamiento Político', label: 'Empoderamiento Político' },
                     { value: 'Empoderamiento Productivo', label: 'Empoderamiento Productivo' },
                     { value: 'Administrativa y Financiera', label: 'Administrativa y Financiera' },
                     { value: 'Comunicación', label: 'Comunicación' },
+                    { value: 'Dirección Ejecutiva', label: 'Dirección Ejecutiva' },
+                    { value: 'Otros', label: 'Otros' }
                   ]}
                 />
               </Form.Item>
@@ -260,79 +268,138 @@ ${JSON.stringify(jsonData, null, 2)}
                   value={lugar}
                   onChange={(e) => setLugar(e.target.value)}
                   placeholder="Ej: Oficina principal"
+                  style={{ borderRadius: 8 }}
+                  prefix={<EnvironmentOutlined style={{ color: '#9ca3af' }} />}
                 />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Fecha de inicio" required>
-                <Input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Fecha de finalización" required>
-                <Input type="date" value={fechaFinalizacion} onChange={(e) => setFechaFinalizacion(e.target.value)} />
-              </Form.Item>
-            </Col>
-          </Row>
+              <Col span={12}>
+                <Form.Item
+                  label={<Typography.Text style={{ fontSize: 12, color: '#6b7280' }}>Fecha de inicio</Typography.Text>}
+                  required
+                >
+                  <Input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    style={{ borderRadius: 8 }}
+                    lang="es"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label={<Typography.Text style={{ fontSize: 12, color: '#6b7280' }}>Fecha de finalización</Typography.Text>}
+                  required
+                >
+                  <Input
+                    type="date"
+                    value={fechaFinalizacion}
+                    onChange={(e) => setFechaFinalizacion(e.target.value)}
+                    min={fechaInicio || undefined}
+                    style={{ borderRadius: 8 }}
+                    lang="es"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Materiales Solicitados</Typography.Title>
 
-          {materiales.map((material, index) => (
-            <Card
-              key={material.id}
-              size="small"
-              style={{ marginBottom: 12, borderRadius: 6, borderColor: '#e5e7eb' }}
-              title={<Typography.Text strong>Material {index + 1}</Typography.Text>}
-              extra={
-                materiales.length > 1 && (
-                  <Button size="small" danger icon={<DeleteOutlined />} onClick={() => eliminarMaterial(material.id)} />
-                )
-              }
-            >
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item label="Detalle" required style={{ marginBottom: 8 }}>
-                    <Input
-                      value={material.detalle}
-                      onChange={(e) => actualizarMaterial(material.id, 'detalle', e.target.value)}
-                      placeholder="Descripción del material"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="Cantidad" style={{ marginBottom: 8 }}>
-                    <Input
-                      value={material.cantidad}
-                      onChange={(e) => actualizarMaterial(material.id, 'cantidad', e.target.value)}
-                      placeholder="Ej: 10"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={6}>
-                  <Form.Item label="Unidad" style={{ marginBottom: 8 }}>
-                    <Input
-                      value={material.unidad}
-                      onChange={(e) => actualizarMaterial(material.id, 'unidad', e.target.value)}
-                      placeholder="Ej: piezas"
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Form.Item label="Observaciones" style={{ marginBottom: 0 }}>
-                <Input.TextArea
-                  value={material.observaciones}
-                  onChange={(e) => actualizarMaterial(material.id, 'observaciones', e.target.value)}
-                  placeholder="Notas adicionales"
-                  rows={2}
-                />
-              </Form.Item>
-            </Card>
-          ))}
+          {/* Sección: Materiales Solicitados */}
+          <SectionHeader title="Materiales Solicitados" color="#388E3C" icon={<AppstoreOutlined />} />
 
-          <Button type="dashed" icon={<PlusOutlined />} onClick={agregarMaterial} style={{ width: '100%' }}>
+          {materiales.map((material, index) => {
+            return (
+              <Card
+                key={material.id}
+                size="small"
+                style={{
+                  marginBottom: 12,
+                  borderRadius: 8,
+                  borderColor: '#e8e8e8',
+                  background: '#fafafa',
+                  boxShadow: 'none',
+                }}
+                title={
+                  <Space size={6}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>#{index + 1}</Typography.Text>
+                    <Typography.Text strong style={{ fontSize: 13, color: '#374151' }}>Material</Typography.Text>
+                  </Space>
+                }
+                extra={
+                  materiales.length > 1 && (
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<DeleteOutlined />}
+                      onClick={() => eliminarMaterial(material.id)}
+                      style={{ color: '#bfbfbf', borderRadius: 6 }}
+                    />
+                  )
+                }
+              >
+                {/* Fila principal: Detalle | Cantidad | Unidad */}
+                <Row gutter={8} align="top" wrap={false}>
+                  <Col flex="auto">
+                    <Form.Item label="Detalle" required style={{ marginBottom: 0 }}>
+                      <Input
+                        value={material.detalle}
+                        onChange={(e) => actualizarMaterial(material.id, 'detalle', e.target.value)}
+                        placeholder="Descripción del material"
+                        style={{ borderRadius: 7 }}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col style={{ width: 90 }}>
+                    <Form.Item label="Cantidad" style={{ marginBottom: 0 }}>
+                      <Input
+                        value={material.cantidad}
+                        onChange={(e) => actualizarMaterial(material.id, 'cantidad', e.target.value)}
+                        placeholder="Ej: 10"
+                        style={{ borderRadius: 7 }}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col style={{ width: 100 }}>
+                    <Form.Item label="Unidad" style={{ marginBottom: 0 }}>
+                      <Input
+                        value={material.unidad}
+                        onChange={(e) => actualizarMaterial(material.id, 'unidad', e.target.value)}
+                        placeholder="Ej: pzas"
+                        style={{ borderRadius: 7 }}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                {/* Observaciones: colapsable visualmente pero siempre visible */}
+                <Form.Item label={<Typography.Text style={{ fontSize: 11, color: '#9ca3af' }}>Observaciones</Typography.Text>} style={{ marginBottom: 0, marginTop: 8 }}>
+                  <Input
+                    value={material.observaciones}
+                    onChange={(e) => actualizarMaterial(material.id, 'observaciones', e.target.value)}
+                    placeholder="Notas adicionales (opcional)"
+                    style={{ borderRadius: 7 }}
+                  />
+                </Form.Item>
+              </Card>
+            );
+          })}
+
+          <Button
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={agregarMaterial}
+            style={{
+              width: '100%',
+              borderRadius: 8,
+              borderColor: '#388E3C',
+              color: '#388E3C',
+              fontWeight: 500,
+              height: 40,
+            }}
+          >
             Agregar otro material
           </Button>
         </Form>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Typography } from 'antd';
-import { DeleteOutlined, DollarOutlined, PlusOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Typography } from 'antd';
+import { DeleteOutlined, DollarOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { ModalTitle, modalCloseIcon, modalStyles, SectionHeader, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF } from '../services/pdf.service';
@@ -20,7 +21,7 @@ interface FundsRequestModalProps {
 
 const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess }) => {
   const [area, setArea] = useState('');
-  const [titulo, setTitulo] = useState(task.name);
+  const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFinalizacion, setFechaFinalizacion] = useState('');
@@ -209,22 +210,13 @@ ${JSON.stringify(jsonData, null, 2)}
         />
       )}
       <Modal
-        title={
-          <Space>
-            <DollarOutlined style={{ color: '#16a34a' }} />
-            <span>Solicitud de Fondos</span>
-          </Space>
-        }
+        title={<ModalTitle icon={<DollarOutlined />} title="Solicitud de Fondos" subtitle="Ingrese los datos de la solicitud" />}
         open={true}
         onCancel={onClose}
         width={700}
-        styles={{ body: { maxHeight: '70vh', overflowY: 'auto', paddingTop: 12 } }}
-        footer={[
-          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
-          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-            Crear Solicitud
-          </Button>,
-        ]}
+        closeIcon={modalCloseIcon}
+        styles={modalStyles}
+        footer={modalFooterButtons(onClose, handleSubmit, loading, 'Crear Solicitud')}
       >
         {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
@@ -237,7 +229,7 @@ ${JSON.stringify(jsonData, null, 2)}
             />
           </Form.Item>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Información General</Typography.Title>
+          <SectionHeader title="Información General" color="#1565C0" icon={<InfoCircleOutlined />} />
 
           <Row gutter={16}>
             <Col span={12}>
@@ -281,7 +273,7 @@ ${JSON.stringify(jsonData, null, 2)}
             </Col>
           </Row>
 
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 12 }}>Fondos Solicitados</Typography.Title>
+          <SectionHeader title="Fondos Solicitados" color="#15803d" icon={<DollarOutlined />} />
 
           {fondos.map((fondo, index) => (
             <Card

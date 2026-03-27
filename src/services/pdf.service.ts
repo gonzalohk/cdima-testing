@@ -153,7 +153,7 @@ export const exportTaskReportToPDF = (
   yPos += splitName.length * 5;
   
   const mainTaskEstado = getCustomFieldValue(mainTask, 'Estado');
-  const mainTaskStatus = mainTaskEstado === 'EJECUTADO' ? 'Ejecutado' : mainTaskEstado === 'EN PROCESO' ? 'En Proceso' : 'Pendiente';
+  const mainTaskStatus = mainTaskEstado === 'EJECUTADO' ? 'Ejecutado' : mainTaskEstado === 'EN PROCESO' ? 'En Proceso' : 'En Proceso';
   doc.text(`Estado: ${mainTaskStatus}`, margins.left, yPos);
   
   //yPos += 5;
@@ -234,10 +234,10 @@ export const exportTaskReportToPDF = (
   doc.text(`Total de sub actividades: ${totalSubtasks}`, margins.left, yPos);
   
   yPos += 5;
-  doc.text(`Completadas: ${completedCount}`, margins.left, yPos);
+  doc.text(`Ejecutadas: ${completedCount}`, margins.left, yPos);
   
   yPos += 5;
-  doc.text(`Pendientes: ${pendingCount}`, margins.left, yPos);
+  doc.text(`En Proceso: ${pendingCount}`, margins.left, yPos);
   
   yPos += 5;
   doc.text(`Progreso: ${progressPercentage.toFixed(1)}%`, margins.left, yPos);
@@ -299,7 +299,7 @@ export const exportTaskReportToPDF = (
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Municipio', 'Total', 'Completadas', 'Pendientes']],
+      head: [['Municipio', 'Total', 'Ejecutadas', 'En Proceso']],
       body: assigneeData,
       theme: 'grid',
       headStyles: { 
@@ -365,7 +365,7 @@ export const exportTaskReportToPDF = (
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Responsable', 'Total', 'Completadas', 'Pendientes', 'Pob. Meta']],
+      head: [['Responsable', 'Total', 'Ejecutadas', 'En Proceso', 'Pob. Meta']],
       body: responsableData,
       theme: 'grid',
       headStyles: { 
@@ -1069,47 +1069,16 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX1, metaY1, { align: 'right' });
+  metaY1 += 5;
+  doc.text(`FECHA DE INICIO: ${data.fechaInicio}`, metaX1, metaY1, { align: 'right' });
+  metaY1 += 5;
+  doc.text(`FECHA DE FINALIZACIÓN: ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
   doc.line(margins.left, metaY1 + 6, pageWidth - margins.right, metaY1 + 6);
   let yPos1 = metaY1 + 16;
   // ============ FIN ENCABEZADO ============
-
-  // ---- INFORMACIÓN GENERAL ----
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos1);
-  yPos1 += 6;
-
-  autoTable(doc, {
-    startY: yPos1,
-    body: [
-      ['Actividad', data.taskName],
-      ['Área', data.area],
-      ['Lugar del evento', data.lugar],
-      ['Fecha de inicio', data.fechaInicio],
-      ['Fecha de finalización', data.fechaFinalizacion],
-    ],
-    theme: 'plain',
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
-      overflow: 'linebreak' as const,
-      textColor: [0, 0, 0] as [number, number, number],
-      lineColor: [180, 180, 180] as [number, number, number],
-      lineWidth: 0.2,
-    },
-    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
-    columnStyles: {
-      0: { fontStyle: 'bold' as const, cellWidth: 50 },
-      1: { cellWidth: 'auto' as const },
-    },
-    margin: { left: margins.left, right: margins.right },
-  });
-
-  yPos1 = (doc as any).lastAutoTable.finalY + 10;
 
   // ---- MATERIALES SOLICITADOS ----
   doc.setFontSize(11);
@@ -1261,46 +1230,14 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
+  metaY2 += 5;
+  doc.text(`FECHA DE DEVOLUCIÓN: ${data.fechaDevolucion}`, metaX2, metaY2, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
   doc.line(margins.left, metaY2 + 6, pageWidth - margins.right, metaY2 + 6);
   let yPos2 = metaY2 + 16;
   // ============ FIN ENCABEZADO ============
-
-  // ---- INFORMACIÓN GENERAL ----
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos2);
-  yPos2 += 6;
-
-  autoTable(doc, {
-    startY: yPos2,
-    body: [
-      ['Actividad', data.taskName],
-      ['Área', data.area],
-      ['Lugar de devolución', data.lugar],
-      ['Fecha de devolución', data.fechaDevolucion],
-    ],
-    theme: 'plain',
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
-      overflow: 'linebreak' as const,
-      textColor: [0, 0, 0] as [number, number, number],
-      lineColor: [180, 180, 180] as [number, number, number],
-      lineWidth: 0.2,
-    },
-    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
-    columnStyles: {
-      0: { fontStyle: 'bold' as const, cellWidth: 50 },
-      1: { cellWidth: 'auto' as const },
-    },
-    margin: { left: margins.left, right: margins.right },
-  });
-
-  yPos2 = (doc as any).lastAutoTable.finalY + 10;
 
   // ---- MATERIALES A DEVOLVER ----
   doc.setFontSize(11);
@@ -1458,47 +1395,16 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX3, metaY3, { align: 'right' });
+  metaY3 += 5;
+  doc.text(`FECHA DE INICIO: ${data.fechaInicio}`, metaX3, metaY3, { align: 'right' });
+  metaY3 += 5;
+  doc.text(`FECHA DE FINALIZACIÓN: ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
   doc.line(margins.left, metaY3 + 6, pageWidth - margins.right, metaY3 + 6);
   let yPos3 = metaY3 + 16;
   // ============ FIN ENCABEZADO ============
-
-  // ---- INFORMACIÓN GENERAL ----
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('INFORMACIÓN GENERAL', margins.left, yPos3);
-  yPos3 += 6;
-
-  autoTable(doc, {
-    startY: yPos3,
-    body: [
-      ['Actividad', data.taskName],
-      ['Área', data.area],
-      ['Lugar', data.lugar],
-      ['Fecha de inicio', data.fechaInicio],
-      ['Fecha de finalización', data.fechaFinalizacion],
-    ],
-    theme: 'plain',
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
-      overflow: 'linebreak' as const,
-      textColor: [0, 0, 0] as [number, number, number],
-      lineColor: [180, 180, 180] as [number, number, number],
-      lineWidth: 0.2,
-    },
-    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
-    columnStyles: {
-      0: { fontStyle: 'bold' as const, cellWidth: 50 },
-      1: { cellWidth: 'auto' as const },
-    },
-    margin: { left: margins.left, right: margins.right },
-  });
-
-  yPos3 = (doc as any).lastAutoTable.finalY + 10;
 
   // ---- FONDOS SOLICITADOS ----
   doc.setFontSize(11);
@@ -1683,7 +1589,7 @@ export const exportDistributionToPDF = (
   // Crear tabla con autoTable
   autoTable(doc, {
     startY: yPos,
-    head: [[columnName, 'Total', 'Completadas', 'Pendientes', 'Progreso']],
+    head: [[columnName, 'Total', 'Ejecutadas', 'En Proceso', 'Progreso']],
     body: tableData,
     theme: 'grid',
     headStyles: { 

@@ -46,8 +46,8 @@ const ResponsibleDistribution: React.FC<ResponsibleDistributionProps> = ({ title
             <tr>
               <th>{columnName}</th>
               <th>Total</th>
-              <th>Completadas</th>
-              <th>Pendientes</th>
+              <th>Ejecutadas</th>
+              <th>En Proceso</th>
               <th>Progreso</th>
             </tr>
           </thead>

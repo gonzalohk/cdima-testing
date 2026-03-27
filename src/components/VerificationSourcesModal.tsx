@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
+import { HtmlModalHeader } from './ModalShared';
 
 export interface FuenteEntry {
   id: number;
@@ -52,7 +53,7 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
     e.preventDefault();
     if (!nombre.trim()) { setError('El nombre del archivo es requerido'); return; }
     if (!link.trim()) { setError('El enlace es requerido'); return; }
-    if (!link.trim().startsWith('http')) { setError('El enlace no parece una URL válida (debe comenzar con http)'); return; }
+    try { new URL(link.trim()); } catch { setError('El enlace no es una URL válida (debe comenzar con https://)'); return; }
 
     setLoading(true);
     setError('');
@@ -121,10 +122,7 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
       )}
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-          <div className="modal-header">
-            <h2>📂 Fuentes de Verificación</h2>
-            <button className="modal-close" onClick={onClose}>&times;</button>
-          </div>
+          <HtmlModalHeader icon="📂" title="Fuentes de Verificación" subtitle={task.name} onClose={onClose} />
 
           {error && (
             <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
@@ -132,59 +130,8 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
             </div>
           )}
 
-          <div className="modal-body">
-            <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
-              <strong>Actividad:</strong> {task.name}
-            </div>
-
-            {/* Entradas ya registradas */}
-            {existingEntradas.length > 0 && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#444' }}>
-                  Fuentes registradas ({existingEntradas.length})
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {existingEntradas.map((entry) => (
-                    <div
-                      key={entry.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.6rem 0.875rem',
-                        backgroundColor: 'white',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <span style={{ flex: 1, fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        📎 {entry.nombre}
-                      </span>
-                      <a
-                        href={entry.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          padding: '0.25rem 0.6rem',
-                          borderRadius: '4px',
-                          fontSize: '0.8rem',
-                          color: '#555',
-                          border: '1px solid #ccc',
-                          textDecoration: 'none',
-                          flexShrink: 0,
-                        }}
-                      >
-                        Ver
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Formulario para agregar nueva entrada */}
-            <div style={{ borderTop: existingEntradas.length > 0 ? '1px solid #e0e0e0' : 'none', paddingTop: existingEntradas.length > 0 ? '1.25rem' : 0 }}>
+          <div className="modal-body">   
+            <div>
               <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem', color: '#444' }}>
                 {verificationSubtask ? 'Agregar nueva fuente' : 'Registrar primera fuente'}
               </h4>
@@ -201,13 +148,20 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
                 </div>
                 <div className="form-group">
                   <label>Enlace (URL)</label>
-                  <input
-                    type="text"
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    placeholder="https://drive.google.com/..."
-                    disabled={loading}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <span style={{
+                      position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)',
+                      fontSize: '1rem', lineHeight: 1, pointerEvents: 'none', userSelect: 'none',
+                    }}>🔗</span>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      disabled={loading}
+                      style={{ paddingLeft: '2.1rem', textOverflow: 'ellipsis' }}
+                    />
+                  </div>
                 </div>
 
                 <div className="modal-footer">

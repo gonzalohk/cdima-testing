@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
+import { HtmlModalHeader } from './ModalShared';
 
 interface DiplomadoDetailsModalProps {
   diplomado: AsanaSection;
@@ -110,17 +111,7 @@ const DiplomadoDetailsModal: React.FC<DiplomadoDetailsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}
       >
-        <div className="modal-header">
-          <div>
-            <h2 style={{ margin: 0, marginBottom: '0.25rem' }}>
-              🎓 {diplomado.name}
-            </h2>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-              Detalles del diplomado
-            </p>
-          </div>
-          <button className="modal-close" onClick={onClose}>&times;</button>
-        </div>
+        <HtmlModalHeader icon="🎓" title={diplomado.name} subtitle="Detalles del diplomado" onClose={onClose} />
 
         <div className="modal-body">
           {/* Docentes */}

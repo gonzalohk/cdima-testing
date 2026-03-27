@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Space, Typography } from 'antd';
+import { Alert, Form, Input, Modal, Typography } from 'antd';
 import { TeamOutlined } from '@ant-design/icons';
+import { ModalTitle, modalCloseIcon, modalStyles, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
@@ -133,22 +134,13 @@ ${JSON.stringify(jsonData, null, 2)}
         />
       )}
       <Modal
-        title={
-          <Space>
-            <TeamOutlined style={{ color: '#1677ff' }} />
-            <span>Solicitud de Contratación</span>
-          </Space>
-        }
+        title={<ModalTitle icon={<TeamOutlined />} title="Solicitud de Contratación" subtitle="Registre los datos de la nueva contratación" />}
         open={true}
         onCancel={onClose}
         width={560}
-        footer={[
-          <Button key="cancel" onClick={onClose} disabled={loading}>Cancelar</Button>,
-          <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-            Crear Solicitud
-          </Button>,
-        ]}
-      >
+        closeIcon={modalCloseIcon}
+        styles={modalStyles}
+        footer={modalFooterButtons(onClose, handleSubmit, loading, 'Crear Solicitud')}      >
         {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
         <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f8faff', borderRadius: 6, border: '1px solid #e0e7ff' }}>
@@ -186,13 +178,6 @@ ${JSON.stringify(jsonData, null, 2)}
               disabled={loading}
             />
           </Form.Item>
-
-          <Alert
-            type="warning"
-            showIcon
-            message="La subtarea se creará en Asana. Podrá agregar documentos, establecer fechas y actualizar el campo 'Estado de contratación' directamente en Asana."
-            style={{ borderRadius: 6 }}
-          />
         </Form>
       </Modal>
     </>

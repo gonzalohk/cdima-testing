@@ -572,7 +572,7 @@ const HomePage: React.FC = () => {
                 {parsed.fechaFinalizacion && <Descriptions.Item label="Finalización">{parsed.fechaFinalizacion}</Descriptions.Item>}
                 {parsed.fechaDevolucion && <Descriptions.Item label="Fecha devolución">{parsed.fechaDevolucion}</Descriptions.Item>}
                 <Descriptions.Item label="Estado">
-                  <Tag color="warning">Pendiente</Tag>
+                  <Tag color="warning">En Proceso</Tag>
                 </Descriptions.Item>
               </Descriptions>
 

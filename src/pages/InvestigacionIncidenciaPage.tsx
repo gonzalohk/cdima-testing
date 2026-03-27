@@ -181,7 +181,7 @@ const InvestigacionIncidenciaPage: React.FC = () => {
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>{project?.name || PROJECT_QUERY}</h2>
           <p style={{ margin: '0.4rem 0 0 0', color: '#666' }}>
-            Tareas: {tasks.length} | Completadas: {completedCount} | Pendientes: {tasks.length - completedCount}
+            Tareas: {tasks.length} | Ejecutadas: {completedCount} | En Proceso: {tasks.length - completedCount}
           </p>
         </div>
 
@@ -215,7 +215,7 @@ const InvestigacionIncidenciaPage: React.FC = () => {
                           backgroundColor: task.completed ? '#e8f5e9' : '#fff8e1',
                           color: task.completed ? '#2e7d32' : '#f57f17',
                         }}>
-                          {task.completed ? '✓ Completada' : '⏳ Pendiente'}
+                          {task.completed ? '✓ Ejecutada' : '⏳ En Proceso'}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center', color: '#555' }}>

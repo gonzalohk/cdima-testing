@@ -3,6 +3,7 @@ import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
 import { serializeEstudianteData, parseAsistenciaRecords, updateNotasWithAsistencia } from '../utils/asana-helpers';
 import { validateData, EstudianteDataSchema } from '../schemas/diplomado.schemas';
+import { HtmlModalHeader } from './ModalShared';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
 
 interface EscuelaEditData {
@@ -341,10 +342,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           onClick={(e) => e.stopPropagation()} 
           style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}
         >
-          <div className="modal-header">
-            <h2>{editMode ? 'Editar Escuela' : 'Crear Nueva Escuela'}</h2>
-            <button className="modal-close" onClick={onClose}>&times;</button>
-          </div>
+          <HtmlModalHeader icon="🏫" title={editMode ? 'Editar Escuela' : 'Crear Nueva Escuela'} onClose={onClose} />
 
           {error && (
             <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
