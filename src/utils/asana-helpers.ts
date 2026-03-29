@@ -60,6 +60,54 @@ export function getCustomFieldValueSafe<T = any>(
 }
 
 /**
+ * Calcula la edad en años a partir de una fecha de nacimiento.
+ * Soporta los formatos:
+ *   - DD/MM/YYYY  (formato boliviano con barras)
+ *   - DD-MM-YYYY  (formato boliviano con guiones)
+ *   - YYYY-MM-DD  (ISO 8601, salida de <input type="date">)
+ *   - YYYY/MM/DD  (ISO con barras)
+ *
+ * Devuelve '—' cuando la fecha está vacía o no se puede interpretar.
+ */
+export function calcularEdad(fechaNacimiento: string | undefined | null): string {
+  if (!fechaNacimiento) return '—';
+  const s = fechaNacimiento.trim();
+  if (!s) return '—';
+
+  let day = 0, month = 0, year = 0;
+
+  // DD/MM/YYYY o DD-MM-YYYY
+  const mDMY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (mDMY) {
+    day   = +mDMY[1];
+    month = +mDMY[2];
+    year  = +mDMY[3];
+  } else {
+    // YYYY-MM-DD o YYYY/MM/DD
+    const mYMD = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (mYMD) {
+      year  = +mYMD[1];
+      month = +mYMD[2];
+      day   = +mYMD[3];
+    }
+  }
+
+  if (!day || !month || !year) return '—';
+
+  const bd = new Date(year, month - 1, day);
+  if (isNaN(bd.getTime())) return '—';
+
+  const now = new Date();
+  let age = now.getFullYear() - bd.getFullYear();
+  if (
+    now.getMonth() < bd.getMonth() ||
+    (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())
+  ) age--;
+
+  return (age >= 0 && age < 120) ? String(age) : '—';
+}
+
+/**
  * Sanitiza un valor de texto para evitar que backticks (`) rompan los bloques
  * de código markdown usados para almacenar JSON en Asana.
  */

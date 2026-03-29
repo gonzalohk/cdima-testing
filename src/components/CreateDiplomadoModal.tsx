@@ -151,26 +151,32 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         throw new Error('El nombre del diplomado es obligatorio');
       }
 
-      const docentesValidos = docentes.filter(d => d.nombre.trim() && d.apellidoPaterno.trim() && d.apellidoMaterno.trim() && d.genero.trim());
-      const estudiantesValidos = estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim());
+      const docentesValidos = editMode
+        ? docentes.filter(d => d.nombre.trim() && d.apellidoPaterno.trim() && d.apellidoMaterno.trim() && d.genero.trim())
+        : [];
+      const estudiantesValidos = editMode
+        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim())
+        : [];
 
-      if (docentesValidos.length === 0) {
+      if (editMode && docentesValidos.length === 0) {
         throw new Error('Debe agregar al menos un docente con nombre completo (nombre, apellido paterno, apellido materno) y género');
       }
 
-      if (estudiantesValidos.length === 0) {
+      if (editMode && estudiantesValidos.length === 0) {
         throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre, apellido paterno, apellido materno) y género');
       }
 
       // Validar que todos los docentes y estudiantes válidos tengan género
-      const docenteSinGenero = docentesValidos.find(d => !d.genero.trim());
-      if (docenteSinGenero) {
-        throw new Error('El género es obligatorio para todos los docentes');
-      }
+      if (editMode) {
+        const docenteSinGenero = docentesValidos.find(d => !d.genero.trim());
+        if (docenteSinGenero) {
+          throw new Error('El género es obligatorio para todos los docentes');
+        }
 
-      const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
-      if (estudianteSinGenero) {
-        throw new Error('El género es obligatorio para todos los estudiantes');
+        const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
+        if (estudianteSinGenero) {
+          throw new Error('El género es obligatorio para todos los estudiantes');
+        }
       }
 
       // Obtener workspace
@@ -343,7 +349,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         const seccion = await asanaService.createSection(projectGid, nombreDiplomado);
 
         // 2. Crear las tres tareas principales
-        const tareaDocentes = await asanaService.createTask({
+        await asanaService.createTask({
           name: 'Docentes',
           projectGid: projectGid,
           workspaceGid: cdima.gid,
@@ -351,7 +357,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           notes: 'Lista de docentes del diplomado'
         });
 
-        const tareaEstudiantes = await asanaService.createTask({
+        await asanaService.createTask({
           name: 'Estudiantes',
           projectGid: projectGid,
           workspaceGid: cdima.gid,
@@ -367,84 +373,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           notes: 'Documentos relacionados al diplomado'
         });
 
-        // 3. Crear subtareas de docentes en paralelo
-        await Promise.all(docentesValidos.map(async (docente) => {
-          // Validar datos del docente
-          const validationResult = validateData(DocenteDataSchema, {
-            genero: docente.genero,
-            telefono: docente.telefono,
-            lugarNacimiento: docente.lugarNacimiento,
-            fechaNacimiento: docente.fechaNacimiento,
-            domicilio: docente.domicilio,
-            documentoIdentidad: docente.documentoIdentidad,
-            identidadCultural: docente.identidadCultural,
-            especialidad: docente.especialidad,
-            experiencia: ''
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
-            throw new Error(`Datos inválidos para docente ${nombreCompleto}: ${validationResult.error}`);
-          }
-
-          // Usar el nuevo formato JSON estructurado
-          const notasDocente = serializeEstudianteData({
-            genero: docente.genero,
-            fechaNacimiento: docente.fechaNacimiento || '',
-            especialidad: docente.especialidad || '',
-            domicilio: docente.domicilio || '',
-            telefono: docente.telefono || '',
-            lugarNacimiento: docente.lugarNacimiento || '',
-            documentoIdentidad: docente.documentoIdentidad || '',
-            identidadCultural: docente.identidadCultural || ''
-          });
-
-          const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
-          await asanaService.createSubtask(tareaDocentes.gid, cdima.gid, {
-            name: nombreCompleto,
-            notes: notasDocente
-          });
-        }));
-
-        // 4. Crear subtareas de estudiantes en paralelo
-        await Promise.all(estudiantesValidos.map(async (estudiante) => {
-          // Validar datos del estudiante
-          const validationResult = validateData(EstudianteDataSchema, {
-            genero: estudiante.genero,
-            telefono: estudiante.telefono,
-            lugarNacimiento: estudiante.lugarNacimiento,
-            fechaNacimiento: estudiante.fechaNacimiento,
-            domicilio: estudiante.domicilio,
-            especialidad: estudiante.especialidad,
-            documentoIdentidad: estudiante.documentoIdentidad,
-            identidadCultural: estudiante.identidadCultural
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
-          }
-
-          // Usar el nuevo formato JSON estructurado
-          const notasEstudiante = serializeEstudianteData({
-            genero: estudiante.genero,
-            fechaNacimiento: estudiante.fechaNacimiento || '',
-            especialidad: estudiante.especialidad || '',
-            domicilio: estudiante.domicilio || '',
-            telefono: estudiante.telefono || '',
-            lugarNacimiento: estudiante.lugarNacimiento || '',
-            documentoIdentidad: estudiante.documentoIdentidad || '',
-            identidadCultural: estudiante.identidadCultural || ''
-          });
-
-          const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
-          await asanaService.createSubtask(tareaEstudiantes.gid, cdima.gid, {
-            name: nombreCompleto,
-            notes: notasEstudiante
-          });
-        }));
-
-        // 5. Crear subtareas de documentos
+        // 3. Crear subtareas de documentos
         const documentosTipo = ['Currícula', 'Informe', 'Otros'];
         for (const doc of documentosTipo) {
           await asanaService.createSubtask(tareaDocumentos.gid, cdima.gid, {
@@ -453,7 +382,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         }
 
         setNotification({
-          message: '¡Diplomado creado exitosamente!',
+          message: '¡Diplomado creado exitosamente! Ahora puede agregar docentes y estudiantes individualmente.',
           type: 'success'
         });
       }
@@ -509,7 +438,8 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                 />
               </div>
 
-              {/* Docentes */}
+              {/* Docentes - solo en modo edición */}
+              {editMode && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                   Docentes <span style={{ color: 'red' }}>*</span>
@@ -702,8 +632,10 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   + Agregar Docente
                 </button>
               </div>
+              )}
 
-              {/* Estudiantes */}
+              {/* Estudiantes - solo en modo edición */}
+              {editMode && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                   Estudiantes <span style={{ color: 'red' }}>*</span>
@@ -896,11 +828,13 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   + Agregar Estudiante
                 </button>
               </div>
+              )}
 
               <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
-                  <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Docentes", "Estudiantes" y "Documentos" 
-                  con las subtareas correspondientes. Los documentos incluirán: Currícula, Informe y Otros.
+                  <strong>ℹ️ Nota:</strong> {editMode
+                    ? 'Se actualizarán los datos del diplomado, docentes y estudiantes.'
+                    : 'Se crearán automáticamente las tareas "Docentes", "Estudiantes" y "Documentos". Podrás agregar participantes individualmente desde la vista de detalle.'}
                 </p>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5a5a' }}>
                   📝 El nombre completo se guardará en formato: <strong>Nombre, Apellido Paterno, Apellido Materno</strong>

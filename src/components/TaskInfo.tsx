@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, List, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import { CarryOutOutlined, CheckCircleFilled, CheckOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, CheckOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
 import { AsanaTask, AsanaAttachment, TaskStatistics } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -368,6 +368,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     let totalMujeres = 0;
     let totalHombres = 0;
     let totalPoblacionMeta = 0;
+    let totalReplicantes = 0;
 
     subtasks
       .filter(subtask => !subtask.name.startsWith('FUENTES DE VERIFICACION'))
@@ -375,10 +376,12 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         const mujeres = getCustomFieldValue(subtask, 'Mujeres ');
         const hombres = getCustomFieldValue(subtask, 'Hombres');
         const poblacion = getCustomFieldValue(subtask, 'Población Meta');
+        const replicantes = getCustomFieldValue(subtask, 'Replicantes');
 
         totalMujeres += mujeres !== '-' ? parseInt(mujeres) || 0 : 0;
         totalHombres += hombres !== '-' ? parseInt(hombres) || 0 : 0;
         totalPoblacionMeta += poblacion !== '-' ? parseInt(poblacion) || 0 : 0;
+        totalReplicantes += replicantes !== '-' ? parseInt(replicantes) || 0 : 0;
       });
 
     const total = totalMujeres + totalHombres;
@@ -387,7 +390,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       mujeres: totalMujeres > 0 ? totalMujeres.toString() : '-',
       hombres: totalHombres > 0 ? totalHombres.toString() : '-',
       total: total > 0 ? total.toString() : '-',
-      poblacionMeta: totalPoblacionMeta > 0 ? totalPoblacionMeta.toString() : '-'
+      poblacionMeta: totalPoblacionMeta > 0 ? totalPoblacionMeta.toString() : '-',
+      replicantes: totalReplicantes > 0 ? totalReplicantes.toString() : '-',
     };
   };
 
@@ -407,6 +411,14 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         ? 'processing'
         : 'default';
   const notasActividad = (task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+
+  // Extraer código de actividad del nombre (ej. "R1.A3 Nombre..." → code="R1.A3", displayName="Nombre...")
+  const codeMatch = task.name.match(/^([A-Z][0-9]+(?:\.[A-Z][0-9]+)+)\s+([\s\S]*)/);
+  const taskCode = codeMatch ? codeMatch[1] : null;
+  const taskDisplayName = codeMatch ? codeMatch[2] : task.name;
+  const resultado = getMainTaskFieldValue('Resultado');
+  const fechaInicio = getMainTaskFieldValue('Fecha inicio');
+  const fechaFin = getMainTaskFieldValue('Fecha fin');
 
   const statsFromSubtasks = (() => {
     const relevantSubtasks = subtasks.filter(t =>
@@ -648,21 +660,29 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       )}
       <div className="card">
         <Card className="task-ficha-pro" bodyStyle={{ padding: 0 }}>
+
+          {/* ── Franja Wiphala ── */}
+          <div className="task-ficha-pro__wiphala-stripe">
+            {['#D32F2F','#E65100','#F9A825','#388E3C','#1565C0','#6A1B9A','#880E4F'].map(c => (
+              <div key={c} style={{ background: c, flex: 1 }} />
+            ))}
+          </div>
+
+          {/* ── Cabecera: estado + acciones ── */}
           <div className="task-ficha-pro__header">
             <div className="task-ficha-pro__header-main">
-              <Typography.Text className="task-ficha-pro__due-date" style={{ display: 'block', marginBottom: '0.35rem' }}>
-                Vence: {task.due_on || 'Sin fecha'}
-              </Typography.Text>
               <div className="task-ficha-pro__title-row">
                 <Tag className={`task-ficha-pro__status-tag task-ficha-pro__status-tag--${estadoClass}`}>
                   {estadoLabel}
                 </Tag>
-                <Typography.Title level={3} className="task-ficha-pro__title">
-                  {task.name}
-                </Typography.Title>
+                {task.due_on && (
+                  <Typography.Text className="task-ficha-pro__due-date">
+                    <CalendarOutlined style={{ marginRight: 4, fontSize: 11 }} />
+                    Vence: {task.due_on}
+                  </Typography.Text>
+                )}
               </div>
             </div>
-
             <div className="task-ficha-pro__actions">
               <Space size={8}>
                 <Tooltip title="Exportar a Word">
@@ -684,261 +704,272 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
             </div>
           </div>
 
+          {/* ── Cuerpo 2 columnas ── */}
           <div className="task-ficha-pro__body">
-            <Row gutter={[24, 24]}>
-              <Col xs={24} md={8} className="task-ficha-pro__logistics-col">
-                <div className="task-ficha-pro__info-group">
-                  <Typography.Text className="task-ficha-pro__label">Responsable de Actividad</Typography.Text>
-                  <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">
-                    {getMainTaskFieldValue('Responsable de Actividad')}
-                  </Typography.Text>
-                </div>
+            <Row gutter={0}>
 
-                <div className="task-ficha-pro__info-group">
-                  <Typography.Text className="task-ficha-pro__label">Lugares</Typography.Text>
-                  <Typography.Text className="task-ficha-pro__value">{getMainTaskFieldValue('Lugar')}</Typography.Text>
-                </div>
+              {/* Columna izquierda: narrativa (65%) */}
+              <Col xs={24} md={16} className="task-ficha-pro__main-col">
+                {taskCode && (
+                  <Typography.Text className="task-ficha-pro__code">{taskCode}</Typography.Text>
+                )}
+                <Typography.Title level={3} className="task-ficha-pro__main-title">
+                  {taskDisplayName}
+                </Typography.Title>
 
-                <div className="task-ficha-pro__info-group">
-                  <Typography.Text className="task-ficha-pro__label">Sub Actividades</Typography.Text>
-                  <Tag className="task-ficha-pro__subtasks-tag" icon={<DeploymentUnitOutlined />}>
-                    {subtasksCount}
-                  </Tag>
-                </div>
-              </Col>
+                {resultado !== '-' && (
+                  <div className="task-ficha-pro__resultado-box">
+                    <Typography.Text className="task-ficha-pro__label">Resultado</Typography.Text>
+                    <Typography.Text className="task-ficha-pro__value">{resultado}</Typography.Text>
+                  </div>
+                )}
 
-              <Col xs={24} md={16}>
-                <div className="task-ficha-pro__stats-panel">
-                  <Typography.Text className="task-ficha-pro__stats-heading">Estadísticas</Typography.Text>
-                  <Row gutter={[10, 10]} className="task-ficha-pro__stats-grid">
-                    <Col xs={24} sm={12} lg={6}>
-                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-meta" size="small">
-                        <Statistic
-                          title="Población Meta"
-                          value={aggregatedValues.poblacionMeta === '-' ? 0 : Number(aggregatedValues.poblacionMeta)}
-                          prefix={<FileSearchOutlined />}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-total" size="small">
-                        <Statistic
-                          title="Total Beneficiarios"
-                          value={aggregatedValues.total === '-' ? 0 : Number(aggregatedValues.total)}
-                          prefix={<TeamOutlined />}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-mujeres" size="small">
-                        <Statistic
-                          title="Mujeres"
-                          value={aggregatedValues.mujeres === '-' ? 0 : Number(aggregatedValues.mujeres)}
-                          prefix={<HeartOutlined />}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                      <Card className="task-ficha-pro__metric task-ficha-pro__metric-hombres" size="small">
-                        <Statistic
-                          title="Hombres"
-                          value={aggregatedValues.hombres === '-' ? 0 : Number(aggregatedValues.hombres)}
-                          prefix={<UserOutlined />}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
+                <div className="task-ficha-pro__meta-item">
+                  <UserOutlined className="task-ficha-pro__meta-icon" />
+                  <div>
+                    <Typography.Text className="task-ficha-pro__label">Responsable de Actividad</Typography.Text>
+                    <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">
+                      {getMainTaskFieldValue('Responsable de Actividad')}
+                    </Typography.Text>
+                  </div>
                 </div>
 
                 {notasActividad && (
-                  <div className="task-ficha-pro__results-box">
-                    <Typography.Text className="task-ficha-pro__results-title">Resultados Obtenidos</Typography.Text>
+                  <div className="task-ficha-pro__results-box" style={{ marginTop: '1rem' }}>
+                    <Typography.Text className="task-ficha-pro__results-title">Descripción</Typography.Text>
                     <Typography.Paragraph className="task-ficha-pro__results-text">
                       {notasActividad}
                     </Typography.Paragraph>
                   </div>
                 )}
-              </Col>
-            </Row>
-          </div>
 
-        <div className="task-ficha-pro__general-stats-outer">
-        <div className="task-ficha-pro__general-stats">
-          <Typography.Text className="task-ficha-pro__stats-heading">Estadísticas</Typography.Text>
-          <Typography.Text className="task-ficha-pro__general-progress-label">Progreso General</Typography.Text>
-          <div className="task-ficha-pro__general-progress-row">
-            <Progress
-              percent={Number(generalStatistics.completionPercentage.toFixed(1))}
-              showInfo={false}
-              strokeColor={{
-                '0%': '#f97316',
-                '50%': '#facc15',
-                '100%': '#22c55e',
-              }}
-              trailColor="#e5e7eb"
-              strokeWidth={10}
-            />
-            <Typography.Text className="task-ficha-pro__general-progress-value">
-              {generalStatistics.completionPercentage.toFixed(1)}%
-              {generalStatistics.completionPercentage >= 100 && (
-                <CheckCircleFilled style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '1rem', verticalAlign: 'middle' }} />
-              )}
-            </Typography.Text>
-          </div>
+                {/* ── Estadísticas de sub-actividades ── */}
+                <div className="task-ficha-pro__general-stats" style={{ marginTop: '1rem' }}>
+                  <Typography.Text className="task-ficha-pro__stats-heading">Estadísticas</Typography.Text>
+                  <Typography.Text className="task-ficha-pro__general-progress-label">Progreso General</Typography.Text>
+                  <div className="task-ficha-pro__general-progress-row">
+                    <Progress
+                      percent={Number(generalStatistics.completionPercentage.toFixed(1))}
+                      showInfo={false}
+                      strokeColor={{ '0%': '#f97316', '50%': '#facc15', '100%': '#22c55e' }}
+                      trailColor="#e5e7eb"
+                      strokeWidth={10}
+                    />
+                    <Typography.Text className="task-ficha-pro__general-progress-value">
+                      {generalStatistics.completionPercentage.toFixed(1)}%
+                      {generalStatistics.completionPercentage >= 100 && (
+                        <CheckCircleFilled style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '1rem', verticalAlign: 'middle' }} />
+                      )}
+                    </Typography.Text>
+                  </div>
+                  <Row gutter={[10, 10]} className="task-ficha-pro__general-stats-grid">
+                    <Col xs={12} lg={6}>
+                      <div className="task-ficha-pro__general-stat-item">
+                        <span className="task-ficha-pro__general-stat-value">{generalStatistics.total}</span>
+                        <span className="task-ficha-pro__general-stat-label">Total Sub Actividades</span>
+                      </div>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                      <div className="task-ficha-pro__general-stat-item">
+                        <span className="task-ficha-pro__general-stat-value">{generalStatistics.completed}</span>
+                        <span className="task-ficha-pro__general-stat-label">Ejecutadas</span>
+                      </div>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                      <div className="task-ficha-pro__general-stat-item">
+                        <span className="task-ficha-pro__general-stat-value">{generalStatistics.pending}</span>
+                        <span className="task-ficha-pro__general-stat-label">En Proceso</span>
+                      </div>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                      <div className={`task-ficha-pro__general-stat-item task-ficha-pro__general-stat-item--${estadoClass}`}>
+                        <span className="task-ficha-pro__general-stat-value">{generalStatistics.completionPercentage.toFixed(1)}%</span>
+                        <span className="task-ficha-pro__general-stat-label">Progreso</span>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
 
-          <Row gutter={[10, 10]} className="task-ficha-pro__general-stats-grid">
-            <Col xs={12} lg={6}>
-              <div className="task-ficha-pro__general-stat-item">
-                <span className="task-ficha-pro__general-stat-value">{generalStatistics.total}</span>
-                <span className="task-ficha-pro__general-stat-label">Total Sub Actividades</span>
-              </div>
-            </Col>
-            <Col xs={12} lg={6}>
-              <div className="task-ficha-pro__general-stat-item">
-                <span className="task-ficha-pro__general-stat-value">{generalStatistics.completed}</span>
-                <span className="task-ficha-pro__general-stat-label">Completadas</span>
-              </div>
-            </Col>
-            <Col xs={12} lg={6}>
-              <div className="task-ficha-pro__general-stat-item">
-                <span className="task-ficha-pro__general-stat-value">{generalStatistics.pending}</span>
-                <span className="task-ficha-pro__general-stat-label">Pendientes</span>
-              </div>
-            </Col>
-            <Col xs={12} lg={6}>
-              <div className={`task-ficha-pro__general-stat-item task-ficha-pro__general-stat-item--${estadoClass}`}>
-                <span className="task-ficha-pro__general-stat-value">{generalStatistics.completionPercentage.toFixed(1)}%</span>
-                <span className="task-ficha-pro__general-stat-label">Progreso</span>
-              </div>
-            </Col>
-          </Row>
-        </div>
-        </div>
+                {/* Fuentes de Verificación */}
+                <div className="task-ficha-pro__results-box task-ficha-pro__fuentes-section">
+                  <div className="task-ficha-pro__fuentes-header">
+                    <Typography.Text className="task-ficha-pro__results-title">
+                      <LinkOutlined style={{ marginRight: 5, color: '#1565C0' }} />
+                      Fuentes de Verificación
+                    </Typography.Text>
+                    <Button
+                      size="small"
+                      type="dashed"
+                      onClick={() => setShowVerificationModal(true)}
+                      title={verificationSubtask ? 'Agregar nueva fuente de verificación' : 'Crear subactividad de fuentes de verificación'}
+                    >
+                      {verificationSubtask ? '+ Agregar Fuente' : '+ Crear Subactividad'}
+                    </Button>
+                  </div>
 
-        {/* Fuentes de Verificación */}
-        <div style={{ padding: '1rem 1.25rem 1.25rem', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb' }}>
-          <div 
-            style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '1rem'
-            }}
-          >
-            <Typography.Text className="task-ficha-pro__stats-heading" style={{ fontSize: undefined }}>
-              Fuentes de Verificación
-            </Typography.Text>
-            <Button
-              onClick={() => setShowVerificationModal(true)}
-              className="task-ficha-pro__actions-trigger"
-              title={verificationSubtask ? 'Agregar nueva fuente de verificación' : 'Crear subactividad de fuentes de verificación'}
-            >
-              {verificationSubtask ? '+ Agregar Fuente' : '+ Crear Subactividad'}
-            </Button>
-          </div>
-
-          {verificationSubtask ? (
-            <div>
-              {/* Modo nuevo: entradas JSON */}
-              {fuentesData ? (
-                fuentesData.entradas.length > 0 ? (
-                  <List
-                    size="small"
-                    dataSource={fuentesData.entradas}
-                    renderItem={(entry) => (
-                      <List.Item
-                        className="task-ficha-pro__fuente-item"
-                        actions={[
-                          <a
-                            key="ver"
-                            href={entry.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="task-ficha-pro__fuente-link"
-                          >
-                            Ver
-                          </a>
-                        ]}
-                      >
-                        <List.Item.Meta
-                          avatar={<PaperClipOutlined className="task-ficha-pro__fuente-icon" />}
-                          title={<span className="task-ficha-pro__fuente-name">{entry.nombre}</span>}
-                        />
-                      </List.Item>
-                    )}
-                  />
-                ) : (
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }}>
-                    No hay fuentes registradas. Use el botón "Agregar Fuente".
-                  </p>
-                )
-              ) : (
-                /* Modo legado: attachments de Asana */
-                <div>
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#666' }}>
-                    {loadingAttachments ? (
-                      'Cargando recursos...'
-                    ) : verificationAttachments.length > 0 ? (
-                      `${verificationAttachments.length} ${verificationAttachments.length === 1 ? 'recurso adjunto' : 'recursos adjuntos'}`
-                    ) : (
-                      'No hay recursos adjuntos.'
-                    )}
-                  </p>
-                  {verificationAttachments.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {verificationAttachments.map((attachment) => (
-                        <a
-                          key={attachment.gid}
-                          href={attachment.view_url || attachment.download_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="button-secondary"
-                          style={{
-                            fontSize: '0.85rem',
-                            padding: '0.5rem 1rem',
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            backgroundColor: '#fff',
-                            border: '1px solid #626262',
-                            color: '#626262',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#626262';
-                            e.currentTarget.style.color = '#fff';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fff';
-                            e.currentTarget.style.color = '#626262';
-                          }}
-                          title={attachment.name}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                          </svg>
-                          <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {attachment.name}
-                          </span>
-                        </a>
-                      ))}
+                  {verificationSubtask ? (
+                    <div>
+                      {fuentesData ? (
+                        fuentesData.entradas.length > 0 ? (
+                          <List
+                            size="small"
+                            dataSource={fuentesData.entradas}
+                            renderItem={(entry) => (
+                              <List.Item
+                                className="task-ficha-pro__fuente-item"
+                                actions={[
+                                  <a
+                                    key="ver"
+                                    href={entry.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="task-ficha-pro__fuente-link"
+                                  >
+                                    Ver
+                                  </a>
+                                ]}
+                              >
+                                <List.Item.Meta
+                                  avatar={<PaperClipOutlined className="task-ficha-pro__fuente-icon" />}
+                                  title={<span className="task-ficha-pro__fuente-name">{entry.nombre}</span>}
+                                />
+                              </List.Item>
+                            )}
+                          />
+                        ) : (
+                          <p className="task-ficha-pro__fuentes-empty">
+                            No hay fuentes registradas. Use el botón "Agregar Fuente".
+                          </p>
+                        )
+                      ) : (
+                        <div>
+                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                            {loadingAttachments ? (
+                              'Cargando recursos...'
+                            ) : verificationAttachments.length > 0 ? (
+                              `${verificationAttachments.length} ${verificationAttachments.length === 1 ? 'recurso adjunto' : 'recursos adjuntos'}`
+                            ) : (
+                              'No hay recursos adjuntos.'
+                            )}
+                          </p>
+                          {verificationAttachments.length > 0 && (
+                            <div className="task-ficha-pro__fuentes-attachments">
+                              {verificationAttachments.map((attachment) => (
+                                <a
+                                  key={attachment.gid}
+                                  href={attachment.view_url || attachment.download_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="task-ficha-pro__fuente-chip"
+                                  title={attachment.name}
+                                >
+                                  <PaperClipOutlined />
+                                  <span>{attachment.name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="task-ficha-pro__results-box" style={{ background: '#f8fafc' }}>
+                      <Typography.Text style={{ fontSize: '0.85rem', color: '#4f4f4f' }}>
+                        <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
+                      </Typography.Text>
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f4f4f' }}>
-                <strong>ℹ️ Info:</strong> Cree la subtarea "FUENTES DE VERIFICACION" para poder adjuntar documentos, imágenes y enlaces de Google Drive.
-              </p>
-            </div>
-          )}
-        </div>
+              </Col>
+
+              {/* Columna derecha: impacto + metadatos (35%) */}
+              <Col xs={24} md={8} className="task-ficha-pro__sidebar-col">
+                <Typography.Text className="task-ficha-pro__stats-heading">Impacto</Typography.Text>
+                <div className="task-ficha-pro__kpi-grid">
+                  <Card className="task-ficha-pro__metric task-ficha-pro__metric-total" size="small">
+                    <Statistic
+                      title="Total Beneficiarios"
+                      value={aggregatedValues.total === '-' ? 0 : Number(aggregatedValues.total)}
+                      prefix={<TeamOutlined />}
+                    />
+                  </Card>
+                  <Card className="task-ficha-pro__metric task-ficha-pro__metric-mujeres" size="small">
+                    <Statistic
+                      title="Mujeres"
+                      value={aggregatedValues.mujeres === '-' ? 0 : Number(aggregatedValues.mujeres)}
+                      prefix={<HeartOutlined />}
+                    />
+                  </Card>
+                  <Card className="task-ficha-pro__metric task-ficha-pro__metric-hombres" size="small">
+                    <Statistic
+                      title="Hombres"
+                      value={aggregatedValues.hombres === '-' ? 0 : Number(aggregatedValues.hombres)}
+                      prefix={<UserOutlined />}
+                    />
+                  </Card>
+                  {aggregatedValues.replicantes !== '-' && (
+                    <Card className="task-ficha-pro__metric task-ficha-pro__metric-replicantes" size="small">
+                      <Statistic
+                        title="Replicantes"
+                        value={Number(aggregatedValues.replicantes)}
+                        prefix={<TeamOutlined />}
+                      />
+                    </Card>
+                  )}
+                </div>
+
+                <div className="task-ficha-pro__sidebar-meta">
+                  {/* Sub actividades */}
+                  <div className="task-ficha-pro__meta-item">
+                    <DeploymentUnitOutlined className="task-ficha-pro__meta-icon" />
+                    <div>
+                      <Typography.Text className="task-ficha-pro__label">Sub Actividades</Typography.Text>
+                      <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">{subtasksCount}</Typography.Text>
+                    </div>
+                  </div>
+
+                  {/* Población meta */}
+                  {aggregatedValues.poblacionMeta !== '-' && (
+                    <div className="task-ficha-pro__meta-item">
+                      <FileSearchOutlined className="task-ficha-pro__meta-icon" />
+                      <div>
+                        <Typography.Text className="task-ficha-pro__label">Población Meta</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">{aggregatedValues.poblacionMeta}</Typography.Text>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lugar */}
+                  {getMainTaskFieldValue('Lugar') !== '-' && (
+                    <div className="task-ficha-pro__meta-item">
+                      <EnvironmentOutlined className="task-ficha-pro__meta-icon" />
+                      <div>
+                        <Typography.Text className="task-ficha-pro__label">Lugar</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__value">{getMainTaskFieldValue('Lugar')}</Typography.Text>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cronograma */}
+                  {(fechaInicio !== '-' || fechaFin !== '-' || task.due_on) && (
+                    <div className="task-ficha-pro__meta-item">
+                      <CalendarOutlined className="task-ficha-pro__meta-icon" />
+                      <div>
+                        <Typography.Text className="task-ficha-pro__label">Cronograma</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__value">
+                          {fechaInicio !== '-' ? fechaInicio : '—'}
+                          {' → '}
+                          {fechaFin !== '-' ? fechaFin : task.due_on || '—'}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Col>
+
+            </Row>
+          </div>
+
         </Card>
 
         {/* Solicitudes */}

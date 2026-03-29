@@ -122,15 +122,19 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         throw new Error('El tipo de escuela es obligatorio');
       }
 
-      const estudiantesValidos = estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim());
+      const estudiantesValidos = editMode
+        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim())
+        : [];
 
-      if (estudiantesValidos.length === 0) {
+      if (editMode && estudiantesValidos.length === 0) {
         throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre, apellido paterno, apellido materno) y género');
       }
 
-      const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
-      if (estudianteSinGenero) {
-        throw new Error('El género es obligatorio para todos los estudiantes');
+      if (editMode) {
+        const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
+        if (estudianteSinGenero) {
+          throw new Error('El género es obligatorio para todos los estudiantes');
+        }
       }
 
       // Obtener workspace
@@ -249,7 +253,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         const seccion = await asanaService.createSection(projectGid, nombreEscuela);
 
         // 2. Crear las tareas principales
-        const tareaEstudiantes = await asanaService.createTask({
+        await asanaService.createTask({
           name: 'Estudiantes',
           projectGid: projectGid,
           workspaceGid: cdima.gid,
@@ -265,45 +269,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           notes: 'Documentos relacionados a la escuela'
         });
 
-        // 3. Crear subtareas de estudiantes en paralelo
-        await Promise.all(estudiantesValidos.map(async (estudiante) => {
-          // Validar datos del estudiante
-          const validationResult = validateData(EstudianteDataSchema, {
-            genero: estudiante.genero,
-            telefono: estudiante.telefono,
-            lugarNacimiento: estudiante.lugarNacimiento,
-            fechaNacimiento: estudiante.fechaNacimiento,
-            domicilio: estudiante.domicilio,
-            especialidad: estudiante.cargo,
-            documentoIdentidad: estudiante.documentoIdentidad,
-            identidadCultural: estudiante.identidadCultural
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
-            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
-          }
-
-          // Usar el nuevo formato JSON estructurado
-          const notasEstudiante = serializeEstudianteData({
-            genero: estudiante.genero,
-            fechaNacimiento: estudiante.fechaNacimiento || '',
-            especialidad: estudiante.cargo || '',
-            domicilio: estudiante.domicilio || '',
-            telefono: estudiante.telefono || '',
-            lugarNacimiento: estudiante.lugarNacimiento || '',
-            documentoIdentidad: estudiante.documentoIdentidad || '',
-            identidadCultural: estudiante.identidadCultural || ''
-          });
-
-          const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
-          await asanaService.createSubtask(tareaEstudiantes.gid, cdima.gid, {
-            name: nombreCompleto,
-            notes: notasEstudiante
-          });
-        }));
-
-        // 4. Crear subtareas de documentos
+        // 3. Crear subtareas de documentos
         const documentosTipo = ['Currícula', 'Informe', 'Otros'];
         for (const doc of documentosTipo) {
           await asanaService.createSubtask(tareaDocumentos.gid, cdima.gid, {
@@ -312,7 +278,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         }
 
         setNotification({
-          message: '¡Escuela creada exitosamente!',
+          message: '¡Escuela creada exitosamente! Ahora puede agregar estudiantes individualmente.',
           type: 'success'
         });
       }
@@ -385,7 +351,8 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                 </select>
               </div>
 
-              {/* Estudiantes */}
+              {/* Estudiantes - solo en modo edición */}
+              {editMode && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                   Estudiantes <span style={{ color: 'red' }}>*</span>
@@ -578,11 +545,13 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                   + Agregar Estudiante
                 </button>
               </div>
+              )}
 
               <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
-                  <strong>ℹ️ Nota:</strong> Se crearán automáticamente las tareas "Estudiantes" y "Documentos" 
-                  con las subtareas correspondientes. Los documentos incluirán: Currícula, Informe y Otros.
+                  <strong>ℹ️ Nota:</strong> {editMode
+                    ? 'Se actualizarán los datos de la escuela y sus estudiantes.'
+                    : 'Se crearán automáticamente las tareas "Estudiantes" y "Documentos". Podrás agregar estudiantes individualmente desde la vista de detalle.'}
                 </p>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5a5a' }}>
                   📝 El nombre completo se guardará en formato: <strong>Nombre, Apellido Paterno, Apellido Materno</strong>

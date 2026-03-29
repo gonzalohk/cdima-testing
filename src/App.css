@@ -1496,7 +1496,6 @@ select.form-input {
 
 .section-card:hover {
   border-color: var(--primary-blue);
-  transform: translateX(4px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
@@ -2487,6 +2486,7 @@ select.form-input {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
 }
@@ -2723,14 +2723,97 @@ select.form-input {
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
+/* Franja Wiphala de 4px */
+.task-ficha-pro__wiphala-stripe {
+  display: flex;
+  height: 4px;
+  width: 100%;
+}
+
+/* Código de actividad (pequeño, gris) */
+.task-ficha-pro__code {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin-bottom: 0.2rem;
+}
+
+/* Título principal de actividad */
+.task-ficha-pro__main-title {
+  color: #111827 !important;
+  margin: 0 0 1rem !important;
+  font-size: 1.3rem !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+}
+
+/* Columna izquierda (narrativa) */
+.task-ficha-pro__main-col {
+  padding: 1.4rem 1.5rem !important;
+  border-right: 1px solid #f0f2f5;
+}
+
+/* Columna derecha (sidebar impacto + meta) */
+.task-ficha-pro__sidebar-col {
+  padding: 1.4rem 1.25rem !important;
+  background: #fafafa;
+  border-left: 1px solid #f0f2f5;
+}
+
+/* Grid de KPIs en el sidebar: Total ocupa toda la fila, Mujeres+Hombres en 2 cols */
+.task-ficha-pro__kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Bloque de metadatos del sidebar */
+.task-ficha-pro__sidebar-meta {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Fila de metadato: icono + contenido */
+.task-ficha-pro__meta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.task-ficha-pro__meta-icon {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* Caja de resultado */
+.task-ficha-pro__resultado-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  background: #f0f7ff;
+  border-left: 3px solid #1565C0;
+  border-radius: 0 6px 6px 0;
+}
+
 .task-ficha-pro__header {
   background: #f5f7fa;
   color: #111827;
-  padding: 1.2rem 1.4rem;
+  padding: 0.85rem 1.4rem;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: center;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -2826,7 +2909,7 @@ select.form-input {
 
 .task-ficha-pro__body {
   background: #fff;
-  padding: 1.25rem;
+  padding: 0;
 }
 
 .task-ficha-pro__logistics-col {
@@ -2927,33 +3010,35 @@ select.form-input {
   font-size: 0.95rem;
 }
 
+/* Total Beneficiarios: verde */
 .task-ficha-pro__metric-total {
-  background: #ffffff;
-  border-color: #edf0f2;
-  border-left: 3px solid #0ea5e9;
-
+  background: #f0fdf4;
+  border-color: #dcfce7;
+  border-left: 3px solid #16a34a;
+  grid-column: 1 / -1;
 }
+/* Mujeres: rosa */
 .task-ficha-pro__metric-mujeres {
   background: #fff0f6;
   border-color: #fce7f3;
   border-left: 3px solid #ec4899;
 }
-
+/* Meta */
 .task-ficha-pro__metric-meta {
   background: #f5f3ff;
   border-color: #ede9fe;
   border-left: 3px solid #6366f1;
 }
-
+/* Hombres: azul */
 .task-ficha-pro__metric-hombres {
-  background: #f0fdf4;
-  border-color: #dcfce7;
-  border-left: 3px solid #10b981;
+  background: #eff6ff;
+  border-color: #dbeafe;
+  border-left: 3px solid #1565C0;
 }
 
 .task-ficha-pro__metric-total .ant-statistic-content,
 .task-ficha-pro__metric-total .ant-statistic-content-prefix {
-  color: #1f2937;
+  color: #14532d;
 }
 
 .task-ficha-pro__metric-mujeres .ant-statistic-content {
@@ -2970,10 +3055,26 @@ select.form-input {
 }
 
 .task-ficha-pro__metric-hombres .ant-statistic-content {
-  color: #064e3b;
+  color: #1e3a5f;
 }
 .task-ficha-pro__metric-hombres .ant-statistic-content-prefix {
-  color: #10b981;
+  color: #1565C0;
+  opacity: 1;
+}
+
+/* Replicantes: naranja/ámbar */
+.task-ficha-pro__metric-replicantes {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left: 3px solid #ea580c;
+  grid-column: 1 / -1;
+}
+
+.task-ficha-pro__metric-replicantes .ant-statistic-content {
+  color: #7c2d12;
+}
+.task-ficha-pro__metric-replicantes .ant-statistic-content-prefix {
+  color: #ea580c;
   opacity: 1;
 }
 
@@ -3142,6 +3243,59 @@ select.form-input {
   border-color: #9ca3af;
 }
 
+.task-ficha-pro__fuentes-section {
+  margin-top: 1rem;
+}
+
+.task-ficha-pro__fuentes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.task-ficha-pro__fuentes-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.task-ficha-pro__fuentes-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.task-ficha-pro__fuente-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.75rem;
+  text-decoration: none;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  color: #1565C0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-ficha-pro__fuente-chip:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.task-ficha-pro__fuente-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ===== Section Cards (Distribución, Beneficiarios, Sub Actividades) ===== */
 
 .section-card.ant-card {
@@ -3253,42 +3407,104 @@ select.form-input {
 
 /* ── Section Tabs ─────────────────────────────────────────────── */
 .section-tabs {
+  margin-top: 1rem;
   margin-bottom: 1.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
+.section-tabs .ant-tabs {
+  width: 100%;
+}
+
+/* Nav bar: background + bottom border baseline */
 .section-tabs .ant-tabs-nav {
   margin-bottom: 0;
-  padding: 0 0.25rem;
+  padding: 8px 12px 0;
+  background: #f4f6f8;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .section-tabs .ant-tabs-nav::before {
-  border-bottom-color: #eceff3;
+  border-bottom: none;
 }
 
+/* Card-type tab default */
 .section-tabs .ant-tabs-tab {
   font-weight: 500;
   font-size: 0.875rem;
   color: #6b7280;
+  background: #eaecef !important;
+  border: 1px solid #d1d5db !important;
+  border-bottom: none !important;
+  border-radius: 6px 6px 0 0 !important;
+  margin-right: 4px !important;
+  transform: none !important;
+  top: 0 !important;
+  margin-top: 0 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+
+.section-tabs .ant-tabs-tab:hover {
+  color: #374151 !important;
+  background: #e2e5e9 !important;
+  transform: none !important;
+  top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* Active tab: white bg, brick-red bottom anchor */
+.section-tabs .ant-tabs-tab-active {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  border-bottom-color: #ffffff !important;
+  position: relative;
+}
+
+.section-tabs .ant-tabs-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #C0392B;
 }
 
 .section-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: #4f46e5;
+  color: #C0392B !important;
+  font-weight: 600;
 }
 
+/* Hide default ink-bar (we use the ::after pseudo-element) */
 .section-tabs .ant-tabs-ink-bar {
-  background: #4f46e5;
+  display: none;
 }
 
+/* Content area */
 .section-tabs .ant-tabs-content-holder {
-  padding-top: 0;
+  padding: 0;
+  background: #ffffff;
 }
 
-/* Remove bottom margin on cards nested inside tab panes */
+.section-tabs .ant-tabs-content {
+  padding: 0rem;
+}
+
+/* Remove extra margin on nested cards */
 .section-tabs .ant-tabs-tabpane > .section-card,
 .section-tabs .ant-tabs-tabpane > .ant-card {
   margin-bottom: 0;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.section-tabs .ant-tabs-tabpane .section-card__table-wrap {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Solicitudes & Contrataciones Collapse ─────────────────────── */
@@ -3342,3 +3558,29 @@ select.form-input {
     padding: 0 1rem 1rem;
   }
 }
+
+.hierarchical-selector .ant-card-body {
+  padding: 24px !important;
+}
+
+/* ── Centralizador de Notas ───────────────────────────────────── */
+.centralizador-table { table-layout: auto; }
+.centralizador-table tbody tr { transition: background 0.1s; }
+.centralizador-table tbody tr:nth-child(even) { background: #f9fafb; }
+.centralizador-table tbody tr:hover { background: #eff6ff !important; }
+.centralizador-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
+.centralizador-table td { overflow: hidden; }
+.centralizador-table tbody tr td.col-name-s { background: white; }
+.centralizador-table tbody tr:nth-child(even) td.col-name-s { background: #f9fafb; }
+.centralizador-table tbody tr:hover td.col-name-s { background: #eff6ff !important; }
+
+/* ── Asistencia ───────────────────────────────────────────────── */
+.asist-tbl { table-layout: auto; }
+.asist-tbl tbody tr { transition: background 0.1s; }
+.asist-tbl tbody tr:nth-child(even) { background: #f9fafb; }
+.asist-tbl tbody tr:hover { background: #eff6ff !important; }
+.asist-tbl thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
+.asist-tbl td { overflow: hidden; }
+.asist-tbl tbody tr td.col-name-s { position: sticky; left: 0; z-index: 1; background: white; }
+.asist-tbl tbody tr:nth-child(even) td.col-name-s { background: #f9fafb; }
+.asist-tbl tbody tr:hover td.col-name-s { background: #eff6ff !important; }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Empty, Tabs } from 'antd';
+import { Card, Empty, Tabs } from 'antd';
 import { AsanaTask, TaskStatistics } from '../types/asana.types';
 import SubtasksTable from './SubtasksTable';
 import BeneficiariesSummary from './BeneficiariesSummary';
@@ -35,7 +35,7 @@ interface SectionTabsProps {
 }
 
 const EmptyState: React.FC<{ description: string }> = ({ description }) => (
-  <div style={{ padding: '3rem 1.5rem', background: '#fff', borderRadius: '0 0 12px 12px', border: '1px solid #eceff3', borderTop: 'none' }}>
+  <div style={{ padding: '3rem 1.5rem' }}>
     <Empty description={description} />
   </div>
 );
@@ -136,9 +136,9 @@ const SectionTabs: React.FC<SectionTabsProps> = ({
   ];
 
   return (
-    <div className="section-tabs">
-      <Tabs defaultActiveKey="subactividades" items={items} />
-    </div>
+    <Card className="section-tabs" bodyStyle={{ padding: 0 }}>
+      <Tabs defaultActiveKey="subactividades" items={items} type="card" />
+    </Card>
   );
 };
 

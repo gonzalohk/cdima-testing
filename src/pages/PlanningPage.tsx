@@ -11,7 +11,7 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import { getTaskColor } from '../utils/colors';
-import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule } from '../services/reports/planning-reports.service';
+import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule, exportMonthlyCalendarScheduleWord } from '../services/reports/planning-reports.service';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -87,6 +87,7 @@ const PlanningPage: React.FC = () => {
   const [exportingTables, setExportingTables] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
+  const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -378,6 +379,22 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  const handleExportScheduleWord = async () => {
+    setExportingScheduleWord(true);
+    try {
+      await exportMonthlyCalendarScheduleWord({
+        tasks: currentMonthTasks,
+        date,
+        projectName
+      });
+    } catch (error) {
+      console.error('Error al exportar cronograma Word:', error);
+      alert('Error al generar el cronograma Word. Por favor, intenta de nuevo.');
+    } finally {
+      setExportingScheduleWord(false);
+    }
+  };
+
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
     const isEjecutado = event.resource.estado === 'Ejecutado';
@@ -499,13 +516,25 @@ const PlanningPage: React.FC = () => {
             className="btn-export"
             onClick={handleExportSchedule}
             disabled={exportingSchedule || currentMonthTasks.length === 0}
-            title="Exportar cronograma mensual (tabla semanal por área)"
+            title="Exportar cronograma mensual a PDF (tabla semanal por área)"
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none'
             }}
           >
             {exportingSchedule ? 'Exportando...' : '📋 Exportar Cronograma Mensual'}
+          </button>
+          <button
+            className="btn-export"
+            onClick={handleExportScheduleWord}
+            disabled={exportingScheduleWord || currentMonthTasks.length === 0}
+            title="Exportar cronograma mensual a Word (.docx)"
+            style={{
+              background: 'linear-gradient(135deg, #2b5797 0%, #1e3a6e 100%)',
+              border: 'none'
+            }}
+          >
+            {exportingScheduleWord ? 'Exportando...' : '📄 Cronograma Mensual Word'}
           </button>
         </div>
         

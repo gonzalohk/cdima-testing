@@ -23,6 +23,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #fafafa;
 }
 
 #root {
@@ -78,7 +79,7 @@ input:focus, select:focus, textarea:focus {
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: #fafafa;
   }
   
   button {

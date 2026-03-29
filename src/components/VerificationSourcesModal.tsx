@@ -109,8 +109,6 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
     }
   };
 
-  const existingEntradas = currentData?.entradas || [];
-
   return (
     <>
       {notification && (
@@ -122,7 +120,7 @@ const VerificationSourcesModal: React.FC<VerificationSourcesModalProps> = ({
       )}
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-          <HtmlModalHeader icon="📂" title="Fuentes de Verificación" subtitle={task.name} onClose={onClose} />
+          <HtmlModalHeader icon="📂" title="  Fuentes de Verificación" subtitle={task.name} onClose={onClose} />
 
           {error && (
             <div className="alert alert-error" style={{ marginBottom: '1rem' }}>

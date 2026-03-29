@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Card, Dropdown, Select, Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateEscuelaModal from '../components/CreateEscuelaModal';
+import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaActaCalificacionesWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
 import { format } from 'date-fns';
@@ -14,6 +16,7 @@ import {
   parseEstudianteData, 
   parseAsistenciaRecords,
   updateNotasWithAsistencia,
+  calcularEdad,
   type AsistenciaRecord as AsistenciaRecordType
 } from '../utils/asana-helpers';
 import { 
@@ -60,8 +63,10 @@ const EscuelasPage: React.FC = () => {
   const [escuelaToEdit, setEscuelaToEdit] = useState<any>(null);
   const [selectedEscuela, setSelectedEscuela] = useState<AsanaSection | null>(null);
   const [escuelasProjectGid, setEscuelasProjectGid] = useState<string>('');
-  const [showNotasModal, setShowNotasModal] = useState(false);
-  const [showAsistenciaPanel, setShowAsistenciaPanel] = useState(false);
+  const [activeEscuelaTab, setActiveEscuelaTab] = useState<string>('estudiantes');
+  const [busquedaEstudiante, setBusquedaEstudiante] = useState<string>('');
+  const [paginaEstudiantes, setPaginaEstudiantes] = useState<number>(1);
+  const [busquedaCentralizador, setBusquedaCentralizador] = useState<string>('');
   const [selectedInfo, setSelectedInfo] = useState<InfoPrimaria | null>(null);
   
   // Estados para asistencia
@@ -78,6 +83,7 @@ const EscuelasPage: React.FC = () => {
   const [notasEstudiantes, setNotasEstudiantes] = useState<NotaEstudiante[]>([]);
   const [loadingNotas, setLoadingNotas] = useState(false);
   const [notasConError, setNotasConError] = useState<Set<string>>(new Set());
+  const [notasOriginales, setNotasOriginales] = useState<Record<string, number>>({});
   
   // Estados para modales individuales
   const [estudianteSeleccionadoNotas, setEstudianteSeleccionadoNotas] = useState<AsanaTask | null>(null);
@@ -88,8 +94,8 @@ const EscuelasPage: React.FC = () => {
   const [estudiantes, setEstudiantes] = useState<AsanaTask[]>([]);
   const [documentos, setDocumentos] = useState<AsanaTask[]>([]);
   
-  // Estado para controlar si se muestran todas las escuelas
-  const [showAllEscuelas, setShowAllEscuelas] = useState(false);
+  const [estudiantesTaskGid, setEstudiantesTaskGid] = useState<string>('');
+  const [showAgregarEstudianteModal, setShowAgregarEstudianteModal] = useState(false);
 
   useEffect(() => {
     const token = asanaService.getToken();
@@ -245,6 +251,7 @@ const EscuelasPage: React.FC = () => {
       if (tareaEstudiantes) {
         const subtasks = await asanaService.getSubtasks(tareaEstudiantes.gid);
         setEstudiantes(sortByApellidos(subtasks));
+        setEstudiantesTaskGid(tareaEstudiantes.gid);
       }
 
       if (tareaDocumentos) {
@@ -386,11 +393,11 @@ const EscuelasPage: React.FC = () => {
         return;
       }
       
-      // ✅ OPTIMIZACIÓN: Crear array de promesas para ejecución paralela (BATCH)
-      console.log(`🚀 Ejecutando actualización en batch de ${estudiantesProcesar.length} estudiantes${soloReintentar ? ' (reintento)' : ''}...`);
+      // ✅ OPTIMIZACIÓN: Enviar en lotes de 12 para respetar el límite de Asana
+      console.log(`🚀 Ejecutando actualización en lotes de 12 para ${estudiantesProcesar.length} estudiantes${soloReintentar ? ' (reintento)' : ''}...`);
       const startTime = performance.now();
-      
-      const updatePromises = estudiantesProcesar.map(async (asistencia) => {
+      const BATCH_SIZE = 12;
+      const buildPromise = async (asistencia: typeof estudiantesProcesar[0]) => {
         const estudiante = estudiantes.find(e => e.gid === asistencia.gid);
         if (!estudiante) {
           console.warn(`⚠️ No se encontró el estudiante con gid: ${asistencia.gid}`);
@@ -440,10 +447,17 @@ const EscuelasPage: React.FC = () => {
           console.error(`❌ Error al guardar asistencia de ${asistencia.nombre}:`, error);
           return { success: false, gid: asistencia.gid, nombre: asistencia.nombre, error };
         }
-      });
+      };
 
-      // ✅ Ejecutar todas las actualizaciones en paralelo (BATCH)
-      const results = await Promise.all(updatePromises);
+      // ✅ Ejecutar en lotes de 12 para respetar el límite de Asana
+      const allResults: Awaited<ReturnType<typeof buildPromise>>[] = [];
+      for (let i = 0; i < estudiantesProcesar.length; i += BATCH_SIZE) {
+        const chunk = estudiantesProcesar.slice(i, i + BATCH_SIZE);
+        console.log(`  📦 Lote ${Math.floor(i / BATCH_SIZE) + 1}: enviando ${chunk.length} registros...`);
+        const chunkResults = await Promise.all(chunk.map(buildPromise));
+        allResults.push(...chunkResults);
+      }
+      const results = allResults;
       
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -525,6 +539,7 @@ const EscuelasPage: React.FC = () => {
     });
     
     setNotasEstudiantes(notasIniciales);
+    setNotasOriginales(Object.fromEntries(notasIniciales.map(n => [n.gid, n.nota])));
     setNotasConError(new Set()); // Limpiar errores previos
     setShowRegistroNotasModal(true);
   };
@@ -543,6 +558,7 @@ const EscuelasPage: React.FC = () => {
     });
     
     setNotasEstudiantes(notasActualizadas);
+    setNotasOriginales(Object.fromEntries(notasActualizadas.map(n => [n.gid, n.nota])));
   };
 
   const handleCambiarNota = (gid: string, nota: number) => {
@@ -556,14 +572,6 @@ const EscuelasPage: React.FC = () => {
   const handleGuardarNotas = async (soloReintentar: boolean = false) => {
     setLoadingNotas(true);
     try {
-      // Confirmación previa al guardado masivo
-      if (!soloReintentar) {
-        if (!window.confirm(`¿Guardar las notas de ${moduloSeleccionado} para ${notasEstudiantes.length} estudiantes?\n\nEsta acción modificará los registros en Asana.`)) {
-          setLoadingNotas(false);
-          return;
-        }
-      }
-
       console.log(`📝 Guardando notas para ${moduloSeleccionado}...`);
       
       // Obtener el GID del campo personalizado del módulo seleccionado
@@ -585,21 +593,30 @@ const EscuelasPage: React.FC = () => {
       
       console.log(`🔑 GID del campo ${moduloSeleccionado}: ${campoModulo.gid}`);
       
-      // Determinar qué estudiantes procesar
+      // Determinar qué estudiantes procesar (solo modificados, o los que fallaron en reintento)
       const estudiantesProcesar = soloReintentar
         ? notasEstudiantes.filter(est => notasConError.has(est.gid))
-        : notasEstudiantes;
+        : notasEstudiantes.filter(est => est.nota !== (notasOriginales[est.gid] ?? -1));
       
       if (estudiantesProcesar.length === 0) {
-        alert('⚠️ No hay estudiantes para procesar');
+        alert('⚠️ No hay notas modificadas para guardar');
+        setLoadingNotas(false);
         return;
       }
+
+      // Confirmación previa al guardado
+      if (!soloReintentar) {
+        if (!window.confirm(`¿Guardar ${estudiantesProcesar.length} nota${estudiantesProcesar.length !== 1 ? 's' : ''} modificada${estudiantesProcesar.length !== 1 ? 's' : ''} de ${moduloSeleccionado}?\n\nEsta acción modificará los registros en Asana.`)) {
+          setLoadingNotas(false);
+          return;
+        }
+      }
       
-      // ✅ OPTIMIZACIÓN: Crear array de promesas para ejecución paralela (BATCH)
-      console.log(`🚀 Ejecutando actualización en batch de ${estudiantesProcesar.length} estudiantes${soloReintentar ? ' (reintento)' : ''}...`);
+      // ✅ OPTIMIZACIÓN: Enviar en lotes de 12 para respetar el límite de Asana
+      console.log(`🚀 Ejecutando actualización en lotes de 12 para ${estudiantesProcesar.length} estudiantes${soloReintentar ? ' (reintento)' : ''}...`);
       const startTime = performance.now();
-      
-      const updatePromises = estudiantesProcesar.map(async (notaEstudiante) => {
+      const BATCH_SIZE = 12;
+      const buildPromise = async (notaEstudiante: typeof estudiantesProcesar[0]) => {
         const estudiante = estudiantes.find(e => e.gid === notaEstudiante.gid);
         if (!estudiante) {
           console.warn(`⚠️ No se encontró el estudiante con gid: ${notaEstudiante.gid}`);
@@ -623,10 +640,17 @@ const EscuelasPage: React.FC = () => {
           console.error(`❌ Error al guardar nota de ${notaEstudiante.nombre}:`, error);
           return { success: false, gid: notaEstudiante.gid, nombre: notaEstudiante.nombre, error };
         }
-      });
+      };
 
-      // ✅ Ejecutar todas las actualizaciones en paralelo (BATCH)
-      const results = await Promise.all(updatePromises);
+      // ✅ Ejecutar en lotes de 12 para respetar el límite de Asana
+      const allResults: Awaited<ReturnType<typeof buildPromise>>[] = [];
+      for (let i = 0; i < estudiantesProcesar.length; i += BATCH_SIZE) {
+        const chunk = estudiantesProcesar.slice(i, i + BATCH_SIZE);
+        console.log(`  📦 Lote ${Math.floor(i / BATCH_SIZE) + 1}: enviando ${chunk.length} notas...`);
+        const chunkResults = await Promise.all(chunk.map(buildPromise));
+        allResults.push(...chunkResults);
+      }
+      const results = allResults;
       
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -819,30 +843,57 @@ const EscuelasPage: React.FC = () => {
 
   return (
     <div className="planning-page">
-      {/* Header */}
-      <div className="planning-header">
-        <div className="planning-header-left">
-          <div className="planning-icon">🏫</div>
-          <div className="planning-info">
-            <h1 className="planning-title">Gestión de Escuelas</h1>
-            <p className="planning-subtitle">
-              {escuelas.length} {escuelas.length === 1 ? 'escuela registrada' : 'escuelas registradas'}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            className="button-primary"
-            onClick={() => {
-              setEditMode(false);
-              setEscuelaToEdit(null);
-              setShowCreateModal(true);
+      {/* Header fusionado con selector */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 0', marginBottom: '0.5rem', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0, flex: 1 }}>
+          <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🏫</span>
+          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>Escuela en:</span>
+          <style>{`
+            .esc-inline-sel .ant-select-selector { border: none !important; border-bottom: 2px solid transparent !important; background: transparent !important; box-shadow: none !important; padding-left: 2px !important; transition: border-color 0.15s; }
+            .esc-inline-sel:hover .ant-select-selector { border-bottom-color: #93c5fd !important; }
+            .esc-inline-sel.ant-select-focused .ant-select-selector { border-bottom-color: #3b82f6 !important; box-shadow: none !important; }
+            .esc-inline-sel .ant-select-selection-item { font-size: 1.05rem !important; font-weight: 700 !important; color: #1e3a5f !important; }
+            .esc-inline-sel .ant-select-selection-placeholder { font-size: 1.05rem !important; color: #94a3b8 !important; }
+            .esc-inline-sel .ant-select-arrow { color: #64748b !important; }
+            .esc-inline-sel .ant-select-clear { background: transparent !important; }
+          `}</style>
+          <Select
+            className="esc-inline-sel"
+            size="large"
+            value={selectedEscuela?.gid || undefined}
+            onChange={(value) => {
+              if (!value) { setSelectedEscuela(null); return; }
+              const found = escuelas.find(e => e.gid === value);
+              if (found) handleViewDetails(found);
             }}
-            style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}
-          >
-            + Crear Escuela
-          </button>
+            options={escuelas.map(e => ({ label: e.name, value: e.gid }))}
+            placeholder={loading ? 'Cargando...' : 'Seleccionar escuela...'}
+            loading={loading}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            style={{ flex: 1, minWidth: 220, maxWidth: 520 }}
+          />
+          {escuelas.length > 0 && (
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {escuelas.length} disponibles
+            </span>
+          )}
         </div>
+        <Dropdown
+          menu={{ items: [
+            { key: 'crear', label: '➕ Crear nueva Escuela', onClick: () => { setEditMode(false); setEscuelaToEdit(null); setShowCreateModal(true); } },
+            ...(selectedEscuela ? [{ key: 'editar', label: '✏️ Editar Escuela', onClick: handleEditEscuela }] : []),
+          ]}}
+          trigger={['click']}
+        >
+          <button
+            title="Configuración"
+            style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#64748b', cursor: 'pointer', fontSize: '1.05rem', flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+          >⚙️</button>
+        </Dropdown>
       </div>
 
       {error && (
@@ -851,95 +902,7 @@ const EscuelasPage: React.FC = () => {
         </div>
       )}
 
-      {/* Lista de Escuelas */}
-      {showAllEscuelas && (
-        <div className="card">
-            {escuelas.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-                <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                  No hay escuelas registradas
-                </p>
-                <p style={{ fontSize: '0.9rem' }}>
-                  Haga clic en "Crear Escuela" para agregar una nueva
-                </p>
-              </div>
-            ) : (
-              <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: '50px', textAlign: 'center' }}>#</th>
-                    <th style={{ minWidth: '250px' }}>Nombre de la Escuela</th>
-                    <th style={{ minWidth: '180px', textAlign: 'center' }}>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {escuelas.map((escuela, index) => (
-                    <tr 
-                      key={escuela.gid}
-                      style={{
-                        backgroundColor: selectedEscuela?.gid === escuela.gid ? '#f2f2f2' : undefined
-                      }}
-                    >
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '1.2rem' }}>🏫</span>
-                          <span style={{ fontWeight: 500 }}>{escuela.name}</span>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => handleViewDetails(escuela)}
-                            className="button-primary"
-                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                          >
-                            👁️ Ver Detalles
-                          </button>
-                          {/* <button
-                            onClick={() => handleDeleteEscuela(escuela.gid, escuela.name)}
-                            className="button-secondary"
-                            style={{ 
-                              fontSize: '0.875rem', 
-                              padding: '0.5rem 1rem',
-                              backgroundColor: '#fee',
-                              color: '#c00',
-                              border: '1px solid #fcc'
-                            }}
-                          >
-                            🗑️ Eliminar
-                          </button> */}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            )}
-        </div>
-      )}
-      
-      {/* Mensaje cuando no se muestran todas las escuelas */}
-      {!showAllEscuelas && !selectedEscuela && (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏫</div>
-            <h2 style={{ marginBottom: '0.5rem', color: '#555' }}>Selecciona una escuela</h2>
-            <p style={{ color: '#777', fontSize: '1rem' }}>
-              Usa el menú superior para seleccionar una escuela específica
-            </p>
-          </div>
-          <button
-            onClick={() => setShowAllEscuelas(true)}
-            className="button-primary"
-            style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}
-          >
-            📋 Ver Todas las Escuelas
-          </button>
-        </div>
-      )}
+
 
       {/* Detalles de la Escuela Seleccionada */}
       {selectedEscuela && (
@@ -976,251 +939,347 @@ const EscuelasPage: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ padding: '1.5rem' }}>
-              {loadingDetails ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
-                  <p>Cargando detalles...</p>
-                </div>
-              ) : (
-                <>
-                  {/* Botones de acciones de la escuela */}
-                  {estudiantes.length > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
-                      {estudiantes.length > 0 && (
-                        <>
-                          <button
-                            onClick={handleAbrirRegistroNotas}
-                            className="button-secondary"
-                            style={{ 
-                              fontSize: '0.9rem', 
-                              padding: '0.75rem 1.5rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            📝 Registrar Notas
-                          </button>
-                          <button
-                            onClick={handleAbrirAsistencia}
-                            className="button-secondary"
-                            style={{ 
-                              fontSize: '0.9rem', 
-                              padding: '0.75rem 1.5rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            ✓ Asistencia
-                          </button>
-                        </>
-                      )}
-                      <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
-                          onClick={handleExportEscuelaGeneral}
-                          className="button-secondary"
-                          style={{ 
-                            fontSize: '0.9rem', 
-                            padding: '0.75rem 1.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}
-                        >
-                          📄 Ver Listado
-                        </button>
-                        <button
-                          onClick={handleExportEscuelaGeneralWord}
-                          className="button-secondary"
-                          style={{ 
-                            fontSize: '0.9rem', 
-                            padding: '0.75rem 1.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}
-                        >
-                          📄 Exportar Documento
-                        </button>
-                      </div>
+            {/* ── Action bar ─────────────────────────────────── */}
+            {!loadingDetails && (
+              <div style={{ padding: '0.75rem 1.5rem 0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {estudiantes.length > 0 && (
+                  <>
+                    <button
+                      onClick={handleAbrirRegistroNotas}
+                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                    >📝 Registrar Notas</button>
+                    <button
+                      onClick={handleAbrirAsistencia}
+                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                    >✓ Asistencia</button>
+                    <Dropdown
+                      menu={{ items: [
+                        { key: 'pdf', label: '📄 Ver Listado PDF', onClick: handleExportEscuelaGeneral },
+                        { key: 'word', label: '📝 Exportar Documento Word', onClick: handleExportEscuelaGeneralWord },
+                      ]}}
+                      trigger={['click']}
+                    >
                       <button
-                        onClick={handleEditEscuela}
-                        title="Configurar escuela"
-                        aria-label="Configurar escuela"
-                        style={{
-                          fontSize: '1.05rem',
-                          padding: '0.25rem 0.4rem',
-                          minWidth: '30px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#94a3b8',
-                          cursor: 'pointer',
-                          opacity: 0.85
-                        }}
-                      >
-                        ⚙️
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Estudiantes */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '0.5rem', color: '#333' }}>👨‍🎓 Estudiantes ({estudiantes.length})</h3>
-                    {estudiantes.length === 0 ? (
-                      <p style={{ color: '#999' }}>No hay estudiantes registrados</p>
-                    ) : (
-                      <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '50px' }}>#</th>
-                            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Nombre</th>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '100px' }}>Notas</th>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '110px' }}>Asistencia</th>
-                            <th style={{ textAlign: 'center', padding: '0.5rem', width: '80px' }}>Info</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {estudiantes.map((estudiante, index) => (
-                            <tr key={estudiante.gid}>
-                              <td style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 'bold', color: '#666' }}>{index + 1}</td>
-                              <td style={{ padding: '0.5rem' }}>{formatearNombreCompleto(estudiante.name)}</td>
-                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
-                                <button
-                                  onClick={() => setEstudianteSeleccionadoNotas(estudiante)}
-                                  className="button-secondary"
-                                  title="Ver notas"
-                                  aria-label="Ver notas"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                                >
-                                  📊
-                                </button>
-                              </td>
-                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
-                                <button
-                                  onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)}
-                                  className="button-secondary"
-                                  title="Ver asistencia"
-                                  aria-label="Ver asistencia"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                                >
-                                  ✓
-                                </button>
-                              </td>
-                              <td style={{ textAlign: 'center', padding: '0.5rem' }}>
-                                <button
-                                  onClick={() => handleShowInfo(estudiante, 'Estudiante')}
-                                  className="button-secondary"
-                                  title="Ver información"
-                                  aria-label="Ver información"
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                                >
-                                  ℹ️
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-
-                  {/* Documentos */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '1rem', color: '#333' }}>📄 Documentos ({documentos.length})</h3>
-                    {documentos.length === 0 ? (
-                      <p style={{ color: '#999' }}>No hay documentos registrados</p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {documentos.map((documento) => (
-                          <div 
-                            key={documento.gid} 
-                            style={{ 
-                              width: '100%',
-                              padding: '1rem 1.25rem', 
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '8px',
-                              borderLeft: '4px solid #626262',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                              transition: 'transform 0.2s, box-shadow 0.2s',
-                              cursor: 'default'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateX(4px)';
-                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateX(0)';
-                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📄</span>
-                              <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#333', flex: 1 }}>
-                                {documento.name}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              <div style={{ 
-                padding: '1rem', 
-                backgroundColor: '#fff3e0', 
-                borderRadius: '6px',
-                borderLeft: '4px solid #ff9800',
-                marginTop: '1.5rem'
-              }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#e65100' }}>
-                  <strong>📌 Nota:</strong> Para agregar más estudiantes o documentos, 
-                  vaya a Asana y agregue subtareas a las tareas correspondientes dentro de esta escuela.
-                </p>
+                        style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                      >📤 Exportar <span style={{ fontSize: '0.65rem', marginLeft: '2px', color: '#94a3b8' }}>▾</span></button>
+                    </Dropdown>
+                  </>
+                )}
+                <button
+                  onClick={() => setShowAgregarEstudianteModal(true)}
+                  className="button-primary"
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1.1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >＋ Agregar Estudiante</button>
               </div>
-
-              {/* Botones Centralizador de Notas y Asistencia */}
-              {estudiantes.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-                  <button
-                    onClick={() => setShowAsistenciaPanel(!showAsistenciaPanel)}
-                    className="button-primary"
-                    style={{ 
-                      fontSize: '0.9rem', 
-                      padding: '0.75rem 1.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    ✓ {showAsistenciaPanel ? 'Ocultar' : 'Mostrar'} Asistencia
-                  </button>
-                  <button
-                    onClick={() => setShowNotasModal(!showNotasModal)}
-                    className="button-primary"
-                    style={{ 
-                      fontSize: '0.9rem', 
-                      padding: '0.75rem 1.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    📊 {showNotasModal ? 'Ocultar' : 'Mostrar'} Centralizador de Notas
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
+            {/* ── Tabs ───────────────────────────────────────────── */}
+            {loadingDetails ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}><p>Cargando detalles...</p></div>
+            ) : (
+              <Card className="section-tabs" bodyStyle={{ padding: 0 }} style={{ border: 'none', borderRadius: 0, boxShadow: 'none', marginTop: '0.75rem' }}>
+                <Tabs type="card" activeKey={activeEscuelaTab} onChange={setActiveEscuelaTab} items={[
+                  {
+                    key: 'estudiantes',
+                    label: `👨‍🎓 Estudiantes (${estudiantes.length})`,
+                    children: (
+                      <div style={{ padding: '1.25rem' }}>
+                        {estudiantes.length === 0 ? (
+                          <p style={{ color: '#999' }}>No hay estudiantes registrados. Usa "➕ Agregar Estudiante" para inscribir el primero.</p>
+                        ) : (() => {
+                          const PAGE_SIZE = 20;
+                          const filtered = estudiantes.filter(e => formatearNombreCompleto(e.name).toLowerCase().includes(busquedaEstudiante.toLowerCase()));
+                          const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+                          const page = Math.min(paginaEstudiantes, totalPages);
+                          const offset = (page - 1) * PAGE_SIZE;
+                          const paged = filtered.slice(offset, offset + PAGE_SIZE);
+                          return (
+                          <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                            <style>{`
+                              .est-tbl-esc { table-layout: fixed; }
+                              .est-tbl-esc col.col-num  { width: 36px; }
+                              .est-tbl-esc col.col-id   { width: 350px; }
+                              .est-tbl-esc col.col-age  { width: 325px; }
+                              .est-tbl-esc col.col-ori  { width: 300px; }
+                              .est-tbl-esc col.col-act  { width: auto; }
+                              .est-tbl-esc tbody tr { transition: background 0.1s; }
+                              .est-tbl-esc tbody tr:nth-child(even) { background: #f9fafb; }
+                              .est-tbl-esc tbody tr:hover { background: #eff6ff !important; }
+                              .est-tbl-esc tbody tr .row-acts { opacity: 1; }
+                              .est-tbl-esc thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
+                              .est-tbl-esc td { overflow: hidden; word-break: break-word; }
+                            `}</style>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{filtered.length} estudiante{filtered.length !== 1 ? 's' : ''}</span>
+                              <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaEstudiante} onChange={e => { setBusquedaEstudiante(e.target.value); setPaginaEstudiantes(1); }} style={{ padding: '0.45rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', width: '260px', outline: 'none' }} />
+                            </div>
+                            <div style={{ overflowX: 'auto' }}>
+                              <table className="est-tbl-esc" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <colgroup>
+                                  <col className="col-num" />
+                                  <col className="col-id" />
+                                  <col className="col-age" />
+                                  <col className="col-ori" />
+                                  <col className="col-act" />
+                                </colgroup>
+                                <thead>
+                                  <tr>
+                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>#</th>
+                                    <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Identidad</th>
+                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Edad / Género</th>
+                                    <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Origen y Contacto</th>
+                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Acciones</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {paged.map((estudiante, idx) => {
+                                    const d = parseEstudianteData(estudiante.notes);
+                                    const edad = calcularEdad(d.fechaNacimiento);
+                                    return (
+                                      <tr key={estudiante.gid}>
+                                        <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{offset + idx + 1}</td>
+                                        <td style={{ padding: '0.7rem 0.75rem' }}>
+                                          <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', lineHeight: 1.35 }}>{formatearNombreCompleto(estudiante.name)}</div>
+                                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>CI: {d.documentoIdentidad || '—'}</div>
+                                        </td>
+                                        <td style={{ textAlign: 'center', padding: '0.7rem 0.75rem' }}>
+                                          <div style={{ fontWeight: 700, color: '#374151', fontSize: '0.9rem', lineHeight: 1.35 }}>{edad}</div>
+                                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{d.genero === 'No especificado' ? '—' : d.genero}</div>
+                                        </td>
+                                        <td style={{ padding: '0.7rem 0.75rem' }}>
+                                          <div style={{ fontSize: '0.85rem', color: '#374151', lineHeight: 1.35 }}>{d.domicilio || d.lugarNacimiento || <span style={{ color: '#d1d5db' }}>—</span>}</div>
+                                          {d.telefono ? <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>📞 {d.telefono}</div> : null}
+                                        </td>
+                                        <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
+                                          <div className="row-acts" style={{ display: 'flex', gap: '0.15rem', justifyContent: 'center' }}>
+                                            <button onClick={() => setEstudianteSeleccionadoNotas(estudiante)} title="Ver notas" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#e0e7ff'} onMouseLeave={e => e.currentTarget.style.background='none'}>📊</button>
+                                            <button onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)} title="Ver asistencia" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#dcfce7'} onMouseLeave={e => e.currentTarget.style.background='none'}>✓</button>
+                                            <button onClick={() => handleShowInfo(estudiante, 'Estudiante')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                            {totalPages > 1 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.875rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
+                                <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Mostrando {offset + 1}–{Math.min(offset + PAGE_SIZE, filtered.length)} de {filtered.length}</span>
+                                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                                  <button onClick={() => setPaginaEstudiantes(p => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '0.2rem 0.55rem', border: '1px solid #e2e8f0', borderRadius: '5px', background: page <= 1 ? '#f8fafc' : 'white', color: page <= 1 ? '#d1d5db' : '#374151', cursor: page <= 1 ? 'default' : 'pointer', fontSize: '1rem', lineHeight: 1 }}>‹</button>
+                                  <span style={{ fontSize: '0.78rem', color: '#6b7280', padding: '0 0.4rem' }}>{page} / {totalPages}</span>
+                                  <button onClick={() => setPaginaEstudiantes(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '0.2rem 0.55rem', border: '1px solid #e2e8f0', borderRadius: '5px', background: page >= totalPages ? '#f8fafc' : 'white', color: page >= totalPages ? '#d1d5db' : '#374151', cursor: page >= totalPages ? 'default' : 'pointer', fontSize: '1rem', lineHeight: 1 }}>›</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          );
+                        })()
+                        }
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'centralizador',
+                    label: '📊 Centralizador',
+                    children: (
+                      <div style={{ padding: '1.25rem' }}>
+                        {estudiantes.length === 0 ? (
+                          <p style={{ color: '#999' }}>No hay estudiantes registrados todavía.</p>
+                        ) : (() => {
+                          const notasData = estudiantes.map(est => {
+                            const m1 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
+                            const m2 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
+                            const m3 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
+                            const m4 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
+                            const m5 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
+                            const m6 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+                            const m7 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+                            const total = Math.round((m1 + m2 + m3 + m4 + m5 + m6 + m7) / 7);
+                            return { gid: est.gid, nombre: formatearNombreCompleto(est.name), m1, m2, m3, m4, m5, m6, m7, total };
+                          });
+                          const promG = notasData.length > 0 ? Math.round(notasData.reduce((s, e) => s + e.total, 0) / notasData.length) : 0;
+                          const aprobados = notasData.filter(e => e.total >= 61).length;
+                          const enRiesgo = notasData.filter(e => e.total > 0 && e.total < 61).length;
+                          const pctAprobados = notasData.length > 0 ? Math.round((aprobados / notasData.length) * 100) : 0;
+                          const colorNota = (n: number): string => { if (n === 0) return '#9ca3af'; if (n < 61) return '#dc2626'; if (n > 90) return '#16a34a'; return '#374151'; };
+                          const calcProm = (vals: number[]) => notasData.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / notasData.length) : 0;
+                          const filtrados = busquedaCentralizador ? notasData.filter(e => e.nombre.toLowerCase().includes(busquedaCentralizador.toLowerCase())) : notasData;
+                          return (
+                            <>
+                              {/* KPI Cards */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #3b82f6' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Promedio General</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: promG >= 61 ? '#16a34a' : '#dc2626', lineHeight: 1.1 }}>{promG}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>de 100 puntos</div>
+                                </div>
+                                <div style={{ background: '#f0fdf4', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #22c55e' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Aprobados</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#16a34a', lineHeight: 1.1 }}>{pctAprobados}%</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>{aprobados} de {notasData.length}</div>
+                                </div>
+                                <div style={{ background: '#fef2f2', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #ef4444' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>En Riesgo</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#dc2626', lineHeight: 1.1 }}>{enRiesgo}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>nota &lt; 61</div>
+                                </div>
+                                <div style={{ background: '#f5f3ff', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #8b5cf6' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Total Estudiantes</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#7c3aed', lineHeight: 1.1 }}>{notasData.length}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>inscritos</div>
+                                </div>
+                              </div>
+                              {/* Export buttons + table */}
+                              <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                                  <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaCentralizador} onChange={e => setBusquedaCentralizador(e.target.value)} style={{ flex: 1, maxWidth: '280px', padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
+                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button onClick={handleExportCentralizadorNotas} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Exportar Notas</button>
+                                    <button onClick={handleExportActaCalificacionesWord} title="Exportar Acta" style={{ background: 'none', border: '1px solid #90caf9', borderRadius: '6px', padding: '0.5rem 0.65rem', cursor: 'pointer', color: '#1565c0', fontSize: '1.1rem', lineHeight: 1, display: 'flex', alignItems: 'center', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = '#e3f2fd')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📝</button>
+                                  </div>
+                                </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                <table className="centralizador-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                  <thead>
+                                    <tr>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
+                                      <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px', position: 'sticky', left: 0, zIndex: 2, background: '#f1f5f9' }}>Estudiante</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 1</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 2</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 3</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 4</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 5</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 6</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 7</th>
+                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#1e3a5f', color: '#ffffff', minWidth: '80px', borderLeft: '3px solid #3b82f6', letterSpacing: '0.04em' }}>FINAL</th>
+                                      <th style={{ padding: '0.6rem 0.5rem', width: '46px' }}></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {filtrados.map((est, index) => (
+                                      <tr key={index}>
+                                        <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{index + 1}</td>
+                                        <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', position: 'sticky', left: 0, zIndex: 1 }}>{est.nombre}</td>
+                                        {[est.m1, est.m2, est.m3, est.m4, est.m5, est.m6, est.m7].map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
+                                        <td className="nota-semantica" style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', backgroundColor: est.total >= 61 ? '#d1fae5' : '#fee2e2', color: est.total >= 61 ? '#065f46' : '#991b1b', borderLeft: '3px solid #3b82f6' }}>{est.total || '–'}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                          <button onClick={() => { const t = estudiantes.find(e => e.gid === est.gid); if (t) handleExportEstudianteReport(t); }} title="Ver historial académico" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.15rem', padding: '0.3rem 0.4rem', borderRadius: '4px', color: '#64748b', transition: 'background 0.15s, color 0.15s' }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9'; (e.currentTarget as HTMLButtonElement).style.color = '#1e3a5f'; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; (e.currentTarget as HTMLButtonElement).style.color = '#64748b'; }}>🗂</button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    <tr style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f1f5f9', fontWeight: 700 }}>
+                                      <td style={{ textAlign: 'center', padding: '0.6rem 0.5rem', color: '#94a3b8', fontSize: '0.75rem' }}></td>
+                                      <td className="col-name-s" style={{ padding: '0.6rem 0.75rem', textAlign: 'left', position: 'sticky', left: 0, zIndex: 1, background: '#f1f5f9', color: '#374151', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Promedio General</td>
+                                      {[calcProm(notasData.map(e=>e.m1)),calcProm(notasData.map(e=>e.m2)),calcProm(notasData.map(e=>e.m3)),calcProm(notasData.map(e=>e.m4)),calcProm(notasData.map(e=>e.m5)),calcProm(notasData.map(e=>e.m6)),calcProm(notasData.map(e=>e.m7))].map((v,i) => (
+                                        <td key={i} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', color: '#374151', fontWeight: 600 }}>{v}</td>
+                                      ))}
+                                      <td style={{ textAlign: 'center', padding: '0.6rem 0.75rem', backgroundColor: '#1e3a5f', color: '#ffffff', fontSize: '1rem', fontWeight: 800, borderLeft: '3px solid #3b82f6' }}>{calcProm(notasData.map(e=>e.total))}</td>
+                                      <td></td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'asistencia',
+                    label: '✓ Asistencia',
+                    children: (
+                      <div style={{ padding: '1.25rem' }}>
+                        {(() => {
+                          const { asistenciasPorEstudiante, fechasOrdenadas } = extraerAsistenciasEstudiantes();
+                          if (fechasOrdenadas.length === 0) {
+                            return (
+                              <div style={{ textAlign: 'center', padding: '2rem', color: '#999', fontStyle: 'italic' }}>
+                                <p>No hay registros de asistencia todavía.</p>
+                                <p style={{ fontSize: '0.9rem' }}>Utiliza el botón "✓ Asistencia" para registrar la asistencia de los estudiantes.</p>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                                <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{asistenciasPorEstudiante.length} estudiante{asistenciasPorEstudiante.length !== 1 ? 's' : ''} · {fechasOrdenadas.length} fecha{fechasOrdenadas.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div style={{ overflowX: 'auto' }}>
+                              <table className="asist-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
+                                    <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px', position: 'sticky', left: 0, zIndex: 2, background: '#f1f5f9' }}>Estudiante</th>
+                                    {fechasOrdenadas.map((fecha, idx) => (
+                                      <th key={idx} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '120px' }}>{fecha}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {asistenciasPorEstudiante.map((est, eIdx) => (
+                                    <tr key={eIdx}>
+                                      <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{eIdx + 1}</td>
+                                      <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>{est.nombre}</td>
+                                      {fechasOrdenadas.map((fecha, fIdx) => {
+                                        const reg = est.registros[fecha];
+                                        const asistio = reg?.asistio;
+                                        const obs = reg?.observaciones || '';
+                                        return (
+                                          <td key={fIdx} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 600, fontSize: '0.875rem', color: asistio === true ? '#16a34a' : asistio === false ? '#dc2626' : '#94a3b8', backgroundColor: asistio === true ? '#d1fae5' : asistio === false ? '#fee2e2' : undefined }} title={obs !== 'Ninguna' && obs ? `Observaciones: ${obs}` : ''}>
+                                            {asistio === true ? 'Sí' : asistio === false ? 'No' : '–'}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'documentos',
+                    label: '📄 Documentos',
+                    children: (
+                      <div style={{ padding: '1.25rem' }}>
+                        {documentos.length === 0 ? (
+                          <p style={{ color: '#999' }}>No hay documentos registrados.</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {documentos.map((documento) => (
+                              <div key={documento.gid} style={{ width: '100%', padding: '1rem 1.25rem', backgroundColor: '#f8f9fa', borderRadius: '8px', borderLeft: '4px solid #626262', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'; }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📄</span>
+                                  <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#333', flex: 1 }}>{documento.name}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  }
+                ]} />
+              </Card>
+            )}
         </div>
       )}
 
-      {/* Panel de Centralizador de Notas */}
-      {showNotasModal && selectedEscuela && estudiantes.length > 0 && (
+      {/* Panel de Centralizador de Notas - contenido integrado en tabs */}
+      {false && selectedEscuela && estudiantes.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ 
             padding: '1.5rem',
@@ -1235,7 +1294,7 @@ const EscuelasPage: React.FC = () => {
                 📊 Centralizador de Notas
               </h2>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                {selectedEscuela.name}
+                {selectedEscuela?.name}
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -1571,8 +1630,8 @@ const EscuelasPage: React.FC = () => {
         </div>
       )}
 
-      {/* Panel de Asistencia */}
-      {showAsistenciaPanel && selectedEscuela && estudiantes.length > 0 && (
+      {/* Panel de Asistencia - contenido integrado en tabs */}
+      {false && selectedEscuela && estudiantes.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ 
             padding: '1.5rem',
@@ -1587,7 +1646,7 @@ const EscuelasPage: React.FC = () => {
                 ✓ Registro de Asistencia
               </h2>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                {selectedEscuela.name}
+                {selectedEscuela?.name}
               </p>
             </div>
           </div>
@@ -1822,51 +1881,48 @@ const EscuelasPage: React.FC = () => {
                             <td style={{ 
                               padding: '0.75rem', 
                               textAlign: 'center',
-                              fontWeight: 600,
+                              fontWeight: 700,
                               fontSize: '1.1rem',
-                              color: modulo.nota >= 51 ? '#27AE60' : '#E74C3C'
+                              color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#27AE60' : '#dc2626',
+                              backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
                             }}>
-                              {modulo.nota}
+                              {modulo.nota === 0 ? '–' : modulo.nota}
                             </td>
                             <td style={{ 
                               padding: '0.75rem', 
                               textAlign: 'center',
-                              fontWeight: 600
+                              fontWeight: 600,
+                              color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#27AE60' : '#dc2626',
+                              backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
                             }}>
-                              {modulo.nota >= 51 ? (
-                                <span style={{ color: '#27AE60' }}>✓ Aprobado</span>
-                              ) : (
-                                <span style={{ color: '#E74C3C' }}>✗ Reprobado</span>
-                              )}
+                              {modulo.nota === 0 ? '–' : modulo.nota >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
                             </td>
                           </tr>
                         ))}
                         <tr style={{ 
-                          backgroundColor: '#f2f2f2',
-                          fontWeight: 700,
-                          borderTop: '3px solid #b5b5b5'
+                          backgroundColor: '#1e3a5f',
+                          fontWeight: 800,
+                          borderTop: '3px solid #3b82f6'
                         }}>
-                          <td style={{ padding: '1rem', fontSize: '1.05rem' }}>
+                          <td style={{ padding: '1rem', fontSize: '1.05rem', color: '#e2e8f0' }}>
                             PROMEDIO FINAL
                           </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
-                            fontSize: '1.3rem',
-                            color: promedio >= 51 ? '#27AE60' : '#E74C3C'
+                            fontSize: '1.4rem',
+                            fontWeight: 800,
+                            color: promedio >= 51 ? '#6ee7b7' : '#fca5a5'
                           }}>
                             {Math.round(promedio)}
                           </td>
                           <td style={{ 
                             padding: '1rem', 
                             textAlign: 'center',
-                            fontSize: '1.05rem'
+                            fontSize: '1.05rem',
+                            color: promedio >= 51 ? '#6ee7b7' : '#fca5a5'
                           }}>
-                            {promedio >= 51 ? (
-                              <span style={{ color: '#27AE60' }}>✓ Aprobado</span>
-                            ) : (
-                              <span style={{ color: '#E74C3C' }}>✗ Reprobado</span>
-                            )}
+                            {promedio >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
                           </td>
                         </tr>
                       </tbody>
@@ -1915,11 +1971,12 @@ const EscuelasPage: React.FC = () => {
               overflow: 'auto'
             }}
           >
-            <div className="modal-header">
-              <h2>✓ Asistencia del Estudiante</h2>
-              <button className="modal-close" onClick={() => setEstudianteSeleccionadoAsistencia(null)}>
-                ×
-              </button>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0 }}>✓ Asistencia del Estudiante</h2>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button onClick={() => handleExportEstudianteReport(estudianteSeleccionadoAsistencia)} className="button-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>🖨️ Imprimir</button>
+                <button className="modal-close" onClick={() => setEstudianteSeleccionadoAsistencia(null)}>×</button>
+              </div>
             </div>
 
             <div className="modal-body" style={{ padding: '1.5rem' }}>
@@ -2026,6 +2083,9 @@ const EscuelasPage: React.FC = () => {
                       }}>
                         {porcentajeAsistencia}%
                       </div>
+                      <div style={{ height: '10px', borderRadius: '5px', backgroundColor: 'rgba(0,0,0,0.1)', overflow: 'hidden', marginTop: '0.75rem' }}>
+                        <div style={{ height: '100%', width: `${Math.min(100, parseFloat(porcentajeAsistencia))}%`, backgroundColor: parseFloat(porcentajeAsistencia) >= 80 ? '#27AE60' : '#ff9800', borderRadius: '5px', transition: 'width 0.6s ease' }} />
+                      </div>
                     </div>
 
                     {/* Tabla de registros */}
@@ -2098,6 +2158,21 @@ const EscuelasPage: React.FC = () => {
           onSuccess={handleCreateSuccess}
           editMode={editMode}
           escuelaData={escuelaToEdit}
+        />
+      )}
+
+      {/* Modal para agregar estudiante individual */}
+      {showAgregarEstudianteModal && selectedEscuela && estudiantesTaskGid && (
+        <AgregarPersonaModal
+          parentTaskGid={estudiantesTaskGid}
+          tipo="Estudiante"
+          parentName={selectedEscuela.name}
+          useCargoLabel={true}
+          onClose={() => setShowAgregarEstudianteModal(false)}
+          onSuccess={() => {
+            setShowAgregarEstudianteModal(false);
+            handleViewDetails(selectedEscuela);
+          }}
         />
       )}
 
