@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Dropdown, Select, Tabs } from 'antd';
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
+import Notification from '../components/Notification';
 import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
@@ -51,6 +53,38 @@ interface NotaEstudiante {
   nombre: string;
   nota: number;
 }
+
+
+
+
+// ─── Document JSON helpers ──────────────────────────────────────────────────────
+interface DocLink { nombre: string; url: string; fecha?: string; }
+const _getFileType = (url: string): { icon: string; color: string; bg: string; label: string } => {
+  const u = url.toLowerCase();
+  if (u.includes('.pdf') || u.includes('/pdf')) return { icon: '📕', color: '#dc2626', bg: '#fef2f2', label: 'PDF' };
+  if (u.match(/\.(doc|docx)/) || u.includes('document')) return { icon: '📘', color: '#1d4ed8', bg: '#eff6ff', label: 'Word' };
+  if (u.match(/\.(xls|xlsx)/) || u.includes('spreadsheet')) return { icon: '📗', color: '#15803d', bg: '#f0fdf4', label: 'Excel' };
+  if (u.match(/\.(ppt|pptx)/) || u.includes('presentation')) return { icon: '📙', color: '#d97706', bg: '#fffbeb', label: 'PPT' };
+  if (u.match(/\.(jpg|jpeg|png|gif|svg|webp)/)) return { icon: '🖼️', color: '#7e22ce', bg: '#fdf4ff', label: 'Imagen' };
+  if (u.match(/\.(mp4|mov|avi|webm)/)) return { icon: '🎬', color: '#0369a1', bg: '#f0f9ff', label: 'Video' };
+  if (u.includes('/folders/')) return { icon: '📁', color: '#b45309', bg: '#fef3c7', label: 'Carpeta' };
+  return { icon: '🔗', color: '#475569', bg: '#f1f5f9', label: 'Enlace' };
+};
+const _parseDocLinks = (notes: string | undefined | null): DocLink[] => {
+  if (!notes) return [];
+  const match = notes.match(/===DATOS_JSON===\s*([\s\S]+?)\s*===FIN_DATOS_JSON===/);
+  if (!match) return [];
+  try {
+    const data = JSON.parse(match[1]);
+    return Array.isArray(data.documentos) ? data.documentos : [];
+  } catch {
+    return [];
+  }
+};
+const _buildDocNotes = (originalNotes: string | undefined | null, documentos: DocLink[]): string => {
+  const base = (originalNotes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+  return `${base}\n\n===DATOS_JSON===\n${JSON.stringify({ documentos }, null, 2)}\n===FIN_DATOS_JSON===`;
+};
 
 const DiplomadosPage: React.FC = () => {
   const navigate = useNavigate();
@@ -102,6 +136,14 @@ const DiplomadosPage: React.FC = () => {
   const [estudiantesTaskGid, setEstudiantesTaskGid] = useState<string>('');
   const [showAgregarDocenteModal, setShowAgregarDocenteModal] = useState(false);
   const [showAgregarEstudianteModal, setShowAgregarEstudianteModal] = useState(false);
+
+  // Estados para documentos
+  const [docModalSubtask, setDocModalSubtask] = useState<AsanaTask | null>(null);
+  const [docNombre, setDocNombre] = useState('');
+  const [docUrl, setDocUrl] = useState('');
+  const [savingDoc, setSavingDoc] = useState(false);
+  const [docModalError, setDocModalError] = useState('');
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   useEffect(() => {
     const token = asanaService.getToken();
@@ -459,6 +501,7 @@ const DiplomadosPage: React.FC = () => {
       console.log(`🚀 Ejecutando actualización en lotes de 12 para ${estudiantesProcesar.length} estudiantes${soloReintentar ? ' (reintento)' : ''}...`);
       const startTime = performance.now();
       const BATCH_SIZE = 12;
+      const notasActualizadasMap = new Map<string, string>();
       const buildPromise = async (asistencia: typeof estudiantesProcesar[0]) => {
         const estudiante = estudiantes.find(e => e.gid === asistencia.gid);
         if (!estudiante) {
@@ -503,6 +546,7 @@ const DiplomadosPage: React.FC = () => {
           // Actualizar la tarea con las nuevas notas
           const resultado = await asanaService.updateTask(asistencia.gid, { notes: nuevasNotas });
           
+          notasActualizadasMap.set(asistencia.gid, nuevasNotas);
           console.log(`✅ Asistencia guardada para ${asistencia.nombre}`);
           return { success: true, gid: asistencia.gid, nombre: asistencia.nombre, result: resultado };
         } catch (error) {
@@ -558,12 +602,10 @@ const DiplomadosPage: React.FC = () => {
         // ✅ TODO EXITOSO - CERRAR EL MODAL
         alert(`✅ ¡Perfecto! Todas las ${exitosos.length} asistencias para ${fechaSeleccionada} fueron guardadas correctamente en ${duration}s`);
         
-        console.log('\n🔄 Recargando datos del diplomado...');
-        
-        // Recargar los detalles del diplomado para ver los cambios
-        if (selectedDiplomado) {
-          await handleViewDetails(selectedDiplomado);
-        }
+        // Actualizar notas en estado local con los datos recién guardados (evita re-fetch con datos stale)
+        setEstudiantes(prev => prev.map(e =>
+          notasActualizadasMap.has(e.gid) ? { ...e, notes: notasActualizadasMap.get(e.gid) } : e
+        ));
         
         // Cerrar el modal solo cuando TODO sea exitoso
         setShowAsistenciaModal(false);
@@ -885,12 +927,114 @@ const DiplomadosPage: React.FC = () => {
     }
   };
 
+  // === Funciones para Documentos ===
+
+  const handleOpenDocModal = (subtask: AsanaTask) => {
+    setDocModalSubtask(subtask);
+    setDocNombre('');
+    setDocUrl('');
+    setDocModalError('');
+  };
+
+  const handleCloseDocModal = () => {
+    setDocModalSubtask(null);
+    setDocNombre('');
+    setDocUrl('');
+    setDocModalError('');
+  };
+
+  const handleSaveDocumento = async () => {
+    if (!docModalSubtask) return;
+    if (!docNombre.trim()) { setDocModalError('El nombre del archivo es obligatorio'); return; }
+    if (!docUrl.trim()) { setDocModalError('El enlace es obligatorio'); return; }
+    try { new URL(docUrl.trim()); } catch { setDocModalError('El enlace ingresado no es válido'); return; }
+    setSavingDoc(true);
+    setDocModalError('');
+    try {
+      const existing = _parseDocLinks(docModalSubtask.notes);
+      const fecha = new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+      const updated = [...existing, { nombre: docNombre.trim(), url: docUrl.trim(), fecha }];
+      const newNotes = _buildDocNotes(docModalSubtask.notes, updated);
+      await asanaService.updateTask(docModalSubtask.gid, { notes: newNotes });
+      setDocumentos(prev => prev.map(d => d.gid === docModalSubtask.gid ? { ...d, notes: newNotes } : d));
+      setNotification({ message: 'Archivo agregado correctamente', type: 'success' });
+      handleCloseDocModal();
+    } catch (err) {
+      setDocModalError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setSavingDoc(false);
+    }
+  };
+
+  const handleDeleteDocumento = async (subtask: AsanaTask, index: number) => {
+    if (!confirm('¿Eliminar este archivo?')) return;
+    try {
+      const existing = _parseDocLinks(subtask.notes);
+      const updated = existing.filter((_, i) => i !== index);
+      const newNotes = _buildDocNotes(subtask.notes, updated);
+      await asanaService.updateTask(subtask.gid, { notes: newNotes });
+      setDocumentos(prev => prev.map(d => d.gid === subtask.gid ? { ...d, notes: newNotes } : d));
+      setNotification({ message: 'Archivo eliminado', type: 'info' });
+    } catch (err) {
+      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar', type: 'error' });
+    }
+  };
+
+  const handleDeleteAsistenciaDia = async (fecha: string) => {
+    if (!confirm(`¿Eliminar los registros de asistencia del ${fecha} para TODOS los estudiantes?`)) return;
+    try {
+      const BATCH_SIZE = 12;
+      const updates = estudiantes.map(est => async () => {
+        const registros = parseAsistenciaRecords(est.notes);
+        const actualizados = registros.filter(r => r.fecha !== fecha);
+        const newNotes = updateNotasWithAsistencia(est.notes ?? '', actualizados);
+        await asanaService.updateTask(est.gid, { notes: newNotes });
+        return { gid: est.gid, newNotes };
+      });
+      const results: { gid: string; newNotes: string }[] = [];
+      for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+        const batch = await Promise.all(updates.slice(i, i + BATCH_SIZE).map(fn => fn()));
+        results.push(...batch);
+      }
+      setEstudiantes(prev => prev.map(e => {
+        const r = results.find(x => x.gid === e.gid);
+        return r ? { ...e, notes: r.newNotes } : e;
+      }));
+      setNotification({ message: `Registros del ${fecha} eliminados para ${results.length} estudiante(s)`, type: 'info' });
+    } catch (err) {
+      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar registros', type: 'error' });
+    }
+  };
+
+  const handleDeleteAsistenciaRecord = async (estudiante: AsanaTask, fecha: string) => {
+    if (!confirm(`¿Eliminar el registro de asistencia del ${fecha}?`)) return;
+    try {
+      const registros = parseAsistenciaRecords(estudiante.notes);
+      const actualizados = registros.filter(r => r.fecha !== fecha);
+      const newNotes = updateNotasWithAsistencia(estudiante.notes ?? '', actualizados);
+      await asanaService.updateTask(estudiante.gid, { notes: newNotes });
+      const updatedTask = { ...estudiante, notes: newNotes };
+      setEstudiantes(prev => prev.map(e => e.gid === estudiante.gid ? updatedTask : e));
+      setEstudianteSeleccionadoAsistencia(updatedTask);
+      setNotification({ message: `Registro del ${fecha} eliminado`, type: 'info' });
+    } catch (err) {
+      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar registro', type: 'error' });
+    }
+  };
+
   if (loading) {
     return <LoadingOverlay message="Cargando diplomados..." />;
   }
 
   return (
     <div className="planning-page">
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
       {/* Header fusionado con selector */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 0', marginBottom: '0', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
@@ -1416,7 +1560,18 @@ const DiplomadosPage: React.FC = () => {
                                     <th className="col-num-s" style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
                                     <th className="col-name-s" style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px' }}>Estudiante</th>
                                     {fechasOrdenadas.map((fecha, idx) => (
-                                      <th key={idx} style={{ textAlign: 'center', padding: '0.5rem 0.25rem', fontSize: '0.68rem', color: '#64748b', fontWeight: 600, width: '42px', minWidth: '42px', writingMode: 'vertical-lr', borderLeft: '1px solid #e5e7eb' }}>{fecha}</th>
+                                      <th key={idx} style={{ textAlign: 'center', padding: '0.25rem 0.25rem 0.5rem', fontSize: '0.68rem', color: '#64748b', fontWeight: 600, width: '42px', minWidth: '42px', borderLeft: '1px solid #e5e7eb', verticalAlign: 'bottom' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                                          <button
+                                            onClick={() => handleDeleteAsistenciaDia(fecha)}
+                                            title={`Eliminar asistencia del ${fecha} para todos`}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', fontSize: '0.7rem', padding: '1px 2px', borderRadius: '3px', lineHeight: 1 }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = '#e2e8f0'; e.currentTarget.style.background = 'none'; }}
+                                          >🗑️</button>
+                                          <span style={{ writingMode: 'vertical-lr' }}>{fecha}</span>
+                                        </div>
+                                      </th>
                                     ))}
                                   </tr>
                                 </thead>
@@ -1455,15 +1610,64 @@ const DiplomadosPage: React.FC = () => {
                         {documentos.length === 0 ? (
                           <p style={{ color: '#999' }}>No hay documentos registrados.</p>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {documentos.map((documento) => (
-                              <div key={documento.gid} style={{ width: '100%', padding: '1rem 1.25rem', backgroundColor: '#f8f9fa', borderRadius: '8px', borderLeft: '4px solid #626262', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'; }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                  <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📄</span>
-                                  <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#333', flex: 1 }}>{documento.name}</span>
+                          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${documentos.length}, 1fr)`, gap: '1rem', alignItems: 'start' }}>
+                            {documentos.map((documento, colIdx) => {
+                              const docLinks = _parseDocLinks(documento.notes);
+                              const colPalette = [
+                                { bg: '#eff6ff', border: '#bfdbfe', header: '#1d4ed8', dot: '#3b82f6' },
+                                { bg: '#f0fdf4', border: '#bbf7d0', header: '#15803d', dot: '#22c55e' },
+                                { bg: '#fdf4ff', border: '#e9d5ff', header: '#7e22ce', dot: '#a855f7' },
+                              ];
+                              const col = colPalette[colIdx % colPalette.length];
+                              return (
+                                <div key={documento.gid} style={{ border: `1.5px solid ${col.border}`, borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
+                                  {/* Column header */}
+                                  <div style={{ padding: '0.75rem 1rem', background: col.bg, borderBottom: `1px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: col.dot, flexShrink: 0, display: 'inline-block' }} />
+                                      <span style={{ fontWeight: 700, fontSize: '0.92rem', color: col.header, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{documento.name}</span>
+                                    </div>
+                                    <span style={{ fontSize: '0.72rem', color: '#6b7280', background: 'white', border: `1px solid ${col.border}`, borderRadius: '999px', padding: '1px 8px', flexShrink: 0, fontWeight: 600 }}>{docLinks.length}</span>
+                                  </div>
+                                  {/* File list */}
+                                  <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minHeight: '60px' }}>
+                                    {docLinks.length === 0 ? (
+                                      <div style={{ color: '#cbd5e1', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '0.75rem 0' }}>Sin archivos</div>
+                                    ) : (
+                                      docLinks.map((doc, i) => {
+                                        const ft = _getFileType(doc.url);
+                                        const domain = (() => { try { return new URL(doc.url).hostname.replace('www.', ''); } catch { return ''; } })();
+                                        return (
+                                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.6rem', background: '#f8fafc', borderRadius: '7px', border: '1px solid #e2e8f0' }}>
+                                            {/* File type badge */}
+                                            <div title={ft.label} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '7px', background: ft.bg, border: `1px solid ${ft.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>{ft.icon}</div>
+                                            {/* Name + meta */}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1a202c', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }} title={doc.nombre}>{doc.nombre}</a>
+                                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fecha ? `${doc.fecha}${domain ? ' • ' + domain : ''}` : domain}</span>
+                                            </div>
+                                            {/* Actions */}
+                                            <div style={{ display: 'flex', gap: '2px', flexShrink: 0, alignItems: 'center' }}>
+                                              <a href={doc.url} target="_blank" rel="noopener noreferrer" title="Ver" style={{ color: '#94a3b8', fontSize: '1rem', padding: '3px 4px', borderRadius: '4px', lineHeight: 1, textDecoration: 'none', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#1d4ed8'; (e.currentTarget as HTMLAnchorElement).style.background = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>👁️</a>
+                                              <button onClick={() => handleDeleteDocumento(documento, i)} title="Eliminar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.9rem', padding: '3px 4px', borderRadius: '4px', flexShrink: 0, lineHeight: 1 }} onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }} onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'none'; }}>🗑️</button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                  {/* Add button */}
+                                  <div style={{ padding: '0 0.75rem 0.75rem' }}>
+                                    <button
+                                      onClick={() => handleOpenDocModal(documento)}
+                                      style={{ width: '100%', padding: '0.4rem 0', fontSize: '0.8rem', border: '1.5px dashed #cbd5e1', borderRadius: '7px', background: 'transparent', color: '#64748b', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', transition: 'all 0.15s' }}
+                                      onMouseEnter={e => { e.currentTarget.style.borderColor = col.border; e.currentTarget.style.color = col.header; e.currentTarget.style.background = col.bg; }}
+                                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent'; }}
+                                    >＋ Agregar archivo</button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -2234,6 +2438,8 @@ const DiplomadosPage: React.FC = () => {
                             <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0' }}>
                               Observaciones
                             </th>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'center', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0', width: '2.5rem' }}>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2258,6 +2464,15 @@ const DiplomadosPage: React.FC = () => {
                                 fontStyle: registro.observaciones === 'Ninguna' ? 'italic' : 'normal'
                               }}>
                                 {registro.observaciones}
+                              </td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => handleDeleteAsistenciaRecord(estudianteSeleccionadoAsistencia, registro.fecha)}
+                                  title={`Eliminar registro del ${registro.fecha}`}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.9rem', padding: '2px 4px', borderRadius: '4px', lineHeight: 1 }}
+                                  onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'none'; }}
+                                >🗑️</button>
                               </td>
                             </tr>
                           ))}
@@ -2580,6 +2795,38 @@ const DiplomadosPage: React.FC = () => {
                   {loadingNotas ? 'Guardando...' : '💾 Guardar Notas'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para agregar archivo a documento */}
+      {docModalSubtask && (
+        <div className="modal-overlay" onClick={handleCloseDocModal}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <div>
+                <h2 style={{ margin: 0 }}>📎 Agregar Archivo</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#666' }}>{docModalSubtask.name}</p>
+              </div>
+              <button onClick={handleCloseDocModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#666' }}>✕</button>
+            </div>
+            <div className="modal-body">
+              {docModalError && (
+                <div style={{ marginBottom: '1rem', padding: '0.6rem 0.8rem', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '6px', fontSize: '0.9rem' }}>{docModalError}</div>
+              )}
+              <div style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Nombre del archivo *</label>
+                <input className="form-input" type="text" value={docNombre} onChange={e => setDocNombre(e.target.value)} placeholder="Ej: Informe de actividades" autoFocus onKeyDown={e => e.key === 'Enter' && handleSaveDocumento()} />
+              </div>
+              <div>
+                <label className="form-label">Enlace (URL) *</label>
+                <input className="form-input" type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} placeholder="https://..." onKeyDown={e => e.key === 'Enter' && handleSaveDocumento()} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="button-secondary" onClick={handleCloseDocModal} disabled={savingDoc}>Cancelar</button>
+              <button className="button-primary" onClick={handleSaveDocumento} disabled={savingDoc}>{savingDoc ? 'Guardando...' : '💾 Guardar'}</button>
             </div>
           </div>
         </div>
