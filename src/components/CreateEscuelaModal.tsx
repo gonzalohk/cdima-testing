@@ -123,11 +123,11 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
       }
 
       const estudiantesValidos = editMode
-        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim())
+        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.genero.trim())
         : [];
 
       if (editMode && estudiantesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre, apellido paterno, apellido materno) y género');
+        throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre y apellido paterno) y género');
       }
 
       if (editMode) {
@@ -185,7 +185,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           });
 
           if (!validationResult.success) {
-            const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(' ');
             throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
@@ -202,7 +202,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
 
           if (estudiante.subtaskGid) {
             // Actualizar existente - PRESERVAR REGISTROS DE ASISTENCIA
-            const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
             
             // Obtener la tarea actual para preservar los registros de asistencia
             const tareaActual = await asanaService.getTask(estudiante.subtaskGid);
@@ -219,7 +219,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
             });
           } else {
             // Crear nuevo
-            const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
             await asanaService.createSubtask(escuelaData.estudiantesTaskGid, cdima.gid, {
               name: nombreCompleto,
               notes: notasEstudiante
@@ -411,7 +411,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                       
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Materno <span style={{ color: 'red' }}>*</span>
+                          Apellido Materno <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
                         </label>
                         <input
                           type="text"
@@ -419,7 +419,6 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                           onChange={(e) => handleEstudianteChange(index, 'apellidoMaterno', e.target.value)}
                           placeholder="Ej: Hernandez"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
                         />
                       </div>
                       
@@ -553,9 +552,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                     ? 'Se actualizarán los datos de la escuela y sus estudiantes.'
                     : 'Se crearán automáticamente las tareas "Estudiantes" y "Documentos". Podrás agregar estudiantes individualmente desde la vista de detalle.'}
                 </p>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5a5a' }}>
-                  📝 El nombre completo se guardará en formato: <strong>Nombre, Apellido Paterno, Apellido Materno</strong>
-                </p>
+                
               </div>
             </div>
 

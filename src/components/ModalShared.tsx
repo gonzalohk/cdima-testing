@@ -148,9 +148,9 @@ interface HtmlModalHeaderProps {
 }
 
 export const HtmlModalHeader: React.FC<HtmlModalHeaderProps> = ({ icon, title, subtitle, onClose }) => (
-  <div style={{ borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+  <div style={{ position: 'sticky', top: 0, zIndex: 5, flexShrink: 0 }}>
     {/* Franja Wiphala */}
-    <div style={{ display: 'flex', height: 5 }}>
+    <div style={{ display: 'flex', height: 5, overflow: 'hidden', borderRadius: '8px 8px 0 0' }}>
       {WIPHALA_COLORS.map((color, i) => (
         <div key={i} style={{ flex: 1, backgroundColor: color }} />
       ))}
@@ -162,7 +162,7 @@ export const HtmlModalHeader: React.FC<HtmlModalHeaderProps> = ({ icon, title, s
       borderBottom: '1px solid #f0f0f0',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
         <div style={{
           width: 38, height: 38, borderRadius: 10,
           background: 'linear-gradient(135deg, #37474F 0%, #263238 100%)',
@@ -171,10 +171,10 @@ export const HtmlModalHeader: React.FC<HtmlModalHeaderProps> = ({ icon, title, s
         }}>
           <span style={{ fontSize: 20, lineHeight: 1, display: 'flex', alignItems: 'center' }}>{icon}</span>
         </div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2332', lineHeight: 1.3 }}>{title}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2332', lineHeight: 1.3, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{title}</div>
           {subtitle && (
-            <div style={{ fontWeight: 400, fontSize: 12, color: '#6b7280', lineHeight: 1.3 }}>{subtitle}</div>
+            <div style={{ fontWeight: 400, fontSize: 12, color: '#6b7280', lineHeight: 1.3, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{subtitle}</div>
           )}
         </div>
       </div>

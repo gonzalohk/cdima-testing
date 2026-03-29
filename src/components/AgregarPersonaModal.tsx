@@ -40,8 +40,8 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
     e.preventDefault();
     setError('');
 
-    if (!nombre.trim() || !apellidoPaterno.trim() || !apellidoMaterno.trim()) {
-      setError('Nombre, apellido paterno y apellido materno son obligatorios');
+    if (!nombre.trim() || !apellidoPaterno.trim()) {
+      setError('Nombre y apellido paterno son obligatorios');
       return;
     }
     if (!genero.trim()) {
@@ -66,7 +66,7 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
         identidadCultural: identidadCultural || '',
       });
 
-      const nombreCompleto = `${nombre.trim()}, ${apellidoPaterno.trim()}, ${apellidoMaterno.trim()}`;
+      const nombreCompleto = [nombre.trim(), apellidoPaterno.trim(), apellidoMaterno.trim()].filter(Boolean).join(', ');
       await asanaService.createSubtask(parentTaskGid, cdima.gid, {
         name: nombreCompleto,
         notes: notas,
@@ -146,7 +146,7 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Apellido Materno <span style={{ color: 'red' }}>*</span>
+                    Apellido Materno <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
                   </label>
                   <input
                     type="text"
@@ -154,7 +154,6 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
                     onChange={e => setApellidoMaterno(e.target.value)}
                     placeholder="Ej: Hernandez"
                     style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                    required
                   />
                 </div>
 

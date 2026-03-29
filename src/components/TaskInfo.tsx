@@ -12,6 +12,7 @@ import MaterialReturnModal from './MaterialReturnModal';
 import VerificationSourcesModal, { FuentesJsonData } from './VerificationSourcesModal';
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
+import { HtmlModalHeader } from './ModalShared';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -500,16 +501,13 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         const materialData = isMaterial ? parseMaterialRequest(detailTarget) : null;
         const devolucionData = isDevolucion ? parseMaterialReturn(detailTarget) : null;
         const total = fondosData ? fondosData.fondos.reduce((acc, f) => acc + (parseFloat(f.importeBolivianos) || 0), 0) : 0;
+        const detailIcon = isFondos ? '💰' : isDevolucion ? '↩️' : '📦';
+        const detailTitle = isFondos ? 'Solicitud de Fondos' : isDevolucion ? 'Devolución de Material' : 'Solicitud de Material';
         return (
-          <div className="modal-overlay" onClick={() => setDetailTarget(null)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div className="modal-header">
-                <h2>
-                  {isFondos ? '💰 Solicitud de Fondos' : isDevolucion ? '🔄 Devolución de Material' : '📋 Solicitud de Material'}
-                </h2>
-                <button className="modal-close" onClick={() => setDetailTarget(null)}>&times;</button>
-              </div>
-              <div className="modal-body">
+          <div className="modal-overlay" onClick={() => setDetailTarget(null)} style={{ zIndex: 1001 }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '620px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <HtmlModalHeader icon={detailIcon} title={detailTitle} subtitle={detailTarget.name} onClose={() => setDetailTarget(null)} />
+              <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto' }}>
                 {/* Info general */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -605,8 +603,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   })()
                 )}
               </div>
-              <div className="modal-footer">
-                <button className="button-secondary" onClick={() => setDetailTarget(null)}>Cerrar</button>
+              <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa' }}>
+                <button type="button" className="button-primary" onClick={() => setDetailTarget(null)} style={{ width: '100%' }}>Cerrar</button>
               </div>
             </div>
           </div>
@@ -615,16 +613,15 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
 
       {/* Modal de observación */}
       {observeTarget && (
-        <div className="modal-overlay" onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h2>⚠️ {extractObservacion(observeTarget.notes).observado ? 'Actualizar observación' : 'Observar solicitud'}</h2>
-              <button className="modal-close" onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#555' }}>
-                <strong>{observeTarget.name}</strong>
-              </p>
+        <div className="modal-overlay" onClick={() => { setObserveTarget(null); setObserveMotivo(''); }} style={{ zIndex: 1001 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="💬"
+              title={extractObservacion(observeTarget.notes).observado ? 'Actualizar observación' : 'Observar solicitud'}
+              subtitle={observeTarget.name}
+              onClose={() => { setObserveTarget(null); setObserveMotivo(''); }}
+            />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
               <div style={{ marginBottom: '1rem' }}>
                 <label className="form-label">Motivo de observación *</label>
                 <textarea
@@ -638,15 +635,17 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                 />
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
-                className="button-secondary"
+                type="button"
+                style={{ border: '1px solid #d9d9d9', background: '#fff', padding: '0.5rem 1.25rem', borderRadius: 6, cursor: 'pointer' }}
                 onClick={() => { setObserveTarget(null); setObserveMotivo(''); }}
                 disabled={observeLoading}
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 className="button-primary"
                 onClick={submitObservacion}
                 disabled={observeLoading || !observeMotivo.trim()}

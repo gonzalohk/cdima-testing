@@ -3,11 +3,6 @@ import {
   Badge,
   Button,
   Card,
-  Descriptions,
-  Divider,
-  Form,
-  Input,
-  Modal,
   Popconfirm,
   Space,
   Spin,
@@ -16,13 +11,13 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { HtmlModalHeader } from '../components/ModalShared';
 import {
   BellOutlined,
   CheckCircleOutlined,
   CommentOutlined,
   EyeOutlined,
   ReloadOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
@@ -344,39 +339,21 @@ const HomePage: React.FC = () => {
 
   const columns = [
     {
-      title: 'Proyecto',
-      dataIndex: 'projectName',
-      key: 'projectName',
-      width: 160,
-      ellipsis: true,
-      render: (v: string) => (
-        <Tooltip title={v}>
-          <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text>
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Actividad',
-      dataIndex: 'parentTaskName',
-      key: 'parentTaskName',
-      width: 200,
-      ellipsis: true,
-      render: (v: string) => (
-        <Tooltip title={v}>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{v}</Typography.Text>
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Solicitud',
-      dataIndex: 'task',
-      key: 'nombre',
-      width: 240,
-      ellipsis: true,
-      render: (task: AsanaTask) => (
-        <Tooltip title={task.name}>
-          <Typography.Text strong style={{ fontSize: 12 }}>{task.name}</Typography.Text>
-        </Tooltip>
+      title: 'Solicitud / Proyecto / Actividad',
+      key: 'proyectoActividad',
+      width: 280,
+      render: (_: unknown, row: SolicitudRow) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Tooltip title={row.task.name}>
+            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
+          </Tooltip>
+          <Tooltip title={row.projectName}>
+            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
+          </Tooltip>
+          <Tooltip title={row.parentTaskName}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
+          </Tooltip>
+        </div>
       ),
     },
     {
@@ -516,156 +493,165 @@ const HomePage: React.FC = () => {
       </Card>
 
       {/* Modal: Ver Detalle */}
-      <Modal
-        title={
-          <Space>
-            <EyeOutlined style={{ color: '#1677ff' }} />
-            <span>Detalle de Solicitud</span>
-          </Space>
+      {detailModal && (() => {
+        const isFondos = detailModal.tipo === 'Solicitud de Fondos';
+        const isDevolucion = detailModal.tipo === 'Devolución de Material';
+        const icon = isFondos ? '💰' : isDevolucion ? '↩️' : '📦';
+
+        let parsed: { area: string; lugar: string; fechaInicio?: string; fechaFinalizacion?: string; fechaDevolucion?: string; taskName: string; fondos?: FundItem[]; total?: string; materiales?: MaterialItem[] };
+        if (isFondos) {
+          parsed = parseFundsRequest(detailModal.task);
+        } else if (isDevolucion) {
+          parsed = parseMaterialReturn(detailModal.task);
+        } else {
+          parsed = parseMaterialRequest(detailModal.task);
         }
-        open={!!detailModal}
-        onCancel={() => setDetailModal(null)}
-        footer={[<Button key="close" onClick={() => setDetailModal(null)}>Cerrar</Button>]}
-        width="min(720px, 92vw)"
-        styles={{ body: { overflowX: 'hidden', wordBreak: 'break-word' } }}
-        centered
-      >
-        {detailModal && (() => {
-          const labelStyle: React.CSSProperties = { width: 1, whiteSpace: 'nowrap', fontWeight: 500 };
-          const isFondos = detailModal.tipo === 'Solicitud de Fondos';
-          const isDevolucion = detailModal.tipo === 'Devolución de Material';
 
-          let parsed: { area: string; lugar: string; fechaInicio?: string; fechaFinalizacion?: string; fechaDevolucion?: string; taskName: string; fondos?: FundItem[]; total?: string; materiales?: MaterialItem[] };
-          if (isFondos) {
-            parsed = parseFundsRequest(detailModal.task);
-          } else if (isDevolucion) {
-            parsed = parseMaterialReturn(detailModal.task);
-          } else {
-            parsed = parseMaterialRequest(detailModal.task);
-          }
+        const fondos = parsed.fondos;
+        const total = parsed.total;
+        const materiales = parsed.materiales;
 
-          const fondos = parsed.fondos;
-          const total = parsed.total;
-          const materiales = parsed.materiales;
+        const fieldStyle: React.CSSProperties = { margin: 0, fontSize: '0.9rem', color: '#374151', padding: '0.4rem 0.6rem', backgroundColor: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' };
+        const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.5px' };
 
-          return (
-            <>
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                style={{ marginTop: 8 }}
-                labelStyle={labelStyle}
-              >
-                <Descriptions.Item label="Proyecto">{detailModal.projectName}</Descriptions.Item>
-                <Descriptions.Item label="Actividad">{detailModal.parentTaskName}</Descriptions.Item>
-                <Descriptions.Item label="Solicitud">
-                  <Typography.Text strong>{detailModal.task.name}</Typography.Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="Tipo">
-                  <Tag color={getTipoColor(detailModal.tipo)}>{detailModal.tipo}</Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Fecha">{detailModal.fecha}</Descriptions.Item>
-                {parsed.area && <Descriptions.Item label="Área">{parsed.area}</Descriptions.Item>}
-                {parsed.lugar && <Descriptions.Item label="Lugar">{parsed.lugar}</Descriptions.Item>}
-                {parsed.fechaInicio && <Descriptions.Item label="Inicio">{parsed.fechaInicio}</Descriptions.Item>}
-                {parsed.fechaFinalizacion && <Descriptions.Item label="Finalización">{parsed.fechaFinalizacion}</Descriptions.Item>}
-                {parsed.fechaDevolucion && <Descriptions.Item label="Fecha devolución">{parsed.fechaDevolucion}</Descriptions.Item>}
-                <Descriptions.Item label="Estado">
-                  <Tag color="warning">En Proceso</Tag>
-                </Descriptions.Item>
-              </Descriptions>
+        const fields: { icon: string; label: string; value?: string }[] = [
+          { icon: '📁', label: 'Proyecto', value: detailModal.projectName },
+          { icon: '📌', label: 'Actividad', value: detailModal.parentTaskName },
+          { icon: '🗓️', label: 'Fecha solicitud', value: detailModal.fecha },
+          ...(parsed.area ? [{ icon: '🏢', label: 'Área', value: parsed.area }] : []),
+          ...(parsed.lugar ? [{ icon: '📍', label: 'Lugar', value: parsed.lugar }] : []),
+          ...(parsed.fechaInicio ? [{ icon: '▶️', label: 'Inicio', value: parsed.fechaInicio }] : []),
+          ...(parsed.fechaFinalizacion ? [{ icon: '⏹️', label: 'Finalización', value: parsed.fechaFinalizacion }] : []),
+          ...(parsed.fechaDevolucion ? [{ icon: '📅', label: 'Fecha devolución', value: parsed.fechaDevolucion }] : []),
+        ];
 
-              {isFondos && fondos && fondos.length > 0 && (
-                <>
-                  <Divider style={{ margin: '14px 0 10px' }}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>Fondos Solicitados</Typography.Text>
-                  </Divider>
-                  <Table
-                    size="small"
-                    bordered
-                    pagination={false}
-                    dataSource={fondos.map(f => ({ ...f, key: f.id }))}
-                    columns={[
-                      { title: '#', dataIndex: 'id', width: 36 },
-                      { title: 'Descripción', dataIndex: 'descripcion' },
-                      { title: 'Importe (Bs.)', dataIndex: 'importeBolivianos', width: 120, align: 'right' as const,
-                        render: (v: string) => <Typography.Text strong style={{ color: '#1a5c2a' }}>Bs. {v}</Typography.Text> },
-                    ]}
-                    summary={() => total ? (
-                      <Table.Summary.Row>
-                        <Table.Summary.Cell index={0} colSpan={2}>
-                          <Typography.Text strong>Total</Typography.Text>
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={1} align="right">
-                          <Typography.Text strong>Bs. {total}</Typography.Text>
-                        </Table.Summary.Cell>
-                      </Table.Summary.Row>
-                    ) : null}
-                  />
-                </>
-              )}
+        return (
+          <div className="modal-overlay" onClick={() => setDetailModal(null)} style={{ zIndex: 1001 }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <HtmlModalHeader
+                icon={icon}
+                title={detailModal.tipo}
+                subtitle={detailModal.task.name}
+                onClose={() => setDetailModal(null)}
+              />
 
-              {!isFondos && materiales && materiales.length > 0 && (
-                <>
-                  <Divider style={{ margin: '14px 0 10px' }}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {isDevolucion ? 'Materiales a Devolver' : 'Materiales Solicitados'}
-                    </Typography.Text>
-                  </Divider>
-                  <Table
-                    size="small"
-                    bordered
-                    pagination={false}
-                    dataSource={materiales.map(m => ({ ...m, key: m.id }))}
-                    columns={[
-                      { title: '#', dataIndex: 'id', width: 36 },
-                      { title: 'Detalle', dataIndex: 'detalle' },
-                      { title: 'Cantidad', dataIndex: 'cantidad', width: 80, align: 'center' as const },
-                      { title: 'Unidad', dataIndex: 'unidad', width: 90 },
-                      { title: 'Observaciones', dataIndex: 'observaciones' },
-                    ]}
-                  />
-                </>
-              )}
-            </>
-          );
-        })()}
-      </Modal>
+              <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto' }}>
+                {/* Estado pill */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fef3c7', color: '#92400e', padding: '0.2rem 0.75rem', borderRadius: '999px', border: '1px solid #fcd34d' }}>⏳ En Proceso</span>
+                </div>
+
+                {/* Info fields grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                  {fields.map((f, i) => (
+                    <div key={i}>
+                      <label style={labelStyle}>{f.icon} {f.label}</label>
+                      <p style={fieldStyle}>{f.value || '–'}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fondos */}
+                {isFondos && fondos && fondos.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>💵 Fondos Solicitados</div>
+                    <Table
+                      size="small"
+                      bordered
+                      pagination={false}
+                      dataSource={fondos.map(f => ({ ...f, key: f.id }))}
+                      columns={[
+                        { title: '#', dataIndex: 'id', width: 36 },
+                        { title: 'Descripción', dataIndex: 'descripcion' },
+                        { title: 'Importe (Bs.)', dataIndex: 'importeBolivianos', width: 120, align: 'right' as const,
+                          render: (v: string) => <Typography.Text strong style={{ color: '#1a5c2a' }}>Bs. {v}</Typography.Text> },
+                      ]}
+                      summary={() => total ? (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} colSpan={2}>
+                            <Typography.Text strong>Total</Typography.Text>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={1} align="right">
+                            <Typography.Text strong>Bs. {total}</Typography.Text>
+                          </Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      ) : null}
+                    />
+                  </>
+                )}
+
+                {/* Materiales */}
+                {!isFondos && materiales && materiales.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                      {isDevolucion ? '↩️ Materiales a Devolver' : '📦 Materiales Solicitados'}
+                    </div>
+                    <Table
+                      size="small"
+                      bordered
+                      pagination={false}
+                      dataSource={materiales.map(m => ({ ...m, key: m.id }))}
+                      columns={[
+                        { title: '#', dataIndex: 'id', width: 36 },
+                        { title: 'Detalle', dataIndex: 'detalle' },
+                        { title: 'Cantidad', dataIndex: 'cantidad', width: 80, align: 'center' as const },
+                        { title: 'Unidad', dataIndex: 'unidad', width: 90 },
+                        { title: 'Observaciones', dataIndex: 'observaciones' },
+                      ]}
+                    />
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa' }}>
+                <button type="button" onClick={() => setDetailModal(null)} className="button-primary" style={{ width: '100%' }}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal: Observar */}
-      <Modal
-        title={
-          <Space>
-            <WarningOutlined style={{ color: '#b45309' }} />
-            <span>Observar Solicitud</span>
-          </Space>
-        }
-        open={!!observeModal}
-        onOk={handleObserveSubmit}
-        onCancel={() => { setObserveModal(null); setObserveText(''); }}
-        confirmLoading={observeSaving}
-        okText="Guardar observación"
-        cancelText="Cancelar"
-        okButtonProps={{ style: { background: '#b45309', borderColor: '#b45309' } }}
-        destroyOnClose
-      >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          {observeModal?.task.name}
-        </Typography.Text>
-        <Form layout="vertical">
-          <Form.Item label="Observación" required>
-            <Input.TextArea
-              rows={4}
-              placeholder="Escribe la observación sobre esta solicitud..."
-              value={observeText}
-              onChange={e => setObserveText(e.target.value)}
-              maxLength={500}
-              showCount
+      {observeModal && (
+        <div className="modal-overlay" onClick={() => { setObserveModal(null); setObserveText(''); }} style={{ zIndex: 1001 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="💬"
+              title="Observar Solicitud"
+              subtitle={observeModal.task.name}
+              onClose={() => { setObserveModal(null); setObserveText(''); }}
             />
-          </Form.Item>
-        </Form>
-      </Modal>
+
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, marginBottom: '0.4rem', letterSpacing: '0.5px' }}>✏️ Observación</label>
+              <textarea
+                rows={4}
+                placeholder="Escribe la observación sobre esta solicitud..."
+                value={observeText}
+                onChange={e => setObserveText(e.target.value)}
+                maxLength={500}
+                style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.9rem', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+              <div style={{ textAlign: 'right', fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.25rem' }}>{observeText.length}/500</div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => { setObserveModal(null); setObserveText(''); }}
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '7px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '0.9rem', color: '#374151' }}
+              >Cancelar</button>
+              <button
+                type="button"
+                onClick={handleObserveSubmit}
+                disabled={!observeText.trim() || observeSaving}
+                className="button-primary"
+                style={{ padding: '0.5rem 1.25rem', opacity: (!observeText.trim() || observeSaving) ? 0.6 : 1 }}
+              >{observeSaving ? 'Guardando...' : 'Guardar observación'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

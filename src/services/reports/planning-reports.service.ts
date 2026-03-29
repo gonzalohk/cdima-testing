@@ -529,11 +529,14 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       else if (fin) fecha = fin;
       else if (inicio) fecha = inicio;
 
+      const estadoTask = getCustomFieldValue(task, 'Estado');
+      const estadoLabel = estadoTask === 'Reprogramado' ? 'REPROGRAMADO' : 'EJECUTADO';
+
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
-        'EJECUTADO'
+        estadoLabel
       ];
     });
 

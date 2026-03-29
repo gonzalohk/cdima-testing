@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Typography } from 'antd';
+import { Alert, Button, Card, Col, Form, Input, Row, Select, Space, Typography } from 'antd';
 import {
-  DeleteOutlined, PlusOutlined, ShoppingOutlined,
+  DeleteOutlined, PlusOutlined,
   EnvironmentOutlined, AppstoreOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
-import { ModalTitle, modalCloseIcon, modalStyles, SectionHeader, modalFooterButtons } from './ModalShared';
+import { SectionHeader, HtmlModalHeader } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportMaterialRequestToPDF } from '../services/pdf.service';
@@ -211,18 +211,13 @@ ${JSON.stringify(jsonData, null, 2)}
           onClose={() => setNotification(null)}
         />
       )}
-      <Modal
-        title={<ModalTitle icon={<ShoppingOutlined />} title="Solicitud de Material" subtitle="Complete los datos para generar la solicitud" />}
-        open={true}
-        onCancel={onClose}
-        width={740}
-        closeIcon={modalCloseIcon}
-        styles={modalStyles}
-        footer={modalFooterButtons(onClose, handleSubmit, loading, 'Crear Solicitud')}
-      >
-        {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16, borderRadius: 8 }} />}
+      <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1001 }}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '740px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <HtmlModalHeader icon="📦" title="Solicitud de Material" subtitle="Complete los datos para generar la solicitud" onClose={onClose} />
+          <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto' }}>
+            {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16, borderRadius: 8 }} />}
 
-        <Form layout="vertical">
+            <Form layout="vertical">
           {/* Título de la solicitud */}
           <Form.Item
             label={<Typography.Text strong style={{ color: '#374151' }}>Título de la solicitud</Typography.Text>}
@@ -403,7 +398,13 @@ ${JSON.stringify(jsonData, null, 2)}
             Agregar otro material
           </Button>
         </Form>
-      </Modal>
+          </div>
+          <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button type="button" onClick={onClose} style={{ border: '1px solid #d9d9d9', background: '#fff', padding: '0.5rem 1.25rem', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
+            <button type="button" onClick={handleSubmit} disabled={loading} className="button-primary">{loading ? 'Guardando...' : 'Crear Solicitud'}</button>
+          </div>
+        </div>
+      </div>
     </>
   );
 };

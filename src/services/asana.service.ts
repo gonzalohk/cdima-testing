@@ -113,7 +113,7 @@ class AsanaService {
   // Método para obtener tareas con fechas para calendario
   async getProjectTasksForCalendar(projectGid: string): Promise<AsanaTask[]> {
     return this.fetchAsana<AsanaTask[]>(
-      `/projects/${projectGid}/tasks?opt_fields=name,notes,completed,due_on,start_on,assignee.name,parent.name,parent.gid,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name`
+      `/projects/${projectGid}/tasks?opt_fields=name,notes,completed,due_on,start_on,assignee.name,parent.name,parent.gid,custom_fields,custom_fields.gid,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.enum_options.gid`
     );
   }
 

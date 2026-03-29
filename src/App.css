@@ -565,6 +565,36 @@
   box-shadow: 0 10px 20px rgba(31, 42, 48, 0.3);
 }
 
+.btn-export-ghost {
+  background: transparent;
+  border: 1.5px solid #d1d5db;
+  color: #6b7280;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.btn-export-ghost:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-export-ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .button:focus-visible,
 .button-primary:focus-visible,
 .button-secondary:focus-visible,
@@ -2431,6 +2461,13 @@ select.form-input {
   box-shadow: 0 2px 8px rgba(98, 98, 98, 0.25);
 }
 
+.rbc-toolbar-label {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: 0.04em;
+}
+
 .rbc-month-view,
 .rbc-time-view,
 .rbc-agenda-view {
@@ -2697,7 +2734,7 @@ select.form-input {
   }
   
   .task-detail-content {
-    max-height: 90vh;
+    min-height: 90vh;
   }
   
   .task-detail-header,
@@ -3484,7 +3521,7 @@ select.form-input {
 
 /* Content area */
 .section-tabs .ant-tabs-content-holder {
-  padding: 0;
+  padding: 0 !important;
   background: #ffffff;
 }
 
@@ -3563,24 +3600,7 @@ select.form-input {
   padding: 24px !important;
 }
 
-/* ── Centralizador de Notas ───────────────────────────────────── */
-.centralizador-table { table-layout: auto; }
-.centralizador-table tbody tr { transition: background 0.1s; }
-.centralizador-table tbody tr:nth-child(even) { background: #f9fafb; }
-.centralizador-table tbody tr:hover { background: #eff6ff !important; }
-.centralizador-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
-.centralizador-table td { overflow: hidden; }
-.centralizador-table tbody tr td.col-name-s { background: white; }
-.centralizador-table tbody tr:nth-child(even) td.col-name-s { background: #f9fafb; }
-.centralizador-table tbody tr:hover td.col-name-s { background: #eff6ff !important; }
-
-/* ── Asistencia ───────────────────────────────────────────────── */
-.asist-tbl { table-layout: auto; }
-.asist-tbl tbody tr { transition: background 0.1s; }
-.asist-tbl tbody tr:nth-child(even) { background: #f9fafb; }
-.asist-tbl tbody tr:hover { background: #eff6ff !important; }
-.asist-tbl thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
-.asist-tbl td { overflow: hidden; }
-.asist-tbl tbody tr td.col-name-s { position: sticky; left: 0; z-index: 1; background: white; }
-.asist-tbl tbody tr:nth-child(even) td.col-name-s { background: #f9fafb; }
-.asist-tbl tbody tr:hover td.col-name-s { background: #eff6ff !important; }
+/* ── Centralizador de Notas – row hover ───────────────────────── */
+.centralizador-table tbody tr:hover td:not(.nota-semantica) {
+  background-color: #eef2ff !important;
+}

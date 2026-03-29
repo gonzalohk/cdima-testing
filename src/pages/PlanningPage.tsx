@@ -88,6 +88,7 @@ const PlanningPage: React.FC = () => {
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
   const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
+  const [updatingTaskGid, setUpdatingTaskGid] = useState<string | null>(null);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -231,7 +232,7 @@ const PlanningPage: React.FC = () => {
   const statistics: TaskStatistics = useMemo(() => {
     const total = currentMonthTasks.length;
     const completed = currentMonthTasks.filter(t => 
-      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
+      getCustomFieldValue(t, 'Estado') === 'Ejecutado' || getCustomFieldValue(t, 'Estado') === 'Reprogramado'
     ).length;
     const pending = total - completed;
     const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
@@ -311,7 +312,7 @@ const PlanningPage: React.FC = () => {
 
   const executedTasks = useMemo(() => {
     let filtered = currentMonthTasks.filter(t => 
-      getCustomFieldValue(t, 'Estado') === 'Ejecutado'
+      getCustomFieldValue(t, 'Estado') === 'Ejecutado' || getCustomFieldValue(t, 'Estado') === 'Reprogramado'
     );
     
     if (areaFilter !== 'todas') {
@@ -322,6 +323,32 @@ const PlanningPage: React.FC = () => {
     
     return filtered;
   }, [currentMonthTasks, areaFilter]);
+
+  const getEstadoSelectStyle = (estado: string): React.CSSProperties => {
+    if (estado === 'Ejecutado') return { backgroundColor: '#e8f5e9', color: '#2e7d32', border: '1px solid #2e7d32' };
+    if (estado === 'En Proceso') return { backgroundColor: '#fff3e0', color: '#e65100', border: '1px solid #e65100' };
+    if (estado === 'Reprogramado') return { backgroundColor: '#e8eaf6', color: '#3949ab', border: '1px solid #3949ab' };
+    return { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #9ca3af' };
+  };
+
+  const handleEstadoChange = async (task: AsanaTask, newEstado: string) => {
+    const estadoField = task.custom_fields?.find(f => f.name === 'Estado');
+    if (!estadoField?.gid) return;
+    const enumOption = estadoField.enum_options?.find(o => o.name === newEstado);
+    if (!enumOption?.gid) return;
+    setUpdatingTaskGid(task.gid);
+    try {
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: { [estadoField.gid]: enumOption.gid }
+      });
+      setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
+    } catch (err) {
+      alert('Error al actualizar el estado de la actividad.');
+      console.error(err);
+    } finally {
+      setUpdatingTaskGid(null);
+    }
+  };
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Planificación';
 
@@ -397,17 +424,19 @@ const PlanningPage: React.FC = () => {
 
   // Estilos personalizados para los eventos
   const eventStyleGetter = (event: CalendarEvent) => {
-    const isEjecutado = event.resource.estado === 'Ejecutado';
+    const isEjecutadoOReprogramado = event.resource.estado === 'Ejecutado' || event.resource.estado === 'Reprogramado';
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Resetear a medianoche para comparación justa
     
-    // Verificar si está atrasada (no ejecutada y fecha de fin ya pasó)
-    const isOverdue = !isEjecutado && event.end < today;
+    // Verificar si está atrasada (no ejecutada/reprogramada y fecha de fin ya pasó)
+    const isOverdue = !isEjecutadoOReprogramado && event.end < today;
     
     // Obtener colores únicos basados en el ID de la actividad
     const colors = isOverdue 
       ? { bg: '#ffebee', border: '#c62828', text: '#b71c1c' } // Rojo para atrasadas
-      : getTaskColor(event.id);
+      : isEjecutadoOReprogramado
+        ? { bg: '#f0f0f0', border: '#aaaaaa', text: '#666666' } // Gris suave para ejecutadas/reprogramadas
+        : getTaskColor(event.id);
 
     return {
       style: {
@@ -415,7 +444,7 @@ const PlanningPage: React.FC = () => {
         borderColor: colors.border,
         borderLeft: `4px solid ${colors.border}`,
         borderRadius: '6px',
-        opacity: isEjecutado ? 0.65 : 1,
+        opacity: isEjecutadoOReprogramado ? 0.65 : 1,
         color: colors.text,
         fontSize: '0.875rem',
         fontWeight: isOverdue ? 600 : 500, // Más negrita si está atrasada
@@ -447,7 +476,7 @@ const PlanningPage: React.FC = () => {
     dayHeaderFormat: (date: Date) => format(date, 'EEEE d', { locale: es }),
     dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
       `${format(start, 'd MMM', { locale: es })} - ${format(end, 'd MMM yyyy', { locale: es })}`,
-    monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy', { locale: es }),
+    monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy', { locale: es }).toUpperCase(),
     weekdayFormat: (date: Date) => format(date, 'EEE', { locale: es }),
   };
 
@@ -491,7 +520,7 @@ const PlanningPage: React.FC = () => {
         </div>
         <div className="legend-item">
           <div className="legend-color" style={{ backgroundColor: '#999', opacity: 0.65 }}></div>
-          <span>Opacidad reducida indica actividad ejecutada</span>
+          <span>Opacidad reducida indica actividad ejecutada o reprogramada</span>
         </div>
         <div className="legend-item">
           <span style={{ fontWeight: 600, color: '#666' }}>
@@ -503,38 +532,30 @@ const PlanningPage: React.FC = () => {
       {/* Calendar */}
       <div className="planning-calendar-container">
         {/* Export Buttons */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
-            className="btn-export"
+            className="btn-export-ghost"
             onClick={handleExportCalendar}
             disabled={exportingCalendar || events.length === 0}
-            title="Exportar vista de calendario a PDF (lista por día)"
+            title="Exportar actividades del mes a PDF"
           >
-            {exportingCalendar ? 'Exportando...' : '� Exportar Actividades'}
+            {exportingCalendar ? 'Exportando...' : '📄 Actividades PDF'}
           </button>
           <button
-            className="btn-export"
+            className="btn-export-ghost"
             onClick={handleExportSchedule}
             disabled={exportingSchedule || currentMonthTasks.length === 0}
-            title="Exportar cronograma mensual a PDF (tabla semanal por área)"
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none'
-            }}
+            title="Exportar cronograma mensual a PDF"
           >
-            {exportingSchedule ? 'Exportando...' : '📋 Exportar Cronograma Mensual'}
+            {exportingSchedule ? 'Exportando...' : '📋 Cronograma PDF'}
           </button>
           <button
-            className="btn-export"
+            className="btn-export-ghost"
             onClick={handleExportScheduleWord}
             disabled={exportingScheduleWord || currentMonthTasks.length === 0}
             title="Exportar cronograma mensual a Word (.docx)"
-            style={{
-              background: 'linear-gradient(135deg, #2b5797 0%, #1e3a6e 100%)',
-              border: 'none'
-            }}
           >
-            {exportingScheduleWord ? 'Exportando...' : '📄 Cronograma Mensual Word'}
+            {exportingScheduleWord ? 'Exportando...' : '📝 Cronograma Word'}
           </button>
         </div>
         
@@ -688,18 +709,32 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
-                          <span style={{
-                            padding: '0.375rem 0.875rem',
-                            borderRadius: '6px',
-                            fontSize: '0.813rem',
-                            fontWeight: 600,
-                            backgroundColor: '#d32f2f',
-                            color: 'white',
-                            display: 'inline-block',
-                            boxShadow: '0 2px 4px rgba(211, 47, 47, 0.2)'
-                          }}>
-                            En Proceso
-                          </span>
+                          {updatingTaskGid === task.gid ? (
+                            <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
+                          ) : (() => {
+                            const estadoActual = getCustomFieldValue(task, 'Estado');
+                            const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            return (
+                              <select
+                                value={estadoActual}
+                                onChange={e => handleEstadoChange(task, e.target.value)}
+                                style={{
+                                  padding: '0.375rem 0.5rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.813rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  ...getEstadoSelectStyle(estadoActual),
+                                }}
+                              >
+                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                {opciones.map(opt => (
+                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -766,17 +801,32 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
-                          <span style={{
-                            padding: '0.375rem 0.875rem',
-                            borderRadius: '6px',
-                            fontSize: '0.813rem',
-                            fontWeight: 600,
-                            backgroundColor: '#fff3e0',
-                            color: '#e65100',
-                            display: 'inline-block'
-                          }}>
-                            En Proceso
-                          </span>
+                          {updatingTaskGid === task.gid ? (
+                            <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
+                          ) : (() => {
+                            const estadoActual = getCustomFieldValue(task, 'Estado');
+                            const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            return (
+                              <select
+                                value={estadoActual}
+                                onChange={e => handleEstadoChange(task, e.target.value)}
+                                style={{
+                                  padding: '0.375rem 0.5rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.813rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  ...getEstadoSelectStyle(estadoActual),
+                                }}
+                              >
+                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                {opciones.map(opt => (
+                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -788,13 +838,13 @@ const PlanningPage: React.FC = () => {
 
           {/* Tabla 3: Actividades Ejecutadas */}
           <div className="card">
-            <h2>Actividades Ejecutadas - {moment(date).format('MMMM YYYY')}</h2>
+            <h2>Actividades Ejecutadas / Reprogramadas - {moment(date).format('MMMM YYYY')}</h2>
             
             {executedTasks.length === 0 ? (
               <p style={{ color: '#666', fontStyle: 'italic' }}>
                 {areaFilter !== 'todas' 
-                  ? `No hay actividades ejecutadas en el área "${areaFilter}" en este mes`
-                  : 'No hay actividades ejecutadas en este mes'
+                  ? `No hay actividades ejecutadas o reprogramadas en el área "${areaFilter}" en este mes`
+                  : 'No hay actividades ejecutadas o reprogramadas en este mes'
                 }
               </p>
             ) : (
@@ -843,17 +893,32 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
-                          <span style={{
-                            padding: '0.375rem 0.875rem',
-                            borderRadius: '6px',
-                            fontSize: '0.813rem',
-                            fontWeight: 600,
-                            backgroundColor: '#e8f5e9',
-                            color: '#2e7d32',
-                            display: 'inline-block'
-                          }}>
-                            Ejecutado
-                          </span>
+                          {updatingTaskGid === task.gid ? (
+                            <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
+                          ) : (() => {
+                            const estadoActual = getCustomFieldValue(task, 'Estado');
+                            const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            return (
+                              <select
+                                value={estadoActual}
+                                onChange={e => handleEstadoChange(task, e.target.value)}
+                                style={{
+                                  padding: '0.375rem 0.5rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.813rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  ...getEstadoSelectStyle(estadoActual),
+                                }}
+                              >
+                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                {opciones.map(opt => (
+                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}

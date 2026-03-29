@@ -152,18 +152,18 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
       }
 
       const docentesValidos = editMode
-        ? docentes.filter(d => d.nombre.trim() && d.apellidoPaterno.trim() && d.apellidoMaterno.trim() && d.genero.trim())
+        ? docentes.filter(d => d.nombre.trim() && d.apellidoPaterno.trim() && d.genero.trim())
         : [];
       const estudiantesValidos = editMode
-        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.apellidoMaterno.trim() && e.genero.trim())
+        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.genero.trim())
         : [];
 
       if (editMode && docentesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un docente con nombre completo (nombre, apellido paterno, apellido materno) y género');
+        throw new Error('Debe agregar al menos un docente con nombre completo (nombre y apellido paterno) y género');
       }
 
       if (editMode && estudiantesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre, apellido paterno, apellido materno) y género');
+        throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre y apellido paterno) y género');
       }
 
       // Validar que todos los docentes y estudiantes válidos tengan género
@@ -213,7 +213,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           });
 
           if (!validationResult.success) {
-            const nombreCompleto = `${docente.nombre} ${docente.apellidoPaterno} ${docente.apellidoMaterno}`;
+            const nombreCompleto = [docente.nombre, docente.apellidoPaterno, docente.apellidoMaterno].filter(Boolean).join(' ');
             throw new Error(`Datos inválidos para docente ${nombreCompleto}: ${validationResult.error}`);
           }
 
@@ -230,7 +230,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (docente.subtaskGid) {
             // Actualizar existente - PRESERVAR REGISTROS DE ASISTENCIA
-            const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
+            const nombreCompleto = [docente.nombre, docente.apellidoPaterno, docente.apellidoMaterno].filter(Boolean).join(', ');
             
             // Obtener la tarea actual para preservar los registros de asistencia
             const tareaActual = await asanaService.getTask(docente.subtaskGid);
@@ -247,7 +247,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
             });
           } else {
             // Crear nuevo
-            const nombreCompleto = `${docente.nombre}, ${docente.apellidoPaterno}, ${docente.apellidoMaterno}`;
+            const nombreCompleto = [docente.nombre, docente.apellidoPaterno, docente.apellidoMaterno].filter(Boolean).join(', ');
             await asanaService.createSubtask(diplomadoData.docentesTaskGid, cdima.gid, {
               name: nombreCompleto,
               notes: notasDocente
@@ -281,7 +281,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           });
 
           if (!validationResult.success) {
-            const nombreCompleto = `${estudiante.nombre} ${estudiante.apellidoPaterno} ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(' ');
             throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
           }
 
@@ -298,7 +298,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
 
           if (estudiante.subtaskGid) {
             // Actualizar existente - PRESERVAR REGISTROS DE ASISTENCIA
-            const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
             
             // Obtener la tarea actual para preservar los registros de asistencia
             const tareaActual = await asanaService.getTask(estudiante.subtaskGid);
@@ -315,7 +315,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
             });
           } else {
             // Crear nuevo
-            const nombreCompleto = `${estudiante.nombre}, ${estudiante.apellidoPaterno}, ${estudiante.apellidoMaterno}`;
+            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
             await asanaService.createSubtask(diplomadoData.estudiantesTaskGid, cdima.gid, {
               name: nombreCompleto,
               notes: notasEstudiante
@@ -498,7 +498,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                       
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Materno <span style={{ color: 'red' }}>*</span>
+                          Apellido Materno <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
                         </label>
                         <input
                           type="text"
@@ -506,7 +506,6 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           onChange={(e) => handleDocenteChange(index, 'apellidoMaterno', e.target.value)}
                           placeholder="Ej: Hernandez"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
                         />
                       </div>
                       
@@ -694,7 +693,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                       
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Materno <span style={{ color: 'red' }}>*</span>
+                          Apellido Materno <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
                         </label>
                         <input
                           type="text"
@@ -702,7 +701,6 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                           onChange={(e) => handleEstudianteChange(index, 'apellidoMaterno', e.target.value)}
                           placeholder="Ej: Hernandez"
                           style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
                         />
                       </div>
                       

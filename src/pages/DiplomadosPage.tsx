@@ -5,6 +5,7 @@ import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
+import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import { exportDiplomadoGeneralPDF, exportDiplomadoGeneralWord, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
@@ -68,6 +69,7 @@ const DiplomadosPage: React.FC = () => {
   const [busquedaEstudiante, setBusquedaEstudiante] = useState<string>('');
   const [paginaEstudiantes, setPaginaEstudiantes] = useState<number>(1);
   const [busquedaCentralizador, setBusquedaCentralizador] = useState<string>('');
+  const [busquedaAsistencia, setBusquedaAsistencia] = useState<string>('');
   const [selectedInfo, setSelectedInfo] = useState<InfoPrimaria | null>(null);
   
   // Estados para asistencia
@@ -890,16 +892,16 @@ const DiplomadosPage: React.FC = () => {
   return (
     <div className="planning-page">
       {/* Header fusionado con selector */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 0', marginBottom: '0.5rem', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0, flex: 1 }}>
-          <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🎓</span>
-          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>Diplomado en:</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 0', marginBottom: '0', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
+          <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🎓</span>
+          <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.01em' }}>Diplomado en:</span>
           <style>{`
             .dip-inline-sel .ant-select-selector { border: none !important; border-bottom: 2px solid transparent !important; background: transparent !important; box-shadow: none !important; padding-left: 2px !important; transition: border-color 0.15s; }
             .dip-inline-sel:hover .ant-select-selector { border-bottom-color: #93c5fd !important; }
             .dip-inline-sel.ant-select-focused .ant-select-selector { border-bottom-color: #3b82f6 !important; box-shadow: none !important; }
-            .dip-inline-sel .ant-select-selection-item { font-size: 1.05rem !important; font-weight: 700 !important; color: #1e3a5f !important; }
-            .dip-inline-sel .ant-select-selection-placeholder { font-size: 1.05rem !important; color: #94a3b8 !important; }
+            .dip-inline-sel .ant-select-selection-item { font-size: 1.2rem !important; font-weight: 700 !important; color: #1e3a5f !important; }
+            .dip-inline-sel .ant-select-selection-placeholder { font-size: 1.1rem !important; color: #94a3b8 !important; }
             .dip-inline-sel .ant-select-arrow { color: #64748b !important; }
             .dip-inline-sel .ant-select-clear { background: transparent !important; }
           `}</style>
@@ -918,7 +920,7 @@ const DiplomadosPage: React.FC = () => {
             allowClear
             showSearch
             optionFilterProp="label"
-            style={{ flex: 1, minWidth: 220, maxWidth: 520 }}
+            style={{ flex: 1, minWidth: 220, maxWidth: 560 }}
           />
           {diplomados.length > 0 && (
             <span style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -942,6 +944,13 @@ const DiplomadosPage: React.FC = () => {
         </Dropdown>
       </div>
 
+      {/* Wiphala separator line */}
+      <div style={{ display: 'flex', height: 10, width: '100%', overflow: 'hidden', marginBottom: '0.5rem' }}>
+        {['#D52B1E','#F07C00','#F5D800','#009B3A','#0038A8','#6B2D8B','#C5002B'].map((c, i) => (
+          <div key={i} style={{ flex: 1, backgroundColor: c }} />
+        ))}
+      </div>
+
       {error && (
         <div className="alert alert-error" style={{ marginTop: '1rem' }}>
           {error}
@@ -952,7 +961,7 @@ const DiplomadosPage: React.FC = () => {
 
       {/* Detalles del Diplomado Seleccionado */}
       {selectedDiplomado && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card" style={{ marginTop: '1.5rem', overflow: 'hidden' }}>
             <div style={{ 
               padding: '1.5rem',
               borderBottom: '2px solid #e0e0e0',
@@ -968,70 +977,45 @@ const DiplomadosPage: React.FC = () => {
                   Detalles del diplomado
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedDiplomado(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#999',
-                  padding: '0.25rem',
-                  lineHeight: 1
-                }}
-                title="Cerrar detalles"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* ── Action bar ─────────────────────────────────── */}
-            {!loadingDetails && (
-              <div style={{ padding: '0.75rem 1.5rem 0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {estudiantes.length > 0 && (
-                  <>
-                    <button
-                      onClick={handleAbrirRegistroNotas}
-                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
-                    >📝 Registrar Notas</button>
-                    <button
-                      onClick={handleAbrirAsistencia}
-                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
-                    >✓ Asistencia</button>
-                  </>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {(estudiantes.length > 0 || docentes.length > 0) && (
                   <Dropdown
                     menu={{ items: [
-                      { key: 'pdf', label: '📄 Ver Listado PDF', onClick: handleExportDiplomadoGeneral },
-                      { key: 'word', label: '📝 Exportar Documento Word', onClick: handleExportDiplomadoGeneralWord },
+                      { key: 'pdf', label: '📄 Listado General PDF', onClick: handleExportDiplomadoGeneral },
+                      { key: 'word', label: '📝 Listado General Word', onClick: handleExportDiplomadoGeneralWord },
+                      ...(estudiantes.length > 0 ? [
+                        { key: 'centralizador-pdf', label: '🗂 Centralizador PDF', onClick: handleExportCentralizadorNotas },
+                        { key: 'centralizador-word', label: '📊 Centralizador Word', onClick: handleExportCentralizadorNotasWord },
+                      ] : []),
                     ]}}
                     trigger={['click']}
                   >
                     <button
-                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                      style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
-                    >📤 Exportar <span style={{ fontSize: '0.65rem', marginLeft: '2px', color: '#94a3b8' }}>▾</span></button>
+                    >⋯ Reportes <span style={{ fontSize: '0.6rem', color: '#94a3b8' }}>▾</span></button>
                   </Dropdown>
                 )}
                 <button
-                  onClick={() => setShowAgregarDocenteModal(true)}
-                  style={{ fontSize: '0.82rem', padding: '0.45rem 0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#475569', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
-                >➕ Agregar Docente</button>
-                <button
-                  onClick={() => setShowAgregarEstudianteModal(true)}
-                  className="button-primary"
-                  style={{ fontSize: '0.875rem', padding: '0.5rem 1.1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                >＋ Agregar Estudiante</button>
+                  onClick={() => setSelectedDiplomado(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#999',
+                    padding: '0.25rem',
+                    lineHeight: 1
+                  }}
+                  title="Cerrar detalles"
+                >
+                  ✕
+                </button>
               </div>
-            )}
+            </div>
+
+
             {/* ── Tabs ───────────────────────────────────────────── */}
             {loadingDetails ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}><p>Cargando detalles...</p></div>
@@ -1042,7 +1026,7 @@ const DiplomadosPage: React.FC = () => {
                     key: 'docentes',
                     label: `👨‍🏫 Docentes (${docentes.length})`,
                     children: (
-                      <div style={{ padding: '1.25rem' }}>
+                      <div>
                         {docentes.length === 0 ? (
                           <p style={{ color: '#999' }}>No hay docentes registrados. Usa "➕ Agregar Docente" para añadir el primero.</p>
                         ) : (() => {
@@ -1068,9 +1052,20 @@ const DiplomadosPage: React.FC = () => {
                               .doc-tbl-dip thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
                               .doc-tbl-dip td { overflow: hidden; word-break: break-word; }
                             `}</style>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                              <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{filtered.length} docente{filtered.length !== 1 ? 's' : ''}</span>
-                              <input type="text" placeholder="🔍 Buscar docente..." value={busquedaDocente} onChange={e => { setBusquedaDocente(e.target.value); setPaginaDocentes(1); }} style={{ padding: '0.45rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', width: '260px', outline: 'none' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.55rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.25rem 0.65rem', background: 'white' }}>
+                                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{docentes.length}</span>
+                                <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500 }}>docente{docentes.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <input type="text" placeholder="🔍 Buscar..." value={busquedaDocente} onChange={e => { setBusquedaDocente(e.target.value); setPaginaDocentes(1); }} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+                                <button
+                                  onClick={() => setShowAgregarDocenteModal(true)}
+                                  style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                >＋ Inscribir Docente</button>
+                              </div>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
                               <table className="doc-tbl-dip" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1141,7 +1136,7 @@ const DiplomadosPage: React.FC = () => {
                     key: 'estudiantes',
                     label: `👨‍🎓 Estudiantes (${estudiantes.length})`,
                     children: (
-                      <div style={{ padding: '1.25rem' }}>
+                      <div>
                         {estudiantes.length === 0 ? (
                           <p style={{ color: '#999' }}>No hay estudiantes registrados. Usa "➕ Agregar Estudiante" para inscribir el primero.</p>
                         ) : (() => {
@@ -1167,9 +1162,20 @@ const DiplomadosPage: React.FC = () => {
                               .est-tbl-dip thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
                               .est-tbl-dip td { overflow: hidden; word-break: break-word; }
                             `}</style>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                              <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{filtered.length} estudiante{filtered.length !== 1 ? 's' : ''}</span>
-                              <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaEstudiante} onChange={e => { setBusquedaEstudiante(e.target.value); setPaginaEstudiantes(1); }} style={{ padding: '0.45rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', width: '260px', outline: 'none' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.55rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.25rem 0.65rem', background: 'white' }}>
+                                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{estudiantes.length}</span>
+                                <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500 }}>estudiante{estudiantes.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <input type="text" placeholder="🔍 Buscar..." value={busquedaEstudiante} onChange={e => { setBusquedaEstudiante(e.target.value); setPaginaEstudiantes(1); }} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+                                <button
+                                  onClick={() => setShowAgregarEstudianteModal(true)}
+                                  style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                >＋ Inscribir</button>
+                              </div>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
                               <table className="est-tbl-dip" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1242,7 +1248,7 @@ const DiplomadosPage: React.FC = () => {
                     key: 'centralizador',
                     label: '📊 Centralizador',
                     children: (
-                      <div style={{ padding: '1.25rem' }}>
+                      <div>
                         {estudiantes.length === 0 ? (
                           <p style={{ color: '#999' }}>No hay estudiantes registrados todavía.</p>
                         ) : (() => {
@@ -1265,7 +1271,7 @@ const DiplomadosPage: React.FC = () => {
                           return (
                             <>
                               {/* KPI Cards */}
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
                                 <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #3b82f6' }}>
                                   <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Promedio General</div>
                                   <div style={{ fontSize: '2rem', fontWeight: 800, color: promG >= 61 ? '#16a34a' : '#dc2626', lineHeight: 1.1 }}>{promG}</div>
@@ -1292,6 +1298,7 @@ const DiplomadosPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
                                   <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaCentralizador} onChange={e => setBusquedaCentralizador(e.target.value)} style={{ flex: 1, maxWidth: '280px', padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
                                   <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button onClick={handleAbrirRegistroNotas} className="button-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📝 Registrar Notas</button>
                                     <button onClick={handleExportCentralizadorNotas} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Exportar Notas</button>
                                     <button onClick={handleExportCentralizadorNotasWord} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Exportar Documento</button>
                                   </div>
@@ -1308,7 +1315,6 @@ const DiplomadosPage: React.FC = () => {
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 4</th>
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 5</th>
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#1e3a5f', color: '#ffffff', minWidth: '80px', borderLeft: '3px solid #3b82f6', letterSpacing: '0.04em' }}>FINAL</th>
-                                      <th style={{ padding: '0.6rem 0.5rem', width: '46px' }}></th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1318,9 +1324,6 @@ const DiplomadosPage: React.FC = () => {
                                         <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', position: 'sticky', left: 0, zIndex: 1 }}>{est.nombre}</td>
                                         {[est.m1, est.m2, est.m3, est.m4, est.m5].map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
                                         <td className="nota-semantica" style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', backgroundColor: est.total >= 61 ? '#d1fae5' : '#fee2e2', color: est.total >= 61 ? '#065f46' : '#991b1b', borderLeft: '3px solid #3b82f6' }}>{est.total || '–'}</td>
-                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                          <button onClick={() => { const t = estudiantes.find(e => e.gid === est.gid); if (t) handleExportEstudianteReport(t); }} title="Ver historial académico" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.15rem', padding: '0.3rem 0.4rem', borderRadius: '4px', color: '#64748b', transition: 'background 0.15s, color 0.15s' }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9'; (e.currentTarget as HTMLButtonElement).style.color = '#1e3a5f'; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; (e.currentTarget as HTMLButtonElement).style.color = '#64748b'; }}>🗂</button>
-                                        </td>
                                       </tr>
                                     ))}
                                     <tr style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f1f5f9', fontWeight: 700 }}>
@@ -1330,7 +1333,6 @@ const DiplomadosPage: React.FC = () => {
                                         <td key={i} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', color: '#374151', fontWeight: 600 }}>{v}</td>
                                       ))}
                                       <td style={{ textAlign: 'center', padding: '0.6rem 0.75rem', backgroundColor: '#1e3a5f', color: '#ffffff', fontSize: '1rem', fontWeight: 800, borderLeft: '3px solid #3b82f6' }}>{calcProm(notasData.map(e=>e.total))}</td>
-                                      <td></td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -1346,7 +1348,7 @@ const DiplomadosPage: React.FC = () => {
                     key: 'asistencia',
                     label: '✓ Asistencia',
                     children: (
-                      <div style={{ padding: '1.25rem' }}>
+                      <div>
                         {(() => {
                           const { asistenciasPorEstudiante, fechasOrdenadas } = extraerAsistenciasEstudiantes();
                           if (fechasOrdenadas.length === 0) {
@@ -1357,33 +1359,78 @@ const DiplomadosPage: React.FC = () => {
                               </div>
                             );
                           }
+                          const totalPresentes = asistenciasPorEstudiante.reduce((sum, est) => sum + fechasOrdenadas.filter(f => est.registros[f]?.asistio === true).length, 0);
+                          const totalAusentes = asistenciasPorEstudiante.reduce((sum, est) => sum + fechasOrdenadas.filter(f => est.registros[f]?.asistio === false).length, 0);
+                          const totalRegistrados = totalPresentes + totalAusentes;
+                          const pctAsistencia = totalRegistrados > 0 ? Math.round((totalPresentes / totalRegistrados) * 100) : 0;
+                          const sinAusenciasCount = asistenciasPorEstudiante.filter(est => !fechasOrdenadas.some(f => est.registros[f]?.asistio === false)).length;
+                          const conAusenciasCount = asistenciasPorEstudiante.filter(est => fechasOrdenadas.some(f => est.registros[f]?.asistio === false)).length;
                           return (
-                            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                                <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{asistenciasPorEstudiante.length} estudiante{asistenciasPorEstudiante.length !== 1 ? 's' : ''} · {fechasOrdenadas.length} fecha{fechasOrdenadas.length !== 1 ? 's' : ''}</span>
+                            <>
+                              {/* KPI Cards */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #3b82f6' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Asistencia General</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: pctAsistencia >= 80 ? '#16a34a' : '#dc2626', lineHeight: 1.1 }}>{pctAsistencia}%</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>{totalPresentes} de {totalRegistrados} registros</div>
+                                </div>
+                                <div style={{ background: '#f0fdf4', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #22c55e' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Sin Ausencias</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#16a34a', lineHeight: 1.1 }}>{sinAusenciasCount}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>asistencia perfecta</div>
+                                </div>
+                                <div style={{ background: '#fef2f2', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #ef4444' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Con Ausencias</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#dc2626', lineHeight: 1.1 }}>{conAusenciasCount}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>al menos 1 falta</div>
+                                </div>
+                                <div style={{ background: '#f5f3ff', borderRadius: '12px', padding: '1rem 1.25rem', borderLeft: '4px solid #8b5cf6' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>Sesiones</div>
+                                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#7c3aed', lineHeight: 1.1 }}>{fechasOrdenadas.length}</div>
+                                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.15rem' }}>fechas registradas</div>
+                                </div>
+                              </div>
+                              <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                                <style>{`
+                                  .asist-view-dip tbody tr { transition: background 0.1s; }
+                                .asist-view-dip tbody tr:nth-child(even) { background: #f9fafb; }
+                                .asist-view-dip tbody tr:hover { background: #eff6ff !important; }
+                                .asist-view-dip thead th { background: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
+                                .asist-view-dip .col-num-s  { position: sticky; left: 0;     z-index: 2; background: white; }
+                                .asist-view-dip .col-name-s { position: sticky; left: 46px;  z-index: 2; background: white; box-shadow: 2px 0 5px -1px rgba(0,0,0,0.08); }
+                                .asist-view-dip tbody tr:nth-child(even) .col-num-s,
+                                .asist-view-dip tbody tr:nth-child(even) .col-name-s { background: #f9fafb; }
+                                .asist-view-dip tbody tr:hover .col-num-s,
+                                .asist-view-dip tbody tr:hover .col-name-s { background: #eff6ff !important; }
+                                .asist-view-dip thead .col-num-s,
+                                .asist-view-dip thead .col-name-s { z-index: 3; background: #f1f5f9; }
+                              `}</style>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaAsistencia} onChange={e => setBusquedaAsistencia(e.target.value)} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+                                <button onClick={handleAbrirAsistencia} className="button-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>✓ Registrar Asistencia</button>
                               </div>
                               <div style={{ overflowX: 'auto' }}>
-                              <table className="asist-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <table className="asist-view-dip" style={{ borderCollapse: 'collapse' }}>
                                 <thead>
                                   <tr>
-                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
-                                    <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px', position: 'sticky', left: 0, zIndex: 2, background: '#f1f5f9' }}>Estudiante</th>
+                                    <th className="col-num-s" style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
+                                    <th className="col-name-s" style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px' }}>Estudiante</th>
                                     {fechasOrdenadas.map((fecha, idx) => (
-                                      <th key={idx} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '120px' }}>{fecha}</th>
+                                      <th key={idx} style={{ textAlign: 'center', padding: '0.5rem 0.25rem', fontSize: '0.68rem', color: '#64748b', fontWeight: 600, width: '42px', minWidth: '42px', writingMode: 'vertical-lr', borderLeft: '1px solid #e5e7eb' }}>{fecha}</th>
                                     ))}
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {asistenciasPorEstudiante.map((est, eIdx) => (
+                                  {(busquedaAsistencia ? asistenciasPorEstudiante.filter(est => est.nombre.toLowerCase().includes(busquedaAsistencia.toLowerCase())) : asistenciasPorEstudiante).map((est, eIdx) => (
                                     <tr key={eIdx}>
-                                      <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{eIdx + 1}</td>
-                                      <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>{est.nombre}</td>
+                                      <td className="col-num-s" style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600, borderBottom: '1px solid #f3f4f6' }}>{eIdx + 1}</td>
+                                      <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', borderBottom: '1px solid #f3f4f6' }}>{est.nombre}</td>
                                       {fechasOrdenadas.map((fecha, fIdx) => {
                                         const reg = est.registros[fecha];
                                         const asistio = reg?.asistio;
                                         const obs = reg?.observaciones || '';
                                         return (
-                                          <td key={fIdx} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 600, fontSize: '0.875rem', color: asistio === true ? '#16a34a' : asistio === false ? '#dc2626' : '#94a3b8', backgroundColor: asistio === true ? '#d1fae5' : asistio === false ? '#fee2e2' : undefined }} title={obs !== 'Ninguna' && obs ? `Observaciones: ${obs}` : ''}>
+                                          <td key={fIdx} style={{ padding: '0.7rem 0.25rem', textAlign: 'center', fontWeight: 600, fontSize: '0.875rem', borderLeft: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', color: asistio === true ? '#16a34a' : asistio === false ? '#dc2626' : '#94a3b8', backgroundColor: asistio === true ? '#d1fae5' : asistio === false ? '#fee2e2' : undefined }} title={obs !== 'Ninguna' && obs ? `Observaciones: ${obs}` : ''}>
                                             {asistio === true ? 'Sí' : asistio === false ? 'No' : '–'}
                                           </td>
                                         );
@@ -1394,6 +1441,7 @@ const DiplomadosPage: React.FC = () => {
                               </table>
                               </div>
                             </div>
+                            </>
                           );
                         })()}
                       </div>
@@ -1897,39 +1945,17 @@ const DiplomadosPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             style={{ 
               maxWidth: '850px', 
-              width: '90%',
-              maxHeight: '90vh',
+              width: '96%',
+              maxHeight: '88vh',
               overflow: 'hidden',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              padding: 0
             }}
           >
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>📊 Notas del Estudiante</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button
-                  onClick={() => handleExportEstudianteReport(estudianteSeleccionadoNotas)}
-                  className="button-secondary"
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.9rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  🖨️ Imprimir
-                </button>
-                <button className="modal-close" onClick={() => setEstudianteSeleccionadoNotas(null)}>
-                  ×
-                </button>
-              </div>
-            </div>
+            <HtmlModalHeader icon="📊" title="Notas del Estudiante" subtitle={formatearNombreCompleto(estudianteSeleccionadoNotas.name)} onClose={() => setEstudianteSeleccionadoNotas(null)} />
 
-            <div className="modal-body" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1}}>
-              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#4f4f4f', fontSize: '1.2rem', wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                {formatearNombreCompleto(estudianteSeleccionadoNotas.name)}
-              </h3>
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
               {(() => {
                 // Usar el helper robusto importado
@@ -1942,81 +1968,90 @@ const DiplomadosPage: React.FC = () => {
 
                 return (
                   <div>
-                    <table style={{ minWidth: '600px',width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f2f2f2', color: '#4f4f4f' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #b5b5b5', width: '45%' }}>
-                            Módulo
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #b5b5b5', width: '20%' }}>
-                            Nota
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #b5b5b5', width: '35%' }}>
-                            Estado
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          { nombre: 'Módulo 1', nota: modulo1 },
-                          { nombre: 'Módulo 2', nota: modulo2 },
-                          { nombre: 'Módulo 3', nota: modulo3 },
-                          { nombre: 'Módulo 4', nota: modulo4 },
-                          { nombre: 'Módulo 5', nota: modulo5 }
-                        ].map((modulo, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
-                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>
-                              {modulo.nombre}
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '1rem' }}>
+                      <style>{`
+                        .notas-tbl-dip tbody tr { transition: background 0.1s; }
+                        .notas-tbl-dip tbody tr:nth-child(even) { background: #f9fafb; }
+                        .notas-tbl-dip tbody tr:hover { background: #eff6ff !important; }
+                        .notas-tbl-dip thead th { position: sticky; top: 0; z-index: 1; }
+                      `}</style>
+                      <table className="notas-tbl-dip" style={{ minWidth: '520px', width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0', width: '45%' }}>
+                              Módulo
+                            </th>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'center', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0', width: '20%' }}>
+                              Nota
+                            </th>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'center', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0', width: '35%' }}>
+                              Estado
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { nombre: 'Módulo 1', nota: modulo1 },
+                            { nombre: 'Módulo 2', nota: modulo2 },
+                            { nombre: 'Módulo 3', nota: modulo3 },
+                            { nombre: 'Módulo 4', nota: modulo4 },
+                            { nombre: 'Módulo 5', nota: modulo5 }
+                          ].map((modulo, index) => (
+                            <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.6rem 0.65rem', fontWeight: 600, color: '#1e3a5f', fontSize: '0.875rem' }}>
+                                {modulo.nombre}
+                              </td>
+                              <td style={{ 
+                                padding: '0.6rem 0.65rem', 
+                                textAlign: 'center',
+                                fontWeight: 700,
+                                fontSize: '1rem',
+                                color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#16a34a' : '#dc2626',
+                                backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
+                              }}>
+                                {modulo.nota === 0 ? '–' : modulo.nota}
+                              </td>
+                              <td style={{ 
+                                padding: '0.6rem 0.65rem', 
+                                textAlign: 'center',
+                                fontWeight: 600,
+                                fontSize: '0.85rem',
+                                color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#16a34a' : '#dc2626',
+                                backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
+                              }}>
+                                {modulo.nota === 0 ? '–' : modulo.nota >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr style={{ 
+                            background: promedio >= 51 ? '#f0fdf4' : '#fff1f2',
+                            borderTop: '2px solid #e2e8f0'
+                          }}>
+                            <td style={{ padding: '0.75rem 0.65rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Promedio Final
                             </td>
                             <td style={{ 
-                              padding: '0.75rem', 
+                              padding: '0.75rem 0.65rem', 
                               textAlign: 'center',
+                              fontSize: '1.15rem',
+                              fontWeight: 800,
+                              color: promedio >= 51 ? '#15803d' : '#be123c'
+                            }}>
+                              {Math.round(promedio)}
+                            </td>
+                            <td style={{ 
+                              padding: '0.75rem 0.65rem', 
+                              textAlign: 'center',
+                              fontSize: '0.85rem',
                               fontWeight: 700,
-                              fontSize: '1.1rem',
-                              color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#27AE60' : '#dc2626',
-                              backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
+                              color: promedio >= 51 ? '#15803d' : '#be123c'
                             }}>
-                              {modulo.nota === 0 ? '–' : modulo.nota}
-                            </td>
-                            <td style={{ 
-                              padding: '0.75rem', 
-                              textAlign: 'center',
-                              fontWeight: 600,
-                              color: modulo.nota === 0 ? '#9ca3af' : modulo.nota >= 51 ? '#27AE60' : '#dc2626',
-                              backgroundColor: modulo.nota > 0 && modulo.nota < 51 ? '#fef2f2' : modulo.nota > 90 ? '#f0fdf4' : undefined
-                            }}>
-                              {modulo.nota === 0 ? '–' : modulo.nota >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
+                              {promedio >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
                             </td>
                           </tr>
-                        ))}
-                        <tr style={{ 
-                          backgroundColor: '#1e3a5f',
-                          fontWeight: 800,
-                          borderTop: '3px solid #3b82f6'
-                        }}>
-                          <td style={{ padding: '1rem', fontSize: '1.05rem', color: '#e2e8f0' }}>
-                            PROMEDIO FINAL
-                          </td>
-                          <td style={{ 
-                            padding: '1rem', 
-                            textAlign: 'center',
-                            fontSize: '1.4rem',
-                            fontWeight: 800,
-                            color: promedio >= 51 ? '#6ee7b7' : '#fca5a5'
-                          }}>
-                            {Math.round(promedio)}
-                          </td>
-                          <td style={{ 
-                            padding: '1rem', 
-                            textAlign: 'center',
-                            fontSize: '1.05rem',
-                            color: promedio >= 51 ? '#6ee7b7' : '#fca5a5'
-                          }}>
-                            {promedio >= 51 ? '✓ Aprobado' : '✗ Reprobado'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                        </tbody>
+                      </table>
+                    </div>
 
                     <div style={{ 
                       padding: '1rem', 
@@ -2036,7 +2071,14 @@ const DiplomadosPage: React.FC = () => {
               })()}
             </div>
 
-            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee' }}>
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e0e0e0', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => handleExportEstudianteReport(estudianteSeleccionadoNotas)}
+                className="button-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                🖨️ Imprimir
+              </button>
               <button
                 onClick={() => setEstudianteSeleccionadoNotas(null)}
                 className="button-primary"
@@ -2056,23 +2098,17 @@ const DiplomadosPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             style={{ 
               maxWidth: '700px', 
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              width: '96%',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0
             }}
           >
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>✓ Asistencia del Estudiante</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button onClick={() => handleExportEstudianteReport(estudianteSeleccionadoAsistencia)} className="button-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>🖨️ Imprimir</button>
-                <button className="modal-close" onClick={() => setEstudianteSeleccionadoAsistencia(null)}>×</button>
-              </div>
-            </div>
+            <HtmlModalHeader icon="✓" title="Asistencia del Estudiante" subtitle={formatearNombreCompleto(estudianteSeleccionadoAsistencia.name)} onClose={() => setEstudianteSeleccionadoAsistencia(null)} />
 
-            <div className="modal-body" style={{ padding: '1.5rem' }}>
-              <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#2e7d32' }}>
-                {formatearNombreCompleto(estudianteSeleccionadoAsistencia.name)}
-              </h3>
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
               {(() => {
                 // Usar el helper robusto para parsear asistencias
@@ -2179,52 +2215,68 @@ const DiplomadosPage: React.FC = () => {
                     </div>
 
                     {/* Tabla de registros */}
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#e8f5e9', color: '#2e7d32' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #c8e6c9' }}>
-                            Fecha
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '2px solid #c8e6c9' }}>
-                            Asistió
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #c8e6c9' }}>
-                            Observaciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {registros.map((registro, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #dee2e6' }}>
-                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>
-                              {registro.fecha}
-                            </td>
-                            <td style={{ 
-                              padding: '0.75rem', 
-                              textAlign: 'center',
-                              fontWeight: 600,
-                              fontSize: '1rem',
-                              color: registro.asistio ? '#27AE60' : '#E74C3C'
-                            }}>
-                              {registro.asistio ? '✓ Sí' : '✗ No'}
-                            </td>
-                            <td style={{ 
-                              padding: '0.75rem',
-                              color: registro.observaciones === 'Ninguna' ? '#999' : '#333',
-                              fontStyle: registro.observaciones === 'Ninguna' ? 'italic' : 'normal'
-                            }}>
-                              {registro.observaciones}
-                            </td>
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                      <style>{`
+                        .asist-tbl-dip tbody tr { transition: background 0.1s; }
+                        .asist-tbl-dip tbody tr:nth-child(even) { background: #f9fafb; }
+                        .asist-tbl-dip tbody tr:hover { background: #eff6ff !important; }
+                        .asist-tbl-dip thead th { position: sticky; top: 0; z-index: 1; }
+                      `}</style>
+                      <table className="asist-tbl-dip" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0' }}>
+                              Fecha
+                            </th>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'center', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0' }}>
+                              Asistió
+                            </th>
+                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0' }}>
+                              Observaciones
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {registros.map((registro, index) => (
+                            <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.6rem 0.65rem', fontWeight: 600, color: '#1e3a5f', fontSize: '0.875rem' }}>
+                                {registro.fecha}
+                              </td>
+                              <td style={{ 
+                                padding: '0.6rem 0.65rem', 
+                                textAlign: 'center',
+                                fontWeight: 600,
+                                fontSize: '0.875rem',
+                                color: registro.asistio ? '#16a34a' : '#dc2626'
+                              }}>
+                                {registro.asistio ? '✓ Sí' : '✗ No'}
+                              </td>
+                              <td style={{ 
+                                padding: '0.6rem 0.65rem',
+                                fontSize: '0.85rem',
+                                color: registro.observaciones === 'Ninguna' ? '#9ca3af' : '#374151',
+                                fontStyle: registro.observaciones === 'Ninguna' ? 'italic' : 'normal'
+                              }}>
+                                {registro.observaciones}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 );
               })()}
             </div>
 
-            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee' }}>
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e0e0e0', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => handleExportEstudianteReport(estudianteSeleccionadoAsistencia)}
+                className="button-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                🖨️ Imprimir
+              </button>
               <button
                 onClick={() => setEstudianteSeleccionadoAsistencia(null)}
                 className="button-primary"
@@ -2304,29 +2356,24 @@ const DiplomadosPage: React.FC = () => {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              maxWidth: '1400px', 
-              width: '90%',
-              maxHeight: '85vh',
+              maxWidth: '950px', 
+              width: '96%',
+              maxHeight: '88vh',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden'
             }}
           >
-            <div className="modal-header">
-              <h2>📝 Registro de Notas por Módulo</h2>
-              <button className="modal-close" onClick={() => setShowRegistroNotasModal(false)}>
-                ×
-              </button>
-            </div>
+            <HtmlModalHeader icon="📝" title="Registro de Notas por Módulo" subtitle={selectedDiplomado?.name} onClose={() => setShowRegistroNotasModal(false)} />
 
-            <div className="modal-body" style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
-              {/* Selector de Módulo */}
+            <div className="modal-body" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              {/* Selector de Módulo - fijo */}
+              <div style={{ flexShrink: 0, padding: '1.25rem 1.5rem 0.75rem', borderBottom: '1px solid #f0f4f8' }}>
               <div style={{ 
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                backgroundColor: '#e8f5e9',
-                borderRadius: '6px',
-                borderLeft: '4px solid #4caf50'
+                padding: '0.75rem 1rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -2336,8 +2383,8 @@ const DiplomadosPage: React.FC = () => {
                 }}>
                   <label style={{ 
                     fontSize: '0.9rem', 
-                    fontWeight: 'bold', 
-                    color: '#2e7d32',
+                    fontWeight: '600', 
+                    color: '#475569',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
@@ -2351,8 +2398,8 @@ const DiplomadosPage: React.FC = () => {
                     style={{
                       padding: '0.5rem 1rem',
                       fontSize: '0.9rem',
-                      border: '2px solid #4caf50',
-                      borderRadius: '4px',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: '7px',
                       backgroundColor: 'white',
                       cursor: 'pointer',
                       fontWeight: '500',
@@ -2370,124 +2417,120 @@ const DiplomadosPage: React.FC = () => {
                   Selecciona el módulo al que deseas asignar notas. Las notas existentes se mostrarán al cambiar de módulo.
                 </p>
               </div>
-
-              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#e8f5e9' }}>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '50px', color: '#2e7d32' }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '60%', color: '#2e7d32' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: 'calc(40% - 50px)', color: '#2e7d32' }}>
-                        Nota para {moduloSeleccionado} (0-100)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {notasEstudiantes.map((nota, index) => {
-                      const tieneError = notasConError.has(nota.gid);
-                      return (
-                        <tr 
-                          key={nota.gid} 
-                          style={{ 
-                            borderBottom: '1px solid #e0e0e0',
-                            backgroundColor: tieneError ? '#ffebee' : 'transparent'
-                          }}
-                        >
-                          <td style={{ 
-                            padding: '0.75rem',
-                            fontWeight: 'bold',
-                            color: '#666',
-                            textAlign: 'center'
-                          }}>
-                            {index + 1}
-                          </td>
-                          <td style={{ 
-                            padding: '0.75rem', 
-                            fontWeight: 500,
-                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
-                            {nota.nombre}
-                            {tieneError && (
-                              <span style={{ 
-                                display: 'block',
-                                fontSize: '0.75rem',
-                                color: '#f44336',
-                                marginTop: '0.25rem',
-                                fontWeight: 'normal'
-                              }}>
-                                Error al guardar - Reintentar
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center', padding: '0.75rem' }}>
-                            <input
-                              type="number"
-                              step="1"
-                              min="0"
-                              max="100"
-                              value={nota.nota}
-                              onChange={(e) => {
-                                const valor = parseInt(e.target.value) || 0;
-                                const valorLimitado = Math.max(0, Math.min(100, valor));
-                                handleCambiarNota(nota.gid, valorLimitado);
-                              }}
-                              style={{
-                                width: '100px',
-                                padding: '0.5rem',
-                                border: tieneError ? '2px solid #f44336' : '2px solid #ddd',
-                                borderRadius: '4px',
-                                fontSize: '1rem',
-                                textAlign: 'center',
-                                fontWeight: 'bold',
-                                color: nota.nota >= 51 ? '#27AE60' : '#E74C3C',
-                                backgroundColor: tieneError ? '#fff' : 'white'
-                              }}
-                            />
-                            <span style={{ 
-                              marginLeft: '0.5rem',
-                              fontSize: '0.9rem',
-                              color: nota.nota >= 51 ? '#27AE60' : '#E74C3C',
-                              fontWeight: 'bold'
-                            }}>
-                              {nota.nota >= 51 ? '✓' : '✗'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </div>
-
-              {notasEstudiantes.length === 0 && (
-                <p style={{ 
-                  textAlign: 'center', 
-                  color: '#999', 
-                  padding: '2rem',
-                  fontStyle: 'italic'
-                }}>
+              {/* Lista con scroll */}
+              <div style={{ flex: 1, overflow: 'auto', minHeight: 0, padding: '0.75rem 1.5rem 1.5rem' }}>
+              {notasEstudiantes.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#999', padding: '2rem', fontStyle: 'italic', marginTop: '1rem' }}>
                   No hay estudiantes registrados en este diplomado
                 </p>
+              ) : (
+                <div style={{ marginTop: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{notasEstudiantes.length} estudiante{notasEstudiantes.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <style>{`
+                    .nota-tbl-mod tbody tr { transition: background 0.1s; }
+                    .nota-tbl-mod tbody tr:nth-child(even) { background: #f9fafb; }
+                    .nota-tbl-mod tbody tr:hover { background: #eff6ff !important; }
+                    .nota-tbl-mod thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
+                  `}</style>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="nota-tbl-mod" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', width: '44px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>#</th>
+                          <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Estudiante</th>
+                          <th style={{ textAlign: 'center', padding: '0.6rem 0.75rem', width: '140px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                            Nota — {moduloSeleccionado} (0-100)
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {notasEstudiantes.map((nota, index) => {
+                          const tieneError = notasConError.has(nota.gid);
+                          const notaInvalida = nota.nota < 0 || nota.nota > 100;
+                          return (
+                            <tr
+                              key={nota.gid}
+                              style={{ backgroundColor: tieneError ? '#ffebee' : undefined }}
+                            >
+                              <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>
+                                {index + 1}
+                              </td>
+                              <td style={{
+                                padding: '0.7rem 0.75rem',
+                                borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
+                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>{nota.nombre}</span>
+                                {tieneError && (
+                                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#f44336', marginTop: '0.25rem', fontWeight: 'normal' }}>
+                                    Error al guardar - Reintentar
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '0.7rem 0.75rem' }}>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  max="100"
+                                  value={nota.nota}
+                                  onChange={(e) => {
+                                    const valor = parseInt(e.target.value, 10);
+                                    handleCambiarNota(nota.gid, isNaN(valor) ? 0 : valor);
+                                  }}
+                                  onBlur={() => {
+                                    const clamped = Math.max(0, Math.min(100, nota.nota));
+                                    if (nota.nota !== clamped) handleCambiarNota(nota.gid, clamped);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === '.' || e.key === ',') e.preventDefault();
+                                  }}
+                                  style={{
+                                    width: '80px',
+                                    padding: '0.45rem 0.5rem',
+                                    border: tieneError
+                                      ? '2px solid #f44336'
+                                      : notaInvalida
+                                      ? '1.5px solid #f59e0b'
+                                      : '1.5px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    fontSize: '0.9rem',
+                                    textAlign: 'center',
+                                    backgroundColor: 'white',
+                                    color: '#374151'
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
 
               {notasEstudiantes.length > 0 && (
                 <div style={{ 
                   marginTop: '1rem',
-                  padding: '1rem',
-                  backgroundColor: '#fff3e0',
-                  borderRadius: '6px',
-                  borderLeft: '4px solid #ff9800'
+                  padding: '0.75rem 1rem',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
                 }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#e65100' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
                     <strong>💡 Nota:</strong> Las notas deben ser valores entre 0 y 100. Una nota de 51 o superior se considera aprobada.
                   </p>
                 </div>
               )}
+              </div>
             </div>
 
             <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2549,29 +2592,24 @@ const DiplomadosPage: React.FC = () => {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              maxWidth: '1100px', 
-              width: '95%',
-              maxHeight: '85vh',
+              maxWidth: '950px', 
+              width: '96%',
+              maxHeight: '88vh',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden'
             }}
           >
-            <div className="modal-header">
-              <h2>✓ Registro de Asistencia</h2>
-              <button className="modal-close" onClick={() => setShowAsistenciaModal(false)}>
-                ×
-              </button>
-            </div>
+            <HtmlModalHeader icon="✓" title="Registro de Asistencia" subtitle={selectedDiplomado?.name} onClose={() => setShowAsistenciaModal(false)} />
 
-            <div className="modal-body" style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
-              {/* Selector de Fecha */}
+            <div className="modal-body" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              {/* Selector de Fecha - fijo */}
+              <div style={{ flexShrink: 0, padding: '1.25rem 1.5rem 0.75rem', borderBottom: '1px solid #f0f4f8' }}>
               <div style={{ 
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                backgroundColor: '#f2f2f2',
-                borderRadius: '6px',
-                borderLeft: '4px solid #626262'
+                padding: '0.75rem 1rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -2581,8 +2619,8 @@ const DiplomadosPage: React.FC = () => {
                 }}>
                   <label style={{ 
                     fontSize: '0.9rem', 
-                    fontWeight: 'bold', 
-                    color: '#4f4f4f',
+                    fontWeight: '600', 
+                    color: '#475569',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
@@ -2596,8 +2634,8 @@ const DiplomadosPage: React.FC = () => {
                     style={{
                       padding: '0.5rem',
                       fontSize: '0.9rem',
-                      border: '2px solid #626262',
-                      borderRadius: '4px',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: '7px',
                       backgroundColor: 'white',
                       cursor: 'pointer',
                       fontWeight: '500'
@@ -2608,102 +2646,97 @@ const DiplomadosPage: React.FC = () => {
                   Selecciona la fecha para la cual deseas registrar asistencia. Si la fecha ya tiene un registro, se sobreescribirá.
                 </p>
               </div>
-
-              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                <table className="table-container" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '50px' }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: '30%', minWidth: '180px' }}>Estudiante</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', width: '15%', minWidth: '100px' }}>Asistió</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', width: 'calc(55% - 50px)', minWidth: '200px' }}>Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {asistencias.map((asistencia, index) => {
-                      const tieneError = asistenciasConError.has(asistencia.gid);
-                      return (
-                        <tr 
-                          key={asistencia.gid}
-                          style={{ 
-                            backgroundColor: tieneError ? '#ffebee' : 'transparent'
-                          }}
-                        >
-                          <td style={{ 
-                            padding: '0.75rem',
-                            fontWeight: 'bold',
-                            color: '#666',
-                            textAlign: 'center'
-                          }}>
-                            {index + 1}
-                          </td>
-                          <td style={{ 
-                            padding: '0.75rem',
-                            borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            maxWidth: '300px'
-                          }}>
-                            {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
-                            {asistencia.nombre}
-                            {tieneError && (
-                              <span style={{ 
-                                display: 'block',
-                                fontSize: '0.75rem',
-                                color: '#f44336',
-                                marginTop: '0.25rem',
-                                fontWeight: 'normal'
-                              }}>
-                                Error al guardar - Reintentar
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center', padding: '0.75rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={asistencia.asistio}
-                              onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'asistio', e.target.checked)}
-                              style={{ 
-                                width: '20px', 
-                                height: '20px',
-                                cursor: 'pointer',
-                                accentColor: tieneError ? '#f44336' : undefined
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.75rem' }}>
-                            <input
-                              type="text"
-                              value={asistencia.observaciones}
-                              onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'observaciones', e.target.value)}
-                              placeholder="Agregar observación..."
-                              style={{
-                                width: '100%',
-                                padding: '0.5rem',
-                                border: tieneError ? '2px solid #f44336' : '1px solid #ddd',
-                                borderRadius: '4px',
-                                fontSize: '0.9rem',
-                                backgroundColor: tieneError ? '#fff' : 'white'
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </div>
-
-              {asistencias.length === 0 && (
-                <p style={{ 
-                  textAlign: 'center', 
-                  color: '#999', 
-                  padding: '2rem',
-                  fontStyle: 'italic'
-                }}>
+              {/* Lista con scroll */}
+              <div style={{ flex: 1, overflow: 'auto', minHeight: 0, padding: '0.75rem 1.5rem 1.5rem' }}>
+              {asistencias.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#999', padding: '2rem', fontStyle: 'italic', marginTop: '1rem' }}>
                   No hay estudiantes registrados en este diplomado
                 </p>
+              ) : (
+                <div style={{ marginTop: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>{asistencias.length} estudiante{asistencias.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <style>{`
+                    .asist-tbl-mod tbody tr { transition: background 0.1s; }
+                    .asist-tbl-mod tbody tr:nth-child(even) { background: #f9fafb; }
+                    .asist-tbl-mod tbody tr:hover { background: #eff6ff !important; }
+                    .asist-tbl-mod thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
+                  `}</style>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="asist-tbl-mod" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '560px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', width: '44px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>#</th>
+                          <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', width: '35%', minWidth: '160px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Estudiante</th>
+                          <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', width: '12%', minWidth: '80px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Asistió</th>
+                          <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', width: 'calc(53% - 44px)', minWidth: '160px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {asistencias.map((asistencia, index) => {
+                          const tieneError = asistenciasConError.has(asistencia.gid);
+                          return (
+                            <tr
+                              key={asistencia.gid}
+                              style={{ backgroundColor: tieneError ? '#ffebee' : undefined }}
+                            >
+                              <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>
+                                {index + 1}
+                              </td>
+                              <td style={{
+                                padding: '0.7rem 0.75rem',
+                                borderLeft: tieneError ? '4px solid #f44336' : '4px solid transparent',
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}>
+                                {tieneError && <span style={{ color: '#f44336', marginRight: '0.5rem' }}>⚠️</span>}
+                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem' }}>{asistencia.nombre}</span>
+                                {tieneError && (
+                                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#f44336', marginTop: '0.25rem', fontWeight: 'normal' }}>
+                                    Error al guardar - Reintentar
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={asistencia.asistio}
+                                  onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'asistio', e.target.checked)}
+                                  style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    cursor: 'pointer',
+                                    accentColor: tieneError ? '#f44336' : undefined
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.7rem 0.75rem' }}>
+                                <input
+                                  type="text"
+                                  value={asistencia.observaciones}
+                                  onChange={(e) => handleCambiarAsistencia(asistencia.gid, 'observaciones', e.target.value)}
+                                  placeholder="Agregar observación..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.45rem 0.6rem',
+                                    border: tieneError ? '2px solid #f44336' : '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem',
+                                    backgroundColor: 'white'
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
+              </div>
             </div>
 
             <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
