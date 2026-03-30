@@ -6,6 +6,7 @@ import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportMaterialReturnToPDF } from '../services/pdf.service';
 import Notification from './Notification';
+import { useAuth } from '../context/AuthContext';
 
 interface MaterialItem {
   id: number;
@@ -32,6 +33,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { user } = useAuth();
 
   const agregarMaterial = () => {
     const newId = Math.max(...materiales.map(m => m.id), 0) + 1;
@@ -100,6 +102,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
         fechaSolicitud,
         fechaAprobacion: '',
+        usuario: user ? { nombre: user.name, email: user.email } : undefined,
         materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
           id, detalle,
           cantidad: cantidad || '-',

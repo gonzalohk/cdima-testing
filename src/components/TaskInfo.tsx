@@ -1007,16 +1007,48 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
               })}
               columns={[
                 {
-                  title: 'Nombre',
-                  dataIndex: 'name',
-                  key: 'name',
-                  render: (_: string, record: AsanaTask) => {
+                  title: 'Solicitud',
+                  key: 'nombre',
+                  render: (_: unknown, record: AsanaTask) => {
                     const obs = extractObservacion(record.notes);
+                    const tipo = getCustomFieldValue(record, 'Tipo de Solicitud');
+                    const data = extractJsonData(record.notes);
+                    const solicitante = data?.usuario as { nombre: string; email: string } | undefined;
+                    const tipoColorMap: Record<string, { bg: string; color: string; border: string }> = {
+                      'Solicitud de Fondos':    { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                      'Solicitud de Material':  { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
+                      'Solicitud de Devolucion': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
+                    };
+                    const tc = tipoColorMap[tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
                     return (
                       <div>
-                        <Typography.Text ellipsis style={{ maxWidth: 240, display: 'block' }}>{record.name}</Typography.Text>
+                        <Typography.Text ellipsis style={{ maxWidth: 300, display: 'block', fontWeight: 500 }}>{record.name}</Typography.Text>
+                        {tipo && (
+                          <span style={{
+                            display: 'inline-block',
+                            alignSelf: 'flex-start',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            backgroundColor: tc.bg,
+                            color: tc.color,
+                            border: `1px solid ${tc.border}`,
+                            borderRadius: 4,
+                            padding: '1px 7px',
+                            lineHeight: '18px',
+                            marginTop: '0.15rem',
+                          }}>
+                            {tipo}
+                          </span>
+                        )}
+                        {solicitante ? (
+                          <Typography.Text style={{ fontSize: '0.72rem', color: '#6b7280', display: 'block', marginTop: '0.1rem' }}>
+                            👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span>
+                          </Typography.Text>
+                        ) : (
+                          <Typography.Text style={{ fontSize: '0.72rem', color: '#bbb', display: 'block', marginTop: '0.1rem' }}>👤 Sin registro</Typography.Text>
+                        )}
                         {obs.observado && (
-                          <Typography.Text type="danger" style={{ fontSize: '0.75rem', fontStyle: 'italic', display: 'block', whiteSpace: 'normal' }}>
+                          <Typography.Text type="danger" style={{ fontSize: '0.75rem', fontStyle: 'italic', display: 'block', whiteSpace: 'normal', marginTop: '0.2rem' }}>
                             <WarningOutlined style={{ marginRight: 4 }} />
                             {obs.motivo}
                             {obs.fecha && <span style={{ color: '#999', marginLeft: '0.4rem' }}>({obs.fecha})</span>}
@@ -1024,22 +1056,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                         )}
                       </div>
                     );
-                  },
-                },
-                {
-                  title: 'Tipo',
-                  key: 'tipo',
-                  render: (_: unknown, record: AsanaTask) => {
-                    const tipo = getCustomFieldValue(record, 'Tipo de Solicitud');
-                    const colorMap: Record<string, string> = {
-                      'Solicitud de Fondos': 'default',
-                      'Solicitud de Devolucion': 'purple',
-                    };
-                    const labelMap: Record<string, string> = {
-                      'Solicitud de Fondos': 'Fondos',
-                      'Solicitud de Devolucion': 'Dev. Material',
-                    };
-                    return <Tag color={colorMap[tipo] ?? 'orange'}>{labelMap[tipo] ?? 'Material'}</Tag>;
                   },
                 },
                 {
@@ -1352,7 +1368,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
 
                     {/* Historial de actualizaciones */}
                     {(() => {
-                      type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[] };
+                      type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[]; usuario?: { nombre: string; email: string } };
                       const parseFecha = (f: string) => {
                         const clean = f.replace(',', '').trim();
                         const [datePart, timePart = '00:00'] = clean.split(/\s+/);
@@ -1388,7 +1404,11 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (entry.observaciones || entry.archivos?.length > 0) ? '0.35rem' : 0 }}>
                                     <span style={{ fontWeight: 600, color: '#333' }}>{entry.estado}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      <span style={{ fontSize: '0.72rem', color: '#999' }}>👤 Administrador del sistema</span>
+                                      {entry.usuario ? (
+                                        <span style={{ fontSize: '0.72rem', color: '#555' }}>👤 {entry.usuario.nombre} · <span style={{ color: '#9ca3af' }}>{entry.usuario.email}</span></span>
+                                      ) : (
+                                        <span style={{ fontSize: '0.72rem', color: '#999' }}>👤 Sin registro</span>
+                                      )}
                                       <span style={{ fontSize: '0.72rem', color: '#ccc' }}>·</span>
                                       <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
                                       <button

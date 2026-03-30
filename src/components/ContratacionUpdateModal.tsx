@@ -4,6 +4,7 @@ import { DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 import { ModalTitle, modalCloseIcon, modalStyles, modalFooterButtons } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
+import { useAuth } from '../context/AuthContext';
 
 const ESTADOS = [
   'Requerimiento de contratación',
@@ -24,6 +25,7 @@ export interface HistorialEstado {
   fecha: string;
   observaciones: string;
   archivos: { nombre: string; link: string }[];
+  usuario?: { nombre: string; email: string };
 }
 
 export interface ContratacionJsonData {
@@ -52,6 +54,7 @@ const ContratacionUpdateModal: React.FC<ContratacionUpdateModalProps> = ({
   const [form] = Form.useForm();
   const [archivos, setArchivos] = useState<ArchivoAdjunto[]>([]);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const agregarArchivo = () => {
     const newId = Math.max(...archivos.map(a => a.id), 0) + 1;
@@ -94,6 +97,7 @@ const ContratacionUpdateModal: React.FC<ContratacionUpdateModalProps> = ({
         fecha,
         observaciones: (values.observaciones ?? '').trim(),
         archivos: archivosValidos.map(({ nombre, link }) => ({ nombre: nombre.trim(), link: link.trim() })),
+        usuario: user ? { nombre: user.name, email: user.email } : undefined,
       };
 
       const updatedData: ContratacionJsonData = {

@@ -6,7 +6,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateEscuelaModal from '../components/CreateEscuelaModal';
 import Notification from '../components/Notification';
-import { HtmlModalHeader, WIPHALA_COLORS } from '../components/ModalShared';
+import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaActaCalificacionesWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
@@ -1050,12 +1050,7 @@ const EscuelasPage: React.FC = () => {
       {/* Detalles de la Escuela Seleccionada */}
       {selectedEscuela && (
         <>
-          <div style={{ display: 'flex', height: 5, marginTop: '1.5rem' }}>
-            {WIPHALA_COLORS.map((color, i) => (
-              <div key={i} style={{ flex: 1, backgroundColor: color }} />
-            ))}
-          </div>
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'hidden', marginTop: '1.5rem' }}>
             <div style={{ 
               padding: '1.5rem',
               borderBottom: '2px solid #e0e0e0',
@@ -1132,10 +1127,10 @@ const EscuelasPage: React.FC = () => {
                           <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
                             <style>{`
                               .est-tbl-esc { table-layout: fixed; }
-                              .est-tbl-esc col.col-num  { width: 36px; }
+                              .est-tbl-esc col.col-num  { width: 35px; }
                               .est-tbl-esc col.col-id   { width: 350px; }
-                              .est-tbl-esc col.col-age  { width: 325px; }
-                              .est-tbl-esc col.col-ori  { width: 300px; }
+                              .est-tbl-esc col.col-age  { width: 200px; }
+                              .est-tbl-esc col.col-ori  { width: 200px; }
                               .est-tbl-esc col.col-act  { width: auto; }
                               .est-tbl-esc tbody tr { transition: background 0.1s; }
                               .est-tbl-esc tbody tr:nth-child(even) { background: #f9fafb; }

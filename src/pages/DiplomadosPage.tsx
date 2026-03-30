@@ -7,7 +7,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
 import Notification from '../components/Notification';
-import { HtmlModalHeader, WIPHALA_COLORS } from '../components/ModalShared';
+import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import { exportDiplomadoGeneralPDF, exportDiplomadoGeneralWord, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
@@ -1100,12 +1100,7 @@ const DiplomadosPage: React.FC = () => {
       {/* Detalles del Diplomado Seleccionado */}
       {selectedDiplomado && (
         <>
-          <div style={{ display: 'flex', height: 5, marginTop: '1.5rem' }}>
-            {WIPHALA_COLORS.map((color, i) => (
-              <div key={i} style={{ flex: 1, backgroundColor: color }} />
-            ))}
-          </div>
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'hidden', marginTop: '1.5rem' }}>
             <div style={{ 
               padding: '1.50rem',
               borderBottom: '2px solid #e0e0e0',
@@ -1184,10 +1179,10 @@ const DiplomadosPage: React.FC = () => {
                           <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
                             <style>{`
                               .doc-tbl-dip { table-layout: fixed; }
-                              .doc-tbl-dip col.col-num  { width: 36px; }
+                              .doc-tbl-dip col.col-num  { width: 35px; }
                               .doc-tbl-dip col.col-id   { width: 350px; }
-                              .doc-tbl-dip col.col-age  { width: 325px; }
-                              .doc-tbl-dip col.col-ori  { width: 300px; }
+                              .doc-tbl-dip col.col-age  { width: 200px; }
+                              .doc-tbl-dip col.col-ori  { width: 200px; }
                               .doc-tbl-dip col.col-act  { width: auto; }
                               .doc-tbl-dip tbody tr { transition: background 0.1s; }
                               .doc-tbl-dip tbody tr:nth-child(even) { background: #f9fafb; }
@@ -1294,10 +1289,10 @@ const DiplomadosPage: React.FC = () => {
                           <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
                             <style>{`
                               .est-tbl-dip { table-layout: fixed; }
-                              .est-tbl-dip col.col-num  { width: 36px; }
+                              .est-tbl-dip col.col-num  { width: 35px; }
                               .est-tbl-dip col.col-id   { width: 350px; }
-                              .est-tbl-dip col.col-age  { width: 325px; }
-                              .est-tbl-dip col.col-ori  { width: 300px; }
+                              .est-tbl-dip col.col-age  { width: 200px; }
+                              .est-tbl-dip col.col-ori  { width: 200px; }
                               .est-tbl-dip col.col-act  { width: auto; }
                               .est-tbl-dip tbody tr { transition: background 0.1s; }
                               .est-tbl-dip tbody tr:nth-child(even) { background: #f9fafb; }

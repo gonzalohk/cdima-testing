@@ -130,154 +130,162 @@ const Layout: React.FC = () => {
       </header>
 
       <div className="header-divider-line" aria-hidden="true"></div>
-      
-      <nav className="nav">
-        <ul className="nav-links">
-          <li>
-            <Link 
-              to="/" 
-              className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-            >
-              🏠 Inicio
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/report" 
-              className={`nav-link ${location.pathname === '/report' ? 'active' : ''}`}
-            >
-              📊 Proyectos
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/biblioteca" 
-              className={`nav-link ${location.pathname === '/biblioteca' ? 'active' : ''}`}
-            >
-               📡 Comunicación
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/planificacion" 
-              className={`nav-link ${location.pathname === '/planificacion' ? 'active' : ''}`}
-            >
-              📅 Planificación
-            </Link>
-          </li>
-          
-          {/* Escuela de Formación con submenú — solo admin */}
-          {isAdmin && <li 
-            className="nav-item-submenu"
-            onMouseLeave={() => setShowEscuelasSubmenu(false)}
-          >
-            <a 
-              href="#"
-              className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
-              onClick={toggleEscuelasSubmenu}
-              onMouseEnter={() => setShowEscuelasSubmenu(true)}
-            >
-              🏫 Escuela de Formación
-              <span className="submenu-arrow">▼</span>
-            </a>
-            {showEscuelasSubmenu && escuelas.length > 0 && (
-              <ul className="submenu" onMouseEnter={() => setShowEscuelasSubmenu(true)}>
-                <li>
-                  <Link 
-                    to="/escuelas"
-                    className="submenu-link"
-                    onClick={() => setShowEscuelasSubmenu(false)}
-                  >
-                    Ver todas
-                  </Link>
-                </li>
-                {escuelas.map(escuela => (
-                  <li key={escuela.gid}>
-                    <button
 
+      <div className="app-body">
+        <nav className="sidebar">
+          <ul className="nav-links">
+            <li className="sidebar-group-label">Principal</li>
+            <li>
+              <Link
+                to="/"
+                className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
+              >
+                🏠 Inicio
+              </Link>
+            </li>
+
+            <li className="sidebar-group-label">Reportes</li>
+            <li>
+              <Link
+                to="/report"
+                className={`nav-link ${location.pathname === '/report' ? 'active' : ''}`}
+              >
+                📊 Proyectos
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/biblioteca"
+                className={`nav-link ${location.pathname === '/biblioteca' ? 'active' : ''}`}
+              >
+                📡 Comunicación
+              </Link>
+            </li>
+
+            <li className="sidebar-group-label">Planificación</li>
+            <li>
+              <Link
+                to="/planificacion"
+                className={`nav-link ${location.pathname === '/planificacion' ? 'active' : ''}`}
+              >
+                📅 Planificación
+              </Link>
+            </li>
+
+            {/* Académico — solo admin */}
+            {isAdmin && <li className="sidebar-group-label">Académico</li>}
+
+            {/* Escuela de Formación con submenú — solo admin */}
+            {isAdmin && <li className="nav-item-submenu">
+              <a
+                href="#"
+                className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
+                onClick={toggleEscuelasSubmenu}
+              >
+                🏫 Escuela de Formación
+                <span className="submenu-arrow" style={{ marginLeft: 'auto' }}>
+                  {showEscuelasSubmenu ? '▲' : '▼'}
+                </span>
+              </a>
+              {showEscuelasSubmenu && escuelas.length > 0 && (
+                <ul className="submenu">
+                  <li>
+                    <Link
+                      to="/escuelas"
                       className="submenu-link"
-                      onClick={() => handleEscuelaClick(escuela)}
+                      onClick={() => setShowEscuelasSubmenu(false)}
                     >
-                      {escuela.name}
-                    </button>
+                      Ver todas
+                    </Link>
                   </li>
-                ))}
-              </ul>
-            )}
-          </li>}
+                  {escuelas.map(escuela => (
+                    <li key={escuela.gid}>
+                      <button
+                        className="submenu-link"
+                        onClick={() => handleEscuelaClick(escuela)}
+                      >
+                        {escuela.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>}
 
-          {/* Diplomados con submenú — solo admin */}
-          {isAdmin && <li 
-            className="nav-item-submenu"
-            onMouseLeave={() => setShowDiplomadosSubmenu(false)}
-          >
-            <a 
-              href="#"
-              className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
-              onClick={toggleDiplomadosSubmenu}
-              onMouseEnter={() => setShowDiplomadosSubmenu(true)}
-            >
-              🎓 Diplomados
-              <span className="submenu-arrow">▼</span>
-            </a>
-            {showDiplomadosSubmenu && diplomados.length > 0 && (
-              <ul className="submenu" onMouseEnter={() => setShowDiplomadosSubmenu(true)}>
-                <li>
-                  <Link 
-                    to="/diplomados"
-                    className="submenu-link"
-                    onClick={() => setShowDiplomadosSubmenu(false)}
-                  >
-                    Ver todos
-                  </Link>
-                </li>
-                {diplomados.map(diplomado => (
-                  <li key={diplomado.gid}>
-                    <button
+            {/* Diplomados con submenú — solo admin */}
+            {isAdmin && <li className="nav-item-submenu">
+              <a
+                href="#"
+                className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
+                onClick={toggleDiplomadosSubmenu}
+              >
+                🎓 Diplomados
+                <span className="submenu-arrow" style={{ marginLeft: 'auto' }}>
+                  {showDiplomadosSubmenu ? '▲' : '▼'}
+                </span>
+              </a>
+              {showDiplomadosSubmenu && diplomados.length > 0 && (
+                <ul className="submenu">
+                  <li>
+                    <Link
+                      to="/diplomados"
                       className="submenu-link"
-                      onClick={() => handleDiplomadoClick(diplomado)}
+                      onClick={() => setShowDiplomadosSubmenu(false)}
                     >
-                      {diplomado.name}
-                    </button>
+                      Ver todos
+                    </Link>
                   </li>
-                ))}
-              </ul>
+                  {diplomados.map(diplomado => (
+                    <li key={diplomado.gid}>
+                      <button
+                        className="submenu-link"
+                        onClick={() => handleDiplomadoClick(diplomado)}
+                      >
+                        {diplomado.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>}
+
+            {/* Producción — solo admin */}
+            {isAdmin && <li className="sidebar-group-label">Producción</li>}
+
+            {isAdmin && (
+            <li>
+              <Link
+                to="/produccion-alto-nivel"
+                className={`nav-link ${location.pathname === '/produccion-alto-nivel' ? 'active' : ''}`}
+              >
+                🚀 Alto Nivel
+              </Link>
+            </li>
             )}
-          </li>}
 
-          {isAdmin && (
-          <li>
-            <Link 
-              to="/produccion-alto-nivel" 
-              className={`nav-link ${location.pathname === '/produccion-alto-nivel' ? 'active' : ''}`}
-            >
-              🚀 Produccion de Alto Nivel
-            </Link>
-          </li>
-          )}
+            {isAdmin && (
+            <li>
+              <Link
+                to="/investigacion-e-incidencia"
+                className={`nav-link ${location.pathname === '/investigacion-e-incidencia' ? 'active' : ''}`}
+              >
+                🔎 Investigación e incidencia
+              </Link>
+            </li>
+            )}
+          </ul>
+        </nav>
 
-          {isAdmin && (
-          <li>
-            <Link 
-              to="/investigacion-e-incidencia" 
-              className={`nav-link ${location.pathname === '/investigacion-e-incidencia' ? 'active' : ''}`}
-            >
-              🔎 Investigacion e incidencia
-            </Link>
-          </li>
-          )}
-        </ul>
-      </nav>
-      
-      <main className="main-content">
-        <Outlet />
-      </main>
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
 
-          <div className="header-divider-line" aria-hidden="true"></div>
-          <footer className="app-footer">
-            <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
-          </footer>
-        
+      <div className="header-divider-line" aria-hidden="true"></div>
+      <footer className="app-footer">
+        <span>© {new Date().getFullYear()} CDIMA. Todos los derechos reservados.</span>
+      </footer>
+
     </div>
   );
 };

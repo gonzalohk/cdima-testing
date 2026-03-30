@@ -7,7 +7,6 @@ import {
   Space,
   Spin,
   Table,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -167,12 +166,6 @@ function getTipoFromPrefix(prefix: 'SFON' | 'SMAT' | 'DMAT'): string {
   if (prefix === 'SFON') return 'Solicitud de Fondos';
   if (prefix === 'SMAT') return 'Solicitud de Material';
   return 'Devolución de Material';
-}
-
-function getTipoColor(tipo: string): string {
-  if (tipo.includes('Fondos')) return 'blue';
-  if (tipo.includes('Devolución') || tipo.includes('Devolucion')) return 'purple';
-  return 'orange';
 }
 
 function extractFechaSolicitud(notes: string | undefined): string {
@@ -421,27 +414,51 @@ const HomePage: React.FC = () => {
     {
       title: 'Solicitud / Proyecto / Actividad',
       key: 'proyectoActividad',
-      width: 280,
-      render: (_: unknown, row: SolicitudRow) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Tooltip title={row.task.name}>
-            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
-          </Tooltip>
-          <Tooltip title={row.projectName}>
-            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
-          </Tooltip>
-          <Tooltip title={row.parentTaskName}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
-          </Tooltip>
-        </div>
-      ),
-    },
-    {
-      title: 'Tipo',
-      dataIndex: 'tipo',
-      key: 'tipo',
-      width: 180,
-      render: (tipo: string) => <Tag color={getTipoColor(tipo)}>{tipo}</Tag>,
+      width: 320,
+      render: (_: unknown, row: SolicitudRow) => {
+        const jsonData = extractJsonData(row.task.notes);
+        const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
+        const tipoColorMap: Record<string, { bg: string; color: string; border: string }> = {
+          'Solicitud de Fondos':    { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+          'Solicitud de Material':  { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
+          'Devolución de Material': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
+        };
+        const tc = tipoColorMap[row.tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Tooltip title={row.task.name}>
+              <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
+            </Tooltip>
+            <span style={{
+              display: 'inline-block',
+              alignSelf: 'flex-start',
+              fontSize: 11,
+              fontWeight: 600,
+              backgroundColor: tc.bg,
+              color: tc.color,
+              border: `1px solid ${tc.border}`,
+              borderRadius: 4,
+              padding: '1px 7px',
+              lineHeight: '18px',
+            }}>
+              {row.tipo}
+            </span>
+            <Tooltip title={row.projectName}>
+              <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
+            </Tooltip>
+            <Tooltip title={row.parentTaskName}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
+            </Tooltip>
+            {solicitante ? (
+              <Typography.Text style={{ fontSize: 11, color: '#6b7280' }} ellipsis>
+                👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span>
+              </Typography.Text>
+            ) : (
+              <Typography.Text style={{ fontSize: 11, color: '#d1d5db' }}>👤 Sin registro</Typography.Text>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Fecha',

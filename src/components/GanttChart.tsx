@@ -34,7 +34,7 @@ const STATUS_CONFIG: Record<StatusKey | 'default', {
   'default':    { bar: '#9ca3af', barEnd: '#d1d5db', shadow: '#9ca3af30', antd: 'default', label: 'Sin estado' },
 };
 
-const NAME_COL = 260;
+const NAME_COL = 400;
 const HEADER_H = 46;
 const ROW_MAIN = 54;
 const ROW_SUB = 44;
@@ -233,7 +233,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
     return (differenceInDays(today, rangeStart) / totalDays) * 100;
   }, [rangeStart, rangeEnd, totalDays]);
 
-  const timelineMinWidth = Math.max(months.length * MIN_MONTH_PX, 520);
+  const timelineMinWidth = Math.max(months.length * MIN_MONTH_PX, 600);
   const totalRows = 1 + ganttSubtasks.length;
   const bodyHeight = HEADER_H + ROW_MAIN + ganttSubtasks.length * ROW_SUB;
 
@@ -290,6 +290,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
             borderRight: '1px solid #e5e7eb',
             display: 'flex',
             flexDirection: 'column',
+            position: 'sticky',
+            left: 0,
+            zIndex: 4,
+            background: '#ffffff',
           }}>
 
             {/* Column header */}
@@ -341,12 +345,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
                     {task.name}
                   </div>
                 </div>
-                <Tag
-                  color={getStatusConfig(task).antd}
-                  style={{ flexShrink: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px' }}
-                >
-                  {getStatusConfig(task).label}
-                </Tag>
               </div>
             </Tooltip>
 
@@ -380,12 +378,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
                       {t.name}
                     </div>
                   </div>
-                  <Tag
-                    color={getStatusConfig(t).antd}
-                    style={{ flexShrink: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px' }}
-                  >
-                    {getStatusConfig(t).label}
-                  </Tag>
                 </div>
               </Tooltip>
             ))}

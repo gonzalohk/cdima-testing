@@ -324,10 +324,11 @@ const PlanningPage: React.FC = () => {
     return filtered;
   }, [currentMonthTasks, areaFilter]);
 
-  const getEstadoSelectStyle = (estado: string): React.CSSProperties => {
-    if (estado === 'Ejecutado') return { backgroundColor: '#e8f5e9', color: '#2e7d32', border: '1px solid #2e7d32' };
-    if (estado === 'En Proceso') return { backgroundColor: '#fff3e0', color: '#e65100', border: '1px solid #e65100' };
-    if (estado === 'Reprogramado') return { backgroundColor: '#e8eaf6', color: '#3949ab', border: '1px solid #3949ab' };
+  const getEstadoSelectStyle = (estado: string, isOverdue?: boolean): React.CSSProperties => {
+    if (estado === 'Ejecutado') return { backgroundColor: '#c8f5c8', color: '#166534', border: '1px solid #16a34a', fontWeight: 700 };
+    if (estado === 'En Proceso' && isOverdue) return { backgroundColor: '#fecaca', color: '#7f1d1d', border: '1px solid #dc2626', fontWeight: 700 };
+    if (estado === 'En Proceso') return { backgroundColor: '#bfdbfe', color: '#1e3a8a', border: '1px solid #2563eb', fontWeight: 700 };
+    if (estado === 'Reprogramado') return { backgroundColor: '#e9d5ff', color: '#4c1d95', border: '1px solid #7c3aed', fontWeight: 700 };
     return { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #9ca3af' };
   };
 
@@ -668,8 +669,7 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
                       <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
                       <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
                     </tr>
@@ -693,10 +693,15 @@ const PlanningPage: React.FC = () => {
                                 Subactividad de: {task.parent.name}
                               </div>
                             )}
+                            {(() => {
+                              const resp = getCustomFieldValue(task, 'Responsables de actividad');
+                              return resp && resp !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>👤</span> {resp}
+                                </div>
+                              ) : null;
+                            })()} 
                           </div>
-                        </td>
-                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
-                          {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
                         <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
                           {(() => {
@@ -722,10 +727,9 @@ const PlanningPage: React.FC = () => {
                                   padding: '0.375rem 0.5rem',
                                   borderRadius: '6px',
                                   fontSize: '0.813rem',
-                                  fontWeight: 600,
                                   cursor: 'pointer',
                                   outline: 'none',
-                                  ...getEstadoSelectStyle(estadoActual),
+                                  ...getEstadoSelectStyle(estadoActual, true),
                                 }}
                               >
                                 {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
@@ -760,8 +764,7 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
                       <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
                       <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
                     </tr>
@@ -785,10 +788,15 @@ const PlanningPage: React.FC = () => {
                                 Subactividad de: {task.parent.name}
                               </div>
                             )}
+                            {(() => {
+                              const resp = getCustomFieldValue(task, 'Responsables de actividad');
+                              return resp && resp !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>👤</span> {resp}
+                                </div>
+                              ) : null;
+                            })()} 
                           </div>
-                        </td>
-                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
-                          {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
                         <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
                           {(() => {
@@ -852,8 +860,7 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '40%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '25%' }}>Responsables</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
                       <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
                       <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
                     </tr>
@@ -877,10 +884,15 @@ const PlanningPage: React.FC = () => {
                                 Subactividad de: {task.parent.name}
                               </div>
                             )}
+                            {(() => {
+                              const resp = getCustomFieldValue(task, 'Responsables de actividad');
+                              return resp && resp !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>👤</span> {resp}
+                                </div>
+                              ) : null;
+                            })()} 
                           </div>
-                        </td>
-                        <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
-                          {getCustomFieldValue(task, 'Responsables de actividad')}
                         </td>
                         <td style={{ padding: '0.875rem', color: '#555', verticalAlign: 'top' }}>
                           {(() => {

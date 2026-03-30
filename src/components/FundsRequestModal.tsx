@@ -6,6 +6,7 @@ import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF } from '../services/pdf.service';
 import Notification from './Notification';
+import { useAuth } from '../context/AuthContext';
 
 interface FundItem {
   id: number;
@@ -31,6 +32,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { user } = useAuth();
 
   const agregarFondo = () => {
     const newId = Math.max(...fondos.map(f => f.id), 0) + 1;
@@ -114,6 +116,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         fechaSolicitud,
         fechaAprobacion: '',
         totalBolivianos: parseFloat(totalBolivianos.toFixed(2)),
+        usuario: user ? { nombre: user.name, email: user.email } : undefined,
         fondos: fondosValidos.map(({ id, descripcion, importeBolivianos }) => ({
           id, descripcion,
           importeBolivianos: importeBolivianos || '0',
