@@ -190,6 +190,52 @@ interface SolicitudRow {
   fecha: string;
 }
 
+interface ProjectStats {
+  gid: string;
+  name: string;
+  color: string;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  dueSoon: number;
+  pendingRequests: number;
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const PROJECT_PALETTE = [
+  '#3b82f6','#10b981','#f59e0b','#6366f1','#ef4444',
+  '#8b5cf6','#06b6d4','#84cc16','#f97316','#ec4899',
+];
+
+function getProjectColor(gid: string): string {
+  let h = 0;
+  for (const c of gid) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return PROJECT_PALETTE[Math.abs(h) % PROJECT_PALETTE.length];
+}
+
+const DonutChart: React.FC<{ pct: number; color: string; size?: number }> = ({ pct, color, size = 72 }) => {
+  const r = (size - 14) / 2;
+  const cx = size / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = Math.max(0, Math.min(1, pct / 100)) * circ;
+  return (
+    <svg width={size} height={size}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#f1f5f9" strokeWidth={9} />
+      <circle
+        cx={cx} cy={cx} r={r} fill="none"
+        stroke={color} strokeWidth={9}
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cx})`}
+      />
+      <text x={cx} y={cx} textAnchor="middle" dominantBaseline="central"
+        style={{ fontSize: size * 0.21, fontWeight: 700, fill: '#1a2332', fontFamily: 'inherit' }}>
+        {Math.round(pct)}%
+      </text>
+    </svg>
+  );
+};
+
 function extractJsonData(notes: string | undefined): Record<string, unknown> | null {
   if (!notes) return null;
   const match = notes.match(/===DATOS_JSON===\s*([\s\S]+?)\s*===FIN_DATOS_JSON===/);
@@ -202,6 +248,7 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const HomePage: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
+  const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [approvingGid, setApprovingGid] = useState<string | null>(null);
@@ -225,6 +272,9 @@ const HomePage: React.FC = () => {
       );
 
       const allRows: SolicitudRow[] = [];
+      const allStats: ProjectStats[] = [];
+      const today = new Date().toISOString().slice(0, 10);
+      const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 
       // Procesar proyectos en chunks para no saturar la API
       for (let i = 0; i < filteredProjects.length; i += CHUNK) {
@@ -232,9 +282,11 @@ const HomePage: React.FC = () => {
         const chunkResults = await Promise.all(
           chunk.map(async project => {
             const rows: SolicitudRow[] = [];
+            let pendingReqs = 0;
             try {
               const tasks = await asanaService.getProjectTasks(project.gid);
-              const parentTasks = tasks.filter(t => !t.parent && t.num_subtasks && t.num_subtasks > 0);
+              const topLevel = tasks.filter(t => !t.parent);
+              const parentTasks = topLevel.filter(t => t.num_subtasks && t.num_subtasks > 0);
 
               // Fetch subtasks of tasks que tienen subtareas
               for (let j = 0; j < parentTasks.length; j += CHUNK) {
@@ -248,6 +300,7 @@ const HomePage: React.FC = () => {
                         const jsonData = extractJsonData(sub.notes);
                         const isObserved = !!(jsonData?.observado);
                         if (prefix && !sub.completed && !isObserved) {
+                          pendingReqs++;
                           rows.push({
                             key: sub.gid,
                             task: sub,
@@ -265,6 +318,28 @@ const HomePage: React.FC = () => {
                 );
                 if (j + CHUNK < parentTasks.length) await delay(200);
               }
+
+              // Build stats for this project
+              // "Completado" = campo personalizado "Estado" con valor "EJECUTADO"
+              const isEjecutado = (t: AsanaTask) => {
+                const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
+                if (!estadoField) return t.completed;
+                const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
+                return val === 'EJECUTADO';
+              };
+              const completed = topLevel.filter(isEjecutado).length;
+              const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
+              const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
+              allStats.push({
+                gid: project.gid,
+                name: project.name,
+                color: getProjectColor(project.gid),
+                totalTasks: topLevel.length,
+                completedTasks: completed,
+                overdueTasks: overdue,
+                dueSoon,
+                pendingRequests: pendingReqs,
+              });
             } catch {
               // Ignorar errores de proyectos individuales
             }
@@ -276,6 +351,11 @@ const HomePage: React.FC = () => {
       }
 
       setSolicitudes(allRows);
+      setProjectStats(allStats.sort((a, b) => {
+        const pctA = a.totalTasks ? a.completedTasks / a.totalTasks : 0;
+        const pctB = b.totalTasks ? b.completedTasks / b.totalTasks : 0;
+        return pctB - pctA;
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar solicitudes');
     } finally {
@@ -452,7 +532,7 @@ const HomePage: React.FC = () => {
 
       {/* Solicitudes pendientes */}
       <Card
-        style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+        style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
           <Space>
@@ -491,6 +571,108 @@ const HomePage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* ── KPI Strip ───────────────────────────────────────────────────── */}
+      {(projectStats.length > 0 || loading) && (() => {
+        const totalTasks = projectStats.reduce((s, p) => s + p.totalTasks, 0);
+        const totalCompleted = projectStats.reduce((s, p) => s + p.completedTasks, 0);
+        const totalOverdue = projectStats.reduce((s, p) => s + p.overdueTasks, 0);
+        const globalPct = totalTasks ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+        const kpis = [
+          { icon: '🗂️', label: 'Proyectos', value: projectStats.length, sub: 'activos', color: '#3b82f6', bg: '#eff6ff' },
+          { icon: '✅', label: 'Avance global', value: `${globalPct}%`, sub: `${totalCompleted}/${totalTasks} actividades`, color: '#10b981', bg: '#ecfdf5' },
+          { icon: '⚠️', label: 'Vencidas', value: totalOverdue, sub: 'actividades atrasadas', color: '#ef4444', bg: '#fef2f2' },
+          { icon: '🔔', label: 'Solicitudes', value: solicitudes.length, sub: 'pendientes aprobación', color: '#f59e0b', bg: '#fffbeb' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+            {kpis.map((k, i) => (
+              <div key={i} style={{ background: 'white', borderRadius: 12, padding: '1.1rem 1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 14, borderLeft: `4px solid ${k.color}` }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                  {k.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1a2332', lineHeight: 1.1 }}>{loading ? '…' : k.value}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151', marginBottom: 1 }}>{k.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{k.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── Project Progress Grid ────────────────────────────────────────── */}
+      {(projectStats.length > 0 || loading) && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.875rem' }}>
+            <span style={{ fontSize: 16 }}>📊</span>
+            <Typography.Text strong style={{ fontSize: 15 }}>Avance por Proyecto</Typography.Text>
+          </div>
+          {loading && projectStats.length === 0 ? (
+            <div style={{ background: 'white', borderRadius: 12, padding: '2rem', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', color: '#9ca3af', fontSize: '0.9rem' }}>
+              Calculando estadísticas...
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              {projectStats.map(proj => {
+                const pct = proj.totalTasks ? Math.round((proj.completedTasks / proj.totalTasks) * 100) : 0;
+                const remaining = proj.totalTasks - proj.completedTasks;
+                return (
+                  <div key={proj.gid} style={{ background: 'white', borderRadius: 12, padding: '1.1rem 1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', borderTop: `3px solid ${proj.color}`, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                    {/* Donut */}
+                    <div style={{ flexShrink: 0, paddingTop: 4 }}>
+                      <DonutChart pct={pct} color={proj.color} size={76} />
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a2332', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={proj.name}>
+                        {proj.name}
+                      </div>
+                      {/* Progress bar */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Completadas</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151' }}>{proj.completedTasks}/{proj.totalTasks}</span>
+                        </div>
+                        <div style={{ height: 6, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${proj.color}cc, ${proj.color})`, borderRadius: 99, transition: 'width 0.4s ease' }} />
+                        </div>
+                      </div>
+                      {/* Badges row */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {remaining > 0 && (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, background: '#f0fdf4', color: '#15803d', padding: '2px 7px', borderRadius: 99, border: '1px solid #bbf7d0' }}>
+                            📝 {remaining} pendiente{remaining !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {proj.overdueTasks > 0 && (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, background: '#fef2f2', color: '#dc2626', padding: '2px 7px', borderRadius: 99, border: '1px solid #fecaca' }}>
+                            ⚠️ {proj.overdueTasks} vencida{proj.overdueTasks !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {proj.dueSoon > 0 && (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, background: '#fffbeb', color: '#d97706', padding: '2px 7px', borderRadius: 99, border: '1px solid #fde68a' }}>
+                            📅 {proj.dueSoon} próxima{proj.dueSoon !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {proj.pendingRequests > 0 && (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', padding: '2px 7px', borderRadius: 99, border: '1px solid #bfdbfe' }}>
+                            🔔 {proj.pendingRequests} solicitud{proj.pendingRequests !== 1 ? 'es' : ''}
+                          </span>
+                        )}
+                        {proj.totalTasks === 0 && (
+                          <span style={{ fontSize: '0.68rem', color: '#9ca3af', fontStyle: 'italic' }}>Sin actividades registradas</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal: Ver Detalle */}
       {detailModal && (() => {

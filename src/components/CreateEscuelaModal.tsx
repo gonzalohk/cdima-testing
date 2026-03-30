@@ -171,8 +171,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         const estudiantesOriginales = escuelaData.estudiantes;
         const estudiantesActuales = estudiantesValidos;
 
-        // Actualizar o crear estudiantes en paralelo
-        await Promise.all(estudiantesActuales.map(async (estudiante) => {
+        // Actualizar o crear estudiantes en lotes de 12
+        const BATCH_SIZE = 12;
+        const estudiantesActualesFns = estudiantesActuales.map(estudiante => async () => {
           const validationResult = validateData(EstudianteDataSchema, {
             genero: estudiante.genero,
             telefono: estudiante.telefono,
@@ -225,15 +226,21 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
               notes: notasEstudiante
             });
           }
-        }));
+        });
+        for (let i = 0; i < estudiantesActualesFns.length; i += BATCH_SIZE) {
+          await Promise.all(estudiantesActualesFns.slice(i, i + BATCH_SIZE).map(fn => fn()));
+        }
 
-        // Eliminar estudiantes que ya no están en paralelo
+        // Eliminar estudiantes que ya no están en lotes de 12
         const gidasActualesEstudiantes = new Set(estudiantesActuales.map(e => e.subtaskGid).filter(Boolean));
-        await Promise.all(estudiantesOriginales.map(async (original) => {
+        const estudiantesEliminadosFns = estudiantesOriginales.map(original => async () => {
           if (original.subtaskGid && !gidasActualesEstudiantes.has(original.subtaskGid)) {
             await asanaService.deleteTask(original.subtaskGid);
           }
-        }));
+        });
+        for (let i = 0; i < estudiantesEliminadosFns.length; i += BATCH_SIZE) {
+          await Promise.all(estudiantesEliminadosFns.slice(i, i + BATCH_SIZE).map(fn => fn()));
+        }
 
         setNotification({
           message: '¡Escuela actualizada exitosamente!',

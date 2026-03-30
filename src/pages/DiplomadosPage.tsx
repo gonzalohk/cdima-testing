@@ -7,7 +7,7 @@ import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
 import Notification from '../components/Notification';
-import { HtmlModalHeader } from '../components/ModalShared';
+import { HtmlModalHeader, WIPHALA_COLORS } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
 import { exportDiplomadoGeneralPDF, exportDiplomadoGeneralWord, exportDiplomadoCentralizadorNotasPDF, exportDiplomadoCentralizadorNotasWord, exportDiplomadoEstudiantePDF } from '../services/reports/diplomados-reports.service';
@@ -1088,12 +1088,6 @@ const DiplomadosPage: React.FC = () => {
         </Dropdown>
       </div>
 
-      {/* Wiphala separator line */}
-      <div style={{ display: 'flex', height: 10, width: '100%', overflow: 'hidden', marginBottom: '0.5rem' }}>
-        {['#D52B1E','#F07C00','#F5D800','#009B3A','#0038A8','#6B2D8B','#C5002B'].map((c, i) => (
-          <div key={i} style={{ flex: 1, backgroundColor: c }} />
-        ))}
-      </div>
 
       {error && (
         <div className="alert alert-error" style={{ marginTop: '1rem' }}>
@@ -1105,9 +1099,15 @@ const DiplomadosPage: React.FC = () => {
 
       {/* Detalles del Diplomado Seleccionado */}
       {selectedDiplomado && (
-        <div className="card" style={{ marginTop: '1.5rem', overflow: 'hidden' }}>
+        <>
+          <div style={{ display: 'flex', height: 5, marginTop: '1.5rem' }}>
+            {WIPHALA_COLORS.map((color, i) => (
+              <div key={i} style={{ flex: 1, backgroundColor: color }} />
+            ))}
+          </div>
+        <div className="card" style={{ overflow: 'hidden' }}>
             <div style={{ 
-              padding: '1.5rem',
+              padding: '1.50rem',
               borderBottom: '2px solid #e0e0e0',
               display: 'flex',
               justifyContent: 'space-between',
@@ -1495,14 +1495,11 @@ const DiplomadosPage: React.FC = () => {
                       <div>
                         {(() => {
                           const { asistenciasPorEstudiante, fechasOrdenadas } = extraerAsistenciasEstudiantes();
-                          if (fechasOrdenadas.length === 0) {
-                            return (
-                              <div style={{ textAlign: 'center', padding: '2rem', color: '#999', fontStyle: 'italic' }}>
-                                <p>No hay registros de asistencia todavía.</p>
-                                <p style={{ fontSize: '0.9rem' }}>Utiliza el botón "✓ Asistencia" para registrar la asistencia de los estudiantes.</p>
-                              </div>
-                            );
-                          }
+                          const MIN_SESIONES = 20;
+                          const fechasMostradas: (string | null)[] = [
+                            ...fechasOrdenadas,
+                            ...Array(Math.max(0, MIN_SESIONES - fechasOrdenadas.length)).fill(null)
+                          ];
                           const totalPresentes = asistenciasPorEstudiante.reduce((sum, est) => sum + fechasOrdenadas.filter(f => est.registros[f]?.asistio === true).length, 0);
                           const totalAusentes = asistenciasPorEstudiante.reduce((sum, est) => sum + fechasOrdenadas.filter(f => est.registros[f]?.asistio === false).length, 0);
                           const totalRegistrados = totalPresentes + totalAusentes;
@@ -1559,7 +1556,7 @@ const DiplomadosPage: React.FC = () => {
                                   <tr>
                                     <th className="col-num-s" style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
                                     <th className="col-name-s" style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px' }}>Estudiante</th>
-                                    {fechasOrdenadas.map((fecha, idx) => (
+                                    {fechasMostradas.map((fecha, idx) => fecha !== null ? (
                                       <th key={idx} style={{ textAlign: 'center', padding: '0.25rem 0.25rem 0.5rem', fontSize: '0.68rem', color: '#64748b', fontWeight: 600, width: '42px', minWidth: '42px', borderLeft: '1px solid #e5e7eb', verticalAlign: 'bottom' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
                                           <button
@@ -1572,6 +1569,10 @@ const DiplomadosPage: React.FC = () => {
                                           <span style={{ writingMode: 'vertical-lr' }}>{fecha}</span>
                                         </div>
                                       </th>
+                                    ) : (
+                                      <th key={idx} style={{ textAlign: 'center', padding: '0.25rem 0.25rem 0.5rem', width: '42px', minWidth: '42px', borderLeft: '1px dashed #e2e8f0', verticalAlign: 'bottom', background: '#f8fafc' }}>
+                                        <span style={{ writingMode: 'vertical-lr', fontSize: '0.62rem', color: '#d1d5db', fontWeight: 500 }}>Ses. {idx + 1}</span>
+                                      </th>
                                     ))}
                                   </tr>
                                 </thead>
@@ -1580,7 +1581,7 @@ const DiplomadosPage: React.FC = () => {
                                     <tr key={eIdx}>
                                       <td className="col-num-s" style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600, borderBottom: '1px solid #f3f4f6' }}>{eIdx + 1}</td>
                                       <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', borderBottom: '1px solid #f3f4f6' }}>{est.nombre}</td>
-                                      {fechasOrdenadas.map((fecha, fIdx) => {
+                                      {fechasMostradas.map((fecha, fIdx) => fecha !== null ? (() => {
                                         const reg = est.registros[fecha];
                                         const asistio = reg?.asistio;
                                         const obs = reg?.observaciones || '';
@@ -1589,7 +1590,9 @@ const DiplomadosPage: React.FC = () => {
                                             {asistio === true ? 'Sí' : asistio === false ? 'No' : '–'}
                                           </td>
                                         );
-                                      })}
+                                      })() : (
+                                        <td key={fIdx} style={{ padding: '0.7rem 0.25rem', borderLeft: '1px dashed #e2e8f0', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f8fafc' }} />
+                                      ))}
                                     </tr>
                                   ))}
                                 </tbody>
@@ -1677,9 +1680,8 @@ const DiplomadosPage: React.FC = () => {
               </Card>
             )}
         </div>
+        </>
       )}
-
-      {/* Panel de Centralizador de Notas */}
       {false && selectedDiplomado && estudiantes.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ 

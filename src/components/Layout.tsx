@@ -84,16 +84,19 @@ const Layout: React.FC = () => {
   return (
     <div className="app-container">
       <header className="header">
-        <div className="header-content" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div className="header-content" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Spacer izquierdo para centrado óptico */}
+          <div style={{ flex: 1 }} />
+          {/* Logo + título centrado */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 'none' }}>
             <img src={logoCdima} alt="Logo CDIMA" className="header-logo" />
             <div className="header-text">
               <h1>CDIMA Amuyt'a</h1>
               <p>Sistema de Gestión de Proyectos y Control Académico</p>
             </div>
           </div>
-          {/* User info + logout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: 13 }}>
+          {/* User info + logout alineado a la derecha */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', color: 'white', fontSize: 13 }}>
             <UserOutlined />
             <span>{user?.name}</span>
             <Popconfirm
