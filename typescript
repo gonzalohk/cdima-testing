@@ -1,0 +1,662 @@
+Script started on Mon Mar 30 04:59:13 2026
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  printf '%s\n' 'import re' 'src = open("/Users/zalo [Kggon/Documents/ia/cdima-reportes/src/pages/DiplomadosPage.tsx").read()' 'src = sr [Kcc.replace("const DiplomadosPage: React.FC = () => {", "const ProduccionAltoNivel [KPPage: React.FC = () => {")' 'src = src.replace("export default DiplomadosPage;", [K  "export default ProduccionAltoNivelPage;")' > /tmp/t.py && echo "step1 ok"[?2004l
+step1 ok
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  wc -l src/pages/ProduccionAltoNivelPage.tsx && hea [Kdd -3 src/pages/ProduccionAltoNivelPage.tsx && grep -n "DiplomadosPage\|Produccio [KnnAltoNivel\|export default" src/pages/ProduccionAltoNivelPage.tsx | tail -5[?2004l
+    3041 src/pages/ProduccionAltoNivelPage.tsx
+import React, { useState, useEffect } from 'react';
+import { Card, Dropdown, Select, Tabs } from 'antd';
+
+89:const ProduccionAltoNivelPage: React.FC = () => {
+3041:export default ProduccionAltoNivelPage;
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "diplomado\|Diplomado" src/pages/Produccio [KnnAltoNivelPage.tsx | grep -v "diplomados-reports\|diplomado\.schemas\|CreateDipl [KoomadoModal\|DiplomadoDetailsModal\|exportDiplomado"[?2004l
+129:  // Estados para los detalles del diplomado
+157:  // Efecto para manejar diplomado seleccionado desde el menú
+160:      const diplomado = cursos.find(d => d.gid === location.state.selectedCurso.gid);
+161:      if (diplomado) {
+162:        handleViewDetails(diplomado);
+181:      // Obtener proyectos y buscar "Diplomados"
+183:      const diplomadosProject = projects.find(p => 
+187:      if (!diplomadosProject) {
+191:      setCursosProjectGid(diplomadosProject.gid);
+193:      // Obtener secciones del proyecto (cada sección es un diplomado)
+194:      const sections = await asanaService.getSections(diplomadosProject.gid);
+215:  const handleEditDiplomado = async () => {
+300:      console.error('Error loading diplomado for edit:', err);
+301:      setError(err instanceof Error ? err.message : 'Error al cargar diplomado para editar');
+307:  const handleViewDetails = async (diplomado: AsanaSection) => {
+308:    setSelectedCurso(diplomado);
+316:      const sectionTasks = await asanaService.getSectionTasks(diplomado.gid);
+341:      console.error('Error loading diplomado details:', err);
+342:      setError(err instanceof Error ? err.message : 'Error al cargar detalles del diplomado');
+409:  /* const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
+410:    if (!window.confirm(`¿Está seguro de eliminar el diplomado "${diplomadoName}"?`)) {
+419:      setError(err instanceof Error ? err.message : 'Error al eliminar diplomado');
+796:        console.log('\n🔄 Recargando datos del diplomado...');
+798:        // Recargar los detalles del diplomado para ver los cambios
+865:  const handleExportDiplomadoGeneral = async () => {
+869:        diplomado: selectedCurso,
+879:  const handleExportDiplomadoGeneralWord = async () => {
+883:        diplomado: selectedCurso,
+896:        diplomado: selectedCurso,
+909:        diplomado: selectedCurso,
+922:        diplomado: selectedCurso ?? undefined
+1078:            ...(selectedCurso ? [{ key: 'editar', label: '✏️ Editar Curso', onClick: handleEditDiplomado }] : []),
+1100:      {/* Detalles del Diplomado Seleccionado */}
+1123:                      { key: 'pdf', label: '📄 Listado General PDF', onClick: handleExportDiplomadoGeneral },
+1124:                      { key: 'word', label: '📝 Listado General Word', onClick: handleExportDiplomadoGeneralWord },
+2266:                          ? 'El estudiante ha aprobado el diplomado.' 
+2514:          diplomadoData={cursoToEdit}
+2637:                  No hay estudiantes registrados en este diplomado
+2898:                  No hay estudiantes registrados en este diplomado
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 | grep "ProduccionAltoNivel" [K  | head -20[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "diplomado\|Diplomado" src/pages/Produccio [KnnAltoNivelPage.tsx | grep -v "diplomados-reports\|diplomado\.schemas\|CreateDipl [KoomadoModal\|DiplomadoDetailsModal\|exportDiplomado\|handleEditDiplomado\|handleE [KxxportDiplomado\|handleExportCurso"[?2004l
+129:  // Estados para los detalles del diplomado
+157:  // Efecto para manejar diplomado seleccionado desde el menú
+160:      const diplomado = cursos.find(d => d.gid === location.state.selectedCurso.gid);
+161:      if (diplomado) {
+162:        handleViewDetails(diplomado);
+409:  /* const handleDeleteDiplomado = async (sectionGid: string, diplomadoName: string) => {
+410:    if (!window.confirm(`¿Está seguro de eliminar el diplomado "${diplomadoName}"?`)) {
+419:      setError(err instanceof Error ? err.message : 'Error al eliminar diplomado');
+796:        console.log('\n🔄 Recargando datos del diplomado...');
+798:        // Recargar los detalles del diplomado para ver los cambios
+869:        diplomado: selectedCurso,
+883:        diplomado: selectedCurso,
+896:        diplomado: selectedCurso,
+909:        diplomado: selectedCurso,
+922:        diplomado: selectedCurso ?? undefined
+1100:      {/* Detalles del Diplomado Seleccionado */}
+2266:                          ? 'El estudiante ha aprobado el diplomado.' 
+2514:          diplomadoData={cursoToEdit}
+2637:                  No hay estudiantes registrados en este diplomado
+2898:                  No hay estudiantes registrados en este diplomado
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 | tail -5[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "curso alto nivel\|ProduccionAltoNivelPage [K\\|Cargando cursos\|Curso en:\|Seleccionar curso\|Crear nuevo Curso\|Editar Curso [K\\|Detalles del curso\|Error al cargar cursos" src/pages/ProduccionAltoNivelPage. [Kttsx | head -20[?2004l
+89:const ProduccionAltoNivelPage: React.FC = () => {
+184:        p.name.toLowerCase().includes('curso alto nivel')
+197:      setError(err instanceof Error ? err.message : 'Error al cargar cursos');
+1026:    return <LoadingOverlay message="Cargando cursos..." />;
+1042:          <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.01em' }}>Curso en:</span>
+1062:            placeholder={loading ? 'Cargando...' : 'Seleccionar curso...'}
+1077:            { key: 'crear', label: '➕ Crear nuevo Curso', onClick: () => { setEditMode(false); setCursoToEdit(null); setShowCreateModal(true); } },
+1078:            ...(selectedCurso ? [{ key: 'editar', label: '✏️ Editar Curso', onClick: handleEditDiplomado }] : []),
+1116:                  Detalles del curso
+3041:export default ProduccionAltoNivelPage;
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  wc -l src/services/reports/diplomados-reports.serv [Kiice.ts[?2004l
+    1338 src/services/reports/diplomados-reports.service.ts
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  python3 clone_report.py && rm clone_report.py[?2004l
+Done, lines: 1338
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "export\|diplomado\|Diplomado" src/service [Kss/reports/alto-nivel-reports.service.ts | head -40[?2004l
+32:interface ExportDiplomadoGeneralParams {
+38:interface ExportDiplomadoCentralizadorNotasParams {
+43:interface ExportDiplomadoEstudianteParams {
+45:  diplomado?: AsanaSection;
+48:interface ExportDiplomadoGeneralWordParams {
+98: * Genera un reporte PDF general del diplomado con docentes y estudiantes
+100:export const exportAltoNivelGeneralPDF = ({ curso, docentes, estudiantes }: ExportDiplomadoGeneralParams): void => {
+419:export const exportAltoNivelGeneralWord = ({ curso, estudiantes }: ExportDiplomadoGeneralWordParams): void => {
+630:  link.download = `lista-participantes-diplomado-${curso.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
+638: * Genera un reporte PDF de centralizador de notas del diplomado
+640:export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+879: * Genera un reporte WORD de centralizador de notas del diplomado
+882:export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+1035:  link.download = `nomina-oficial-diplomado-${curso.name.replace(/\s+/g, '-').toLowerCase()}.doc`;
+1045:export const exportAltoNivelEstudiantePDF = ({ estudiante, diplomado }: ExportDiplomadoEstudianteParams): void => {
+1095:  if (diplomado) {
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "exportDiplomado\|exportAltoNivel" src/pag [Kees/ProduccionAltoNivelPage.tsx[?2004l
+13:import { exportAltoNivelGeneralPDF, exportAltoNivelGeneralWord, exportAltoNivelCentralizadorNotasPDF, exportAltoNivelCentralizadorNotasWord, exportAltoNivelEstudiantePDF } from '../services/reports/alto-nivel-reports.service';
+868:      await exportDiplomadoGeneralPDF({
+882:      await exportDiplomadoGeneralWord({
+895:      await exportDiplomadoCentralizadorNotasPDF({
+908:      await exportDiplomadoCentralizadorNotasWord({
+920:      await exportDiplomadoEstudiantePDF({
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 | tail -10[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "No hay estudiantes\|No hay docentes\|leng [Ktth === 0\|Inscribir\|Agregar Estudiante\|Agregar Docente\|showAgregarDocente\|sh [KoowAgregarEstudiante" src/pages/DiplomadosPage.tsx | head -40[?2004l
+137:  const [showAgregarDocenteModal, setShowAgregarDocenteModal] = useState(false);
+138:  const [showAgregarEstudianteModal, setShowAgregarEstudianteModal] = useState(false);
+495:      if (estudiantesProcesar.length === 0) {
+496:        alert('⚠️ No hay estudiantes para procesar');
+705:      if (estudiantesProcesar.length === 0) {
+893:    if (!selectedDiplomado || estudiantes.length === 0) return;
+906:    if (!selectedDiplomado || estudiantes.length === 0) return;
+1169:                        {docentes.length === 0 ? (
+1170:                          <p style={{ color: '#999' }}>No hay docentes registrados. Usa "➕ Agregar Docente" para añadir el primero.</p>
+1206:                                >＋ Inscribir Docente</button>
+1279:                        {estudiantes.length === 0 ? (
+1280:                          <p style={{ color: '#999' }}>No hay estudiantes registrados. Usa "➕ Agregar Estudiante" para inscribir el primero.</p>
+1316:                                >＋ Inscribir</button>
+1391:                        {estudiantes.length === 0 ? (
+1392:                          <p style={{ color: '#999' }}>No hay estudiantes registrados todavía.</p>
+1608:                        {documentos.length === 0 ? (
+1632:                                    {docLinks.length === 0 ? (
+1811:                      if (notasEstudiantes.length === 0) return 0;
+2001:              if (fechasOrdenadas.length === 0) {
+2326:                if (registros.length === 0) {
+2519:      {showAgregarDocenteModal && selectedDiplomado && docentesTaskGid && (
+2533:      {showAgregarEstudianteModal && selectedDiplomado && estudiantesTaskGid && (
+2635:              {notasEstudiantes.length === 0 ? (
+2637:                  No hay estudiantes registrados en este diplomado
+2790:                  disabled={loadingNotas || notasEstudiantes.length === 0}
+2896:              {asistencias.length === 0 ? (
+2898:                  No hay estudiantes registrados en este diplomado
+3028:                  disabled={loadingAsistencia || asistencias.length === 0}
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "setPaginaEstudiantes\|setPaginaDocentes"  [Kssrc/pages/EscuelasPage.tsx | head -10[?2004l
+99:  const [paginaEstudiantes, setPaginaEstudiantes] = useState<number>(1);
+1150:                                <input type="text" placeholder="🔍 Buscar..." value={busquedaEstudiante} onChange={e => { setBusquedaEstudiante(e.target.value); setPaginaEstudiantes(1); }} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+1213:                                  <button onClick={() => setPaginaEstudiantes(p => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '0.2rem 0.55rem', border: '1px solid #e2e8f0', borderRadius: '5px', background: page <= 1 ? '#f8fafc' : 'white', color: page <= 1 ? '#d1d5db' : '#374151', cursor: page <= 1 ? 'default' : 'pointer', fontSize: '1rem', lineHeight: 1 }}>‹</button>
+1215:                                  <button onClick={() => setPaginaEstudiantes(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '0.2rem 0.55rem', border: '1px solid #e2e8f0', borderRadius: '5px', background: page >= totalPages ? '#f8fafc' : 'white', color: page >= totalPages ? '#d1d5db' : '#374151', cursor: page >= totalPages ? 'default' : 'pointer', fontSize: '1rem', lineHeight: 1 }}>›</button>
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 | tail -10[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -rn "hasPermission\|usePermission\|canDo\|ROL [KEE_PERMISSIONS\|Permission\b" src/ --include="*.tsx" --include="*.ts" | grep -v " [Kppermissions.ts\|node_modules" | head -60[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -rn "can\.\|perm\.\|role\.\|useAuth\|AuthCont [Keext\|ROLE_PAGES\|UserRole" src/ --include="*.tsx" --include="*.ts" | grep -v "no [Kdde_modules\|AuthContext.tsx\|permissions.ts" | head -60[?2004l
+src/App.tsx:14:import { AuthProvider, useAuth, TECNICO_ALLOWED_PATHS } from './context/AuthContext';
+src/App.tsx:20:  const { user } = useAuth();
+src/App.tsx:36:  const { user } = useAuth();
+src/components/FundsRequestModal.tsx:9:import { useAuth } from '../context/AuthContext';
+src/components/FundsRequestModal.tsx:35:  const { user } = useAuth();
+src/components/MaterialReturnModal.tsx:9:import { useAuth } from '../context/AuthContext';
+src/components/MaterialReturnModal.tsx:36:  const { user } = useAuth();
+src/components/MaterialRequestModal.tsx:12:import { useAuth } from '../context/AuthContext';
+src/components/MaterialRequestModal.tsx:42:  const { user } = useAuth();
+src/components/ContratacionUpdateModal.tsx:7:import { useAuth } from '../context/AuthContext';
+src/components/ContratacionUpdateModal.tsx:57:  const { user } = useAuth();
+src/components/Layout.tsx:7:import { useAuth } from '../context/AuthContext';
+src/components/Layout.tsx:13:  const { user, logout } = useAuth();
+src/pages/LoginPage.tsx:5:import { useAuth } from '../context/AuthContext';
+src/pages/LoginPage.tsx:11:  const { login } = useAuth();
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -rn "user\.role\|role ==\|role ===\|TECNICO_A [KLLLOWED\|isAdmin\|isTecnico\|isComunicacion\|isDireccion" src/ --include="*.tsx"  [K---include="*.ts" | grep -v "node_modules\|permissions.ts" | head -60[?2004l
+src/App.tsx:14:import { AuthProvider, useAuth, TECNICO_ALLOWED_PATHS } from './context/AuthContext';
+src/App.tsx:27:  if (user.role === 'tecnico' && !TECNICO_ALLOWED_PATHS.includes(location.pathname)) {
+src/context/AuthContext.tsx:100:export const TECNICO_ALLOWED_PATHS = ['/', '/report', '/planificacion', '/biblioteca'];
+src/components/Layout.tsx:14:  const isAdmin = user?.role === 'admin';
+src/components/Layout.tsx:176:            {isAdmin && <li className="sidebar-group-label">Académico</li>}
+src/components/Layout.tsx:179:            {isAdmin && <li className="nav-item-submenu">
+src/components/Layout.tsx:216:            {isAdmin && <li className="nav-item-submenu">
+src/components/Layout.tsx:253:            {isAdmin && <li className="sidebar-group-label">Producción</li>}
+src/components/Layout.tsx:255:            {isAdmin && (
+src/components/Layout.tsx:266:            {isAdmin && (
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  cat src/App.tsx[?2004l
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
+import ReportPage from './pages/ReportPage';
+import ResourceLibraryPage from './pages/ResourceLibraryPage';
+import PlanningPage from './pages/PlanningPage';
+import DiplomadosPage from './pages/DiplomadosPage';
+import EscuelasPage from './pages/EscuelasPage';
+import ProduccionAltoNivelPage from './pages/ProduccionAltoNivelPage';
+import InvestigacionIncidenciaPage from './pages/InvestigacionIncidenciaPage';
+import LoginPage from './pages/LoginPage';
+import ErrorBoundary from './components/ErrorBoundary';
+import { AuthProvider, useAuth, TECNICO_ALLOWED_PATHS } from './context/AuthContext';
+import './App.css';
+
+/** Redirects unauthenticated users to /login.
+ *  For 'tecnico' role, also enforces allowed paths. */
+const ProtectedRoute: React.FC = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (user.role === 'tecnico' && !TECNICO_ALLOWED_PATHS.includes(location.pathname)) {
+    return <Navigate to="/report" replace />;
+  }
+
+  return <Outlet />;
+};
+
+/** Redirects already-authenticated users away from /login */
+const PublicRoute: React.FC = () => {
+  const { user } = useAuth();
+  return user ? <Navigate to="/" replace /> : <Outlet />;
+};
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public: login */}
+      <Route element={<PublicRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+
+      {/* Protected: all app pages */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="report" element={<ReportPage />} />
+          <Route path="biblioteca" element={<ResourceLibraryPage />} />
+          <Route path="planificacion" element={<PlanningPage />} />
+          <Route path="escuelas" element={<EscuelasPage />} />
+          <Route path="diplomados" element={<DiplomadosPage />} />
+          <Route path="produccion-alto-nivel" element={<ProduccionAltoNivelPage />} />
+          <Route path="investigacion-e-incidencia" element={<InvestigacionIncidenciaPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "admin\|role\|permission\|isAdmin\|export\ [K||crear\|editar\|notas\|asistencia\|inscribir" src/pages/InvestigacionIncidenciaP [Kaage.tsx | grep -v "^.*import\|console\|//\|asana\|service" | head -30[?2004l
+370:export default InvestigacionIncidenciaPage;
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  wc -l src/pages/InvestigacionIncidenciaPage.tsx && [K  head -60 src/pages/InvestigacionIncidenciaPage.tsx[?2004l
+     370 src/pages/InvestigacionIncidenciaPage.tsx
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { asanaService } from '../services/asana.service';
+import { AsanaProject, AsanaTask } from '../types/asana.types';
+import LoadingOverlay from '../components/LoadingOverlay';
+import Notification from '../components/Notification';
+
+interface Documento {
+  nombre: string;
+  url: string;
+}
+
+const TITLE = 'Investigacion e incidencia';
+const SUBTITLE = 'Listado de tareas del proyecto SAIH investigacion';
+const PROJECT_QUERY = 'SAIH investigacion';
+
+const normalize = (value: string): string =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+const matchesProject = (projectName: string, query: string): boolean => {
+  const name = normalize(projectName);
+  const q = normalize(query);
+  if (name.includes(q)) return true;
+  return q.split(' ').filter(Boolean).every(word => name.includes(word));
+};
+
+const parseDocumentos = (notes: string | undefined | null): Documento[] => {
+  if (!notes) return [];
+  const match = notes.match(/===DATOS_JSON===\s*([\s\S]+?)\s*===FIN_DATOS_JSON===/);
+  if (!match) return [];
+  try {
+    const data = JSON.parse(match[1]);
+    return Array.isArray(data.documentos) ? data.documentos : [];
+  } catch {
+    return [];
+  }
+};
+
+const buildNotes = (originalNotes: string | undefined | null, documentos: Documento[]): string => {
+  const base = (originalNotes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+  return `${base}\n\n===DATOS_JSON===\n${JSON.stringify({ documentos }, null, 2)}\n===FIN_DATOS_JSON===`;
+};
+
+const InvestigacionIncidenciaPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [project, setProject] = useState<AsanaProject | null>(null);
+  const [tasks, setTasks] = useState<AsanaTask[]>([]);
+
+  // Modal agregar documento
+  const [modalTask, setModalTask] = useState<AsanaTask | null>(null);
+  const [docNombre, setDocNombre] = useState('');
+  const [docUrl, setDocUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  // Notificación
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "button\|Modal\|onClick\|handle" src/pages [K//InvestigacionIncidenciaPage.tsx | head -20[?2004l
+51:  // Modal agregar documento
+52:  const [modalTask, setModalTask] = useState<AsanaTask | null>(null);
+56:  const [modalError, setModalError] = useState('');
+100:  const openModal = (task: AsanaTask) => {
+101:    setModalTask(task);
+104:    setModalError('');
+107:  const closeModal = () => {
+108:    setModalTask(null);
+111:    setModalError('');
+114:  const handleSaveDocument = async () => {
+116:    if (!docNombre.trim()) { setModalError('El nombre del documento es obligatorio'); return; }
+117:    if (!docUrl.trim()) { setModalError('La URL del documento es obligatoria'); return; }
+118:    try { new URL(docUrl.trim()); } catch { setModalError('La URL ingresada no es válida'); return; }
+121:    setModalError('');
+131:      closeModal();
+133:      setModalError(err instanceof Error ? err.message : 'Error al guardar el documento');
+139:  const handleDeleteDocument = async (task: AsanaTask, docIndex: number) => {
+250:                                <button
+251:                                  onClick={() => handleDeleteDocument(task, i)}
+264:                                </button>
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1[?2004l
+[1G[0K[1G[0K⠙[1G[0K[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "UserRole\|ROLE_PAGES\|TECNICO_ALLOWED" sr [Kcc/context/AuthContext.tsx src/App.tsx src/components/Layout.tsx src/context/perm [Kiissions.ts[?2004l
+src/context/AuthContext.tsx:2:import { UserRole, ROLE_PAGES } from './permissions';
+src/context/AuthContext.tsx:4:export type { UserRole };
+src/context/AuthContext.tsx:5:export { ROLE_PAGES };
+src/context/AuthContext.tsx:9:  role: UserRole;
+src/context/AuthContext.tsx:19:const USERS: Array<{ email: string; password: string; role: UserRole; name: string }> = [
+src/App.tsx:15:import { ROLE_PAGES } from './context/permissions';
+src/App.tsx:19: *  Enforces role-based page access for all roles via ROLE_PAGES. */
+src/App.tsx:28:  const allowedPaths = ROLE_PAGES[user.role as keyof typeof ROLE_PAGES];
+src/components/Layout.tsx:8:import { ROLE_PAGES } from '../context/permissions';
+src/components/Layout.tsx:15:  const _pages = user?.role ? (ROLE_PAGES[user.role as keyof typeof ROLE_PAGES] ?? []) : [];
+src/context/permissions.ts:3:// Para dar/quitar acceso: editar ROLE_PERMISSIONS o ROLE_PAGES
+src/context/permissions.ts:6:export type UserRole = 'admin' | 'tecnico' | 'comunicacion' | 'direccion';
+src/context/permissions.ts:51:export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+src/context/permissions.ts:121:export const ROLE_PAGES: Record<UserRole, string[]> = {
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "UserRole\|ROLE_PAGES\|TECNICO_ALLOWED\|is [KAAdmin\|canSeeEscuelas\|allowedPaths" src/context/AuthContext.tsx src/App.tsx src [K//components/Layout.tsx 2>&1 | head -40[?2004l
+src/context/AuthContext.tsx:2:import { UserRole, ROLE_PAGES } from './permissions';
+src/context/AuthContext.tsx:4:export type { UserRole };
+src/context/AuthContext.tsx:5:export { ROLE_PAGES };
+src/context/AuthContext.tsx:9:  role: UserRole;
+src/context/AuthContext.tsx:19:const USERS: Array<{ email: string; password: string; role: UserRole; name: string }> = [
+src/App.tsx:15:import { ROLE_PAGES } from './context/permissions';
+src/App.tsx:19: *  Enforces role-based page access for all roles via ROLE_PAGES. */
+src/App.tsx:28:  const allowedPaths = ROLE_PAGES[user.role as keyof typeof ROLE_PAGES];
+src/App.tsx:29:  if (allowedPaths && !allowedPaths.includes(location.pathname)) {
+src/App.tsx:30:    const defaultPath = allowedPaths[0] ?? '/';
+src/components/Layout.tsx:8:import { ROLE_PAGES } from '../context/permissions';
+src/components/Layout.tsx:15:  const _pages = user?.role ? (ROLE_PAGES[user.role as keyof typeof ROLE_PAGES] ?? []) : [];
+src/components/Layout.tsx:16:  const canSeeEscuelas = _pages.includes('/escuelas');
+src/components/Layout.tsx:20:  const canSeeAcademico = canSeeEscuelas || canSeeDiplomados;
+src/components/Layout.tsx:185:            {canSeeEscuelas && <li className="nav-item-submenu">
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1[?2004l
+[1G[0K[1G[0K⠙[1G[0K[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npm run build 2>&1 | tail -60[?2004l
+
+> cdima-reportes@1.0.0 build
+> tsc && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 4904 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                              0.59 kB │ gzip:   0.38 kB
+dist/assets/logoinicial-9Oyl2bKu.png        10.25 kB
+dist/assets/lineaaguayo-tr3gAl9Q.jpg        32.33 kB
+dist/assets/logocdima-C4J0-fAI.png          84.26 kB
+dist/assets/index-8W_SNGAq.css              70.29 kB │ gzip:  13.79 kB
+dist/assets/purify.es-C_uT9hQ1.js           21.98 kB │ gzip:   8.74 kB
+dist/assets/index.es-DA3rRh_7.js           150.03 kB │ gzip:  51.33 kB
+dist/assets/html2canvas.esm-CBrSDip1.js    201.42 kB │ gzip:  48.03 kB
+dist/assets/index-GIM4ErYb.js            2,865.15 kB │ gzip: 842.04 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.75s
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit && echo "TS_OK" || echo "TS_FAIL" [K[K[?2004l
+[1G[0K[1G[0K⠙[1G[0KTS_OK
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npm run dev 2>&1 &[?2004l
+[1] 80841
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004hssleep 5[?2004l
+curl -s http://localhost:5173 | head -5
+kill %1 2>/dev/null
+echo "DONE"
+
+> cdima-reportes@1.0.0 dev
+> vite
+
+[1G[0KPort 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m95[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[1]  + suspended (tty input)  npm run dev 2>&1
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004hccurl -s http://localhost:5173 | head -5[?2004l
+<!doctype html>
+<html lang="es">
+  <head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004hkkill %1 2>/dev/null[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004heecho "DO
+[1]  + suspended (tty input)  npm run dev 2>&1
+[0m[27m[24m[Jzalogon@192 cdima-reportes % echo "DO[KNE"[?2004l
+DONE
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  kill %1 2>/dev/null; curl -s http://localhost:5174 [K  | head -3; echo "---"[?2004l
+[1]  + suspended (tty input)  npm run dev 2>&1
+^C
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git log --oneline -10 2>&1[?2004l
+[33m7d2321d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m improve style details
+[33m97cc4ec[m multiple style changes
+[33m6d03693[m multiple changes
+[33mf376eb3[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m mayor changes
+[33maa3234f[m mulitple changes on the status
+[33mf4e632e[m fixes on the view
+[33m970daf7[m fixesd
+[33mf11349e[m varios
+[33m39e869b[m fix comm user
+[33m1397383[m rol added
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git diff HEAD --stat 2>&1 && git status 2>&1[?2004l
+ src/App.tsx                           |   11 [32m+[m[31m-[m
+ src/components/Layout.tsx             |   28 [32m+[m[31m-[m
+ src/context/AuthContext.tsx           |   29 [32m+[m[31m-[m
+ src/context/permissions.ts            |   17 [32m+[m[31m-[m
+ src/pages/DiplomadosPage.tsx          |   16 [32m+[m[31m-[m
+ src/pages/EscuelasPage.tsx            |    8 [32m+[m[31m-[m
+ src/pages/ProduccionAltoNivelPage.tsx | 3047 [32m++++++++++++++++++++++++++++++++[m[31m-[m
+ 7 files changed, 3109 insertions(+), 47 deletions(-)
+On branch main
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	[31mmodified:   src/App.tsx[m
+	[31mmodified:   src/components/Layout.tsx[m
+	[31mmodified:   src/context/AuthContext.tsx[m
+	[31mmodified:   src/context/permissions.ts[m
+	[31mmodified:   src/pages/DiplomadosPage.tsx[m
+	[31mmodified:   src/pages/EscuelasPage.tsx[m
+	[31mmodified:   src/pages/ProduccionAltoNivelPage.tsx[m
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	[31msrc/services/reports/alto-nivel-reports.service.ts[m
+	[31mtypescript[m
+
+no changes added to commit (use "git add" and/or "git commit -a")
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  grep -n "export" src/services/reports/alto-nivel-r [Keeports.service.ts | head -20[?2004l
+100:export const exportAltoNivelGeneralPDF = ({ curso, docentes, estudiantes }: ExportDiplomadoGeneralParams): void => {
+419:export const exportAltoNivelGeneralWord = ({ curso, estudiantes }: ExportDiplomadoGeneralWordParams): void => {
+640:export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+882:export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+1045:export const exportAltoNivelEstudiantePDF = ({ estudiante, curso }: ExportDiplomadoEstudianteParams): void => {
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npm run build 2>&1; echo "EXIT:$?"[?2004l
+
+> cdima-reportes@1.0.0 build
+> tsc && vite build
+
+[1G[0K[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+[2K[1Gtransforming (1) [2mindex.html[22m[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (82) [2mnode_modules/antd/es/version/version.js[22m[2K[1G[2K[1G[2K[1Gtransforming (163) [2mnode_modules/@rc-component/util/es/React/isFragment.js[[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (354) [2mnode_modules/@ant-design/icons/es/components/IconBase.js[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (360) [2mnode_modules/@remix-run/router/dist/router.js[22m[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (683) [2mnode_modules/@ant-design/icons-svg/es/asn/AccountBookFil[2K[1Gtransforming (721) [2mnode_modules/date-fns/locale/ar-EG.js[22m[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (1186) [2mnode_modules/@ant-design/icons-svg/es/asn/AmazonCircleF[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (1774) [2mnode_modules/@ant-design/icons/es/icons/CameraOutlined.[2K[1Gtransforming (2239) [2mnode_modules/core-js/internals/fix-regexp-well-known-sy[2K[1Gtransforming (2754) [2mnode_modules/@ant-design/icons-svg/es/asn/FlagFilled.js[2K[1Gtransforming (3130) [2mnode_modules/@ant-design/icons-svg/es/asn/NodeIndexOutl[2K[1Gtransforming (3520) [2mnode_modules/@ant-design/icons-svg/es/asn/StepBackwardF[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (3793) [2mnode_modules/@rc-component/async-validator/es/rule/url.[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (4012) [2mnode_modules/lodash/_cloneDataView.js[22m[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (4447) [2mnode_modules/@rc-component/virtual-list/es/Item.js[22m[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (4587) [2mnode_modules/string-convert/camel2hyphen.js[22m[2K[1Gtransforming (4675) [2mnode_modules/@rc-component/picker/es/PickerInput/contex[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (4878) [2mnode_modules/antd/es/table/hooks/useFilter/FilterDropdo[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[32m✓[39m 4904 modules transformed.
+[2K[1Grendering chunks (1)...[2K[1Grendering chunks (2)...[2K[1Grendering chunks (3)...[2K[1Grendering chunks (4)...[2K[1G[2K[1Gcomputing gzip size (0)...[2K[1Gcomputing gzip size (1)...[2K[1Gcomputing gzip size (2)...[2K[1Gcomputing gzip size (3)...[2K[1Gcomputing gzip size (4)...[2K[1Gcomputing gzip size (5)...[2K[1Gcomputing gzip size (6)...[2K[1G[2mdist/[22m[32mindex.html                          [39m[1m[2m    0.59 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mdist/[22m[2massets/[22m[32mlogoinicial-9Oyl2bKu.png     [39m[1m[2m   10.25 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[32mlineaaguayo-tr3gAl9Q.jpg     [39m[1m[2m   32.33 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[32mlogocdima-C4J0-fAI.png       [39m[1m[2m   84.26 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[35mindex-8W_SNGAq.css           [39m[1m[2m   70.29 kB[22m[1m[22m[2m │ gzip:  13.79 kB[22m
+[2mdist/[22m[2massets/[22m[36mpurify.es-C_uT9hQ1.js        [39m[1m[2m   21.98 kB[22m[1m[22m[2m │ gzip:   8.74 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex.es-DA3rRh_7.js         [39m[1m[2m  150.03 kB[22m[1m[22m[2m │ gzip:  51.33 kB[22m
+[2mdist/[22m[2massets/[22m[36mhtml2canvas.esm-CBrSDip1.js  [39m[1m[2m  201.42 kB[22m[1m[22m[2m │ gzip:  48.03 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-GIM4ErYb.js            [39m[1m[33m2,865.15 kB[39m[22m[2m │ gzip: 842.04 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 4.69s[39m
+[1G[0K⠙[1G[0KEXIT:0
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  timeout 30 npm run build 2>&1; echo "DONE:$?"[?2004l
+zsh: command not found: timeout
+DONE:127
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git stash 2>&1 && npx tsc --noEmit 2>&1; echo "TS_ [KEEXIT:$?"; git stash pop 2>&1[?2004l
+Saved working directory and index state WIP on main: 7d2321d improve style details
+[1G[0K⠙[1G[0K[1G[0K⠙[1G[0KTS_EXIT:0
+On branch main
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	[31mmodified:   src/App.tsx[m
+	[31mmodified:   src/components/Layout.tsx[m
+	[31mmodified:   src/context/AuthContext.tsx[m
+	[31mmodified:   src/context/permissions.ts[m
+	[31mmodified:   src/pages/DiplomadosPage.tsx[m
+	[31mmodified:   src/pages/EscuelasPage.tsx[m
+	[31mmodified:   src/pages/ProduccionAltoNivelPage.tsx[m
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	[31msrc/services/reports/alto-nivel-reports.service.ts[m
+	[31mtypescript[m
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (0912bac6ebf7ef6c4e35076522dccceea16d6045)
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git stash pop 2>&1; echo "POPPED"[?2004l
+error: Your local changes to the following files would be overwritten by merge:
+	src/App.tsx
+	src/components/Layout.tsx
+Please commit your changes or stash them before you merge.
+Aborting
+On branch main
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	[31mmodified:   src/App.tsx[m
+	[31mmodified:   src/components/Layout.tsx[m
+	[31mmodified:   src/context/AuthContext.tsx[m
+	[31mmodified:   src/context/permissions.ts[m
+	[31mmodified:   src/pages/DiplomadosPage.tsx[m
+	[31mmodified:   src/pages/EscuelasPage.tsx[m
+	[31mmodified:   src/pages/ProduccionAltoNivelPage.tsx[m
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	[31msrc/services/reports/alto-nivel-reports.service.ts[m
+	[31mtypescript[m
+
+no changes added to commit (use "git add" and/or "git commit -a")
+The stash entry is kept in case you need it again.
+POPPED
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git show HEAD:src/context/AuthContext.tsx | head - [K110 && echo "---" && git show HEAD:src/App.tsx | head -20[?2004l
+import React, { createContext, useContext, useState } from 'react';
+
+export type UserRole = 'admin' | 'tecnico';
+
+export interface AuthUser {
+  email: string;
+  role: UserRole;
+  name: string;
+}
+
+---
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
+import ReportPage from './pages/ReportPage';
+import ResourceLibraryPage from './pages/ResourceLibraryPage';
+import PlanningPage from './pages/PlanningPage';
+import DiplomadosPage from './pages/DiplomadosPage';
+import EscuelasPage from './pages/EscuelasPage';
+import ProduccionAltoNivelPage from './pages/ProduccionAltoNivelPage';
+import InvestigacionIncidenciaPage from './pages/InvestigacionIncidenciaPage';
+import LoginPage from './pages/LoginPage';
+import ErrorBoundary from './components/ErrorBoundary';
+import { AuthProvider, useAuth, TECNICO_ALLOWED_PATHS } from './context/AuthContext';
+import './App.css';
+
+/** Redirects unauthenticated users to /login.
+ *  For 'tecnico' role, also enforces allowed paths. */
+const ProtectedRoute: React.FC = () => {
+  const { user } = useAuth();
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git show HEAD:src/pages/ProduccionAltoNivelPage.ts [Kxx | wc -l && wc -l src/pages/ProduccionAltoNivelPage.tsx[?2004l
+      13
+    3045 src/pages/ProduccionAltoNivelPage.tsx
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  git show HEAD:src/context/permissions.ts | head -1 [K00 && echo "---" && git show HEAD:src/pages/ProduccionAltoNivelPage.tsx[?2004l
+// ============================================================
+// permissions.ts — Roles, permisos y páginas permitidas
+// Para dar/quitar acceso: editar ROLE_PERMISSIONS o ROLE_PAGES
+// ============================================================
+
+export type UserRole = 'admin' | 'tecnico' | 'comunicacion' | 'direccion';
+
+export type Permission =
+  // ── Home ────────────────────────────────────────────────
+  | 'home.solicitud.ver_detalle'
+---
+import React from 'react';
+import ProjectTasksListPage from './ProjectTasksListPage';
+
+const ProduccionAltoNivelPage: React.FC = () => {
+  return (
+    <ProjectTasksListPage
+      title="Produccion de Alto Nivel"
+      subtitle="Listado de tareas del proyecto SAIH alto nivel"
+      projectQuery="SAIH alto nivel"
+    />
+  );
+};
+
+export default ProduccionAltoNivelPage;[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 && echo "OK" || echo "ERRORS [K"[?2004l
+[1G[0K[1G[0K⠙[1G[0KOK
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h

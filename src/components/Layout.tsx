@@ -5,13 +5,20 @@ import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection } from '../types/asana.types';
 import { useAuth } from '../context/AuthContext';
+import { ROLE_PAGES } from '../context/permissions';
 import logoCdima from '../assets/logocdima.png';
 
 const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const _pages = user?.role ? (ROLE_PAGES[user.role as keyof typeof ROLE_PAGES] ?? []) : [];
+  const canSeeInicio = _pages.includes('/');
+  const canSeeEscuelas = _pages.includes('/escuelas');
+  const canSeeDiplomados = _pages.includes('/diplomados');
+  const canSeeProduccion = _pages.includes('/produccion-alto-nivel');
+  const canSeeInvestigacion = _pages.includes('/investigacion-e-incidencia');
+  const canSeeAcademico = canSeeEscuelas || canSeeDiplomados;
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
   const [showEscuelasSubmenu, setShowEscuelasSubmenu] = useState(false);
@@ -134,7 +141,8 @@ const Layout: React.FC = () => {
       <div className="app-body">
         <nav className="sidebar">
           <ul className="nav-links">
-            <li className="sidebar-group-label">Principal</li>
+            {canSeeInicio && <li className="sidebar-group-label">Principal</li>}
+            {canSeeInicio && (
             <li>
               <Link
                 to="/"
@@ -143,6 +151,7 @@ const Layout: React.FC = () => {
                 🏠 Inicio
               </Link>
             </li>
+            )}
 
             <li className="sidebar-group-label">Reportes</li>
             <li>
@@ -172,11 +181,11 @@ const Layout: React.FC = () => {
               </Link>
             </li>
 
-            {/* Académico — solo admin */}
-            {isAdmin && <li className="sidebar-group-label">Académico</li>}
+            {/* Académico — visible según rol */}
+            {canSeeAcademico && <li className="sidebar-group-label">Académico</li>}
 
-            {/* Escuela de Formación con submenú — solo admin */}
-            {isAdmin && <li className="nav-item-submenu">
+            {/* Escuela de Formación con submenú */}
+            {canSeeEscuelas && <li className="nav-item-submenu">
               <a
                 href="#"
                 className={`nav-link ${location.pathname === '/escuelas' ? 'active' : ''}`}
@@ -212,8 +221,8 @@ const Layout: React.FC = () => {
               )}
             </li>}
 
-            {/* Diplomados con submenú — solo admin */}
-            {isAdmin && <li className="nav-item-submenu">
+            {/* Diplomados con submenú */}
+            {canSeeDiplomados && <li className="nav-item-submenu">
               <a
                 href="#"
                 className={`nav-link ${location.pathname === '/diplomados' ? 'active' : ''}`}
@@ -249,10 +258,10 @@ const Layout: React.FC = () => {
               )}
             </li>}
 
-            {/* Producción — solo admin */}
-            {isAdmin && <li className="sidebar-group-label">Producción</li>}
+            {/* Producción — visible según rol */}
+            {canSeeProduccion && <li className="sidebar-group-label">Producción</li>}
 
-            {isAdmin && (
+            {canSeeProduccion && (
             <li>
               <Link
                 to="/produccion-alto-nivel"
@@ -263,7 +272,7 @@ const Layout: React.FC = () => {
             </li>
             )}
 
-            {isAdmin && (
+            {canSeeInvestigacion && (
             <li>
               <Link
                 to="/investigacion-e-incidencia"

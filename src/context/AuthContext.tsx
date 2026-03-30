@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-
-export type UserRole = 'admin' | 'tecnico';
+import { UserRole } from './permissions';
 
 export interface AuthUser {
   email: string;
@@ -17,39 +16,39 @@ interface AuthContextType {
 const USERS: Array<{ email: string; password: string; role: UserRole; name: string }> = [
   {
     email: 'cdima.admin@gmail.com',
-    password: import.meta.env.VITE_PASSWORD_ADMIN as string,
-    role: 'admin',
-    name: 'Administrador CDIMA',
+    password: import.meta.env.VITE_PASSWORD_DIRECTOR as string,
+    role: 'director',
+    name: 'Director CDIMA',
   },
   {
     email: 'cdima.eviolencia@gmail.com',
-    password: import.meta.env.VITE_PASSWORD_TECNICO as string,
-    role: 'tecnico',
-    name: 'Técnico EV',
+    password: import.meta.env.VITE_PASSWORD_TECNICO_EV as string,
+    role: 'tecnico ev',
+    name: 'Técnico Erradicación Violencia',
   },
-    {
-    email: 'cdima.comunicacion@gmail.com',
-    password: import.meta.env.VITE_PASSWORD_TECNICO as string,
-    role: 'tecnico',
-    name: 'Técnico EV',
+  {
+    email: 'cdima.erradicaciondeviolencia@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_TECNICO_EV as string,
+    role: 'tecnico ev',
+    name: 'Técnico Erradicación Violencia',
   },
-    {
-    email: 'cdima.direccion@gmail.com',
-    password: import.meta.env.VITE_PASSWORD_TECNICO as string,
-    role: 'tecnico',
-    name: 'Técnico EV',
+  {
+    email: 'cdima.epolitico@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_TECNICO_EP as string,
+    role: 'tecnico ep',
+    name: 'Técnico Empoderamiento Politico',
   },
-    {
+  {
     email: 'sandraveragutierrez@gmail.com',
-    password: import.meta.env.VITE_PASSWORD_TECNICO as string,
-    role: 'tecnico',
-    name: 'Técnico EV',
+    password: import.meta.env.VITE_PASSWORD_ADMINISTRADOR as string,
+    role: 'administrador',
+    name: 'Sandra Vera',
   },
-    {
+  {
     email: 'ely.ibanez.v@gmail.com',
     password: import.meta.env.VITE_PASSWORD_COMUNICACION as string,
-    role: 'tecnico',
-    name: 'Técnico EV',
+    role: 'comunicacion',
+    name: 'Ely Ibáñez',
   },
 ];
 
@@ -96,5 +95,4 @@ export const useAuth = (): AuthContextType => {
   return ctx;
 };
 
-/** Paths accessible by the 'tecnico' role */
-export const TECNICO_ALLOWED_PATHS = ['/', '/report', '/planificacion', '/biblioteca'];
+

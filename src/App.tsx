@@ -11,11 +11,12 @@ import ProduccionAltoNivelPage from './pages/ProduccionAltoNivelPage';
 import InvestigacionIncidenciaPage from './pages/InvestigacionIncidenciaPage';
 import LoginPage from './pages/LoginPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import { AuthProvider, useAuth, TECNICO_ALLOWED_PATHS } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ROLE_PAGES } from './context/permissions';
 import './App.css';
 
 /** Redirects unauthenticated users to /login.
- *  For 'tecnico' role, also enforces allowed paths. */
+ *  Enforces role-based page access for all roles via ROLE_PAGES. */
 const ProtectedRoute: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
@@ -24,8 +25,10 @@ const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (user.role === 'tecnico' && !TECNICO_ALLOWED_PATHS.includes(location.pathname)) {
-    return <Navigate to="/report" replace />;
+  const allowedPaths = ROLE_PAGES[user.role as keyof typeof ROLE_PAGES];
+  if (allowedPaths && !allowedPaths.includes(location.pathname)) {
+    const defaultPath = allowedPaths[0] ?? '/';
+    return <Navigate to={defaultPath} replace />;
   }
 
   return <Outlet />;

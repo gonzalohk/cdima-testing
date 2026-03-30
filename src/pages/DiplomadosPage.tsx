@@ -1166,9 +1166,7 @@ const DiplomadosPage: React.FC = () => {
                     label: `👨‍🏫 Docentes (${docentes.length})`,
                     children: (
                       <div>
-                        {docentes.length === 0 ? (
-                          <p style={{ color: '#999' }}>No hay docentes registrados. Usa "➕ Agregar Docente" para añadir el primero.</p>
-                        ) : (() => {
+                        {(() => {
                           const PAGE_SIZE = 20;
                           const filtered = docentes.filter(d => formatearNombreCompleto(d.name).toLowerCase().includes(busquedaDocente.toLowerCase()));
                           const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1206,6 +1204,9 @@ const DiplomadosPage: React.FC = () => {
                                 >＋ Inscribir Docente</button>
                               </div>
                             </div>
+                            {docentes.length === 0 ? (
+                              <p style={{ color: '#999', padding: '1.5rem', textAlign: 'center', fontStyle: 'italic', margin: 0 }}>No hay docentes registrados todavía.</p>
+                            ) : <>
                             <div style={{ overflowX: 'auto' }}>
                               <table className="doc-tbl-dip" style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <colgroup>
@@ -1264,6 +1265,7 @@ const DiplomadosPage: React.FC = () => {
                                 </div>
                               </div>
                             )}
+                          </>}
                           </div>
                           );
                         })()
@@ -1276,9 +1278,7 @@ const DiplomadosPage: React.FC = () => {
                     label: `👨‍🎓 Estudiantes (${estudiantes.length})`,
                     children: (
                       <div>
-                        {estudiantes.length === 0 ? (
-                          <p style={{ color: '#999' }}>No hay estudiantes registrados. Usa "➕ Agregar Estudiante" para inscribir el primero.</p>
-                        ) : (() => {
+                        {(() => {
                           const PAGE_SIZE = 20;
                           const filtered = estudiantes.filter(e => formatearNombreCompleto(e.name).toLowerCase().includes(busquedaEstudiante.toLowerCase()));
                           const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1316,6 +1316,9 @@ const DiplomadosPage: React.FC = () => {
                                 >＋ Inscribir</button>
                               </div>
                             </div>
+                            {estudiantes.length === 0 ? (
+                              <p style={{ color: '#999', padding: '1.5rem', textAlign: 'center', fontStyle: 'italic', margin: 0 }}>No hay estudiantes registrados todavía.</p>
+                            ) : <>
                             <div style={{ overflowX: 'auto' }}>
                               <table className="est-tbl-dip" style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <colgroup>
@@ -1376,6 +1379,7 @@ const DiplomadosPage: React.FC = () => {
                                 </div>
                               </div>
                             )}
+                          </>}
                           </div>
                           );
                         })()
