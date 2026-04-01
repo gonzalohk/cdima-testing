@@ -659,4 +659,10 @@ const ProduccionAltoNivelPage: React.FC = () => {
 export default ProduccionAltoNivelPage;[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
 [1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 && echo "OK" || echo "ERRORS [K"[?2004l
 [1G[0K[1G[0K⠙[1G[0KOK
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 && echo "OK" || echo "ERRORS [K"[?2004l
+[1G[0K[1G[0K⠙[1G[0KOK
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h  npx tsc --noEmit 2>&1 && echo "OK" || echo "ERRORS [K"[?2004l
+[1G[0K[1G[0K⠙[1G[0KOK
 [1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jzalogon@192 cdima-reportes % [K[?2004h

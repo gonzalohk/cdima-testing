@@ -11,7 +11,7 @@ import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
 import { getTaskColor } from '../utils/colors';
-import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportMonthlyCalendarSchedule, exportMonthlyCalendarScheduleWord } from '../services/reports/planning-reports.service';
+import { exportCalendarViewToPDF, exportTasksTablesToPDF, exportTasksTablesToWord, exportMonthlyCalendarSchedule, exportMonthlyCalendarScheduleWord } from '../services/reports/planning-reports.service';
 
 // Función auxiliar para obtener el valor de un campo personalizado
 const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
@@ -67,6 +67,7 @@ interface CalendarEvent extends BigCalendarEvent {
     assignee?: string;
     responsables?: string;
     estado?: string;
+    area?: string;
     isSubtask: boolean;
     parentName?: string;
     notes?: string;
@@ -85,6 +86,7 @@ const PlanningPage: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('todas');
   const [exportingTables, setExportingTables] = useState(false);
+  const [exportingTablesWord, setExportingTablesWord] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
   const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
@@ -201,6 +203,7 @@ const PlanningPage: React.FC = () => {
             assignee: task.assignee?.name,
             responsables: responsables,
             estado: estado,
+            area: getCustomFieldValue(task, 'Area'),
             isSubtask: !!task.parent,
             parentName: task.parent?.name,
             notes: task.notes
@@ -282,7 +285,11 @@ const PlanningPage: React.FC = () => {
       );
     }
     
-    return filtered;
+    return filtered.sort((a, b) => {
+      const dateA = a.due_on || a.start_on || '';
+      const dateB = b.due_on || b.start_on || '';
+      return dateA.localeCompare(dateB);
+    });
   }, [currentMonthTasks, areaFilter]);
 
   const inProcessTasks = useMemo(() => {
@@ -307,7 +314,11 @@ const PlanningPage: React.FC = () => {
       );
     }
     
-    return filtered;
+    return filtered.sort((a, b) => {
+      const dateA = a.due_on || a.start_on || '';
+      const dateB = b.due_on || b.start_on || '';
+      return dateA.localeCompare(dateB);
+    });
   }, [currentMonthTasks, areaFilter]);
 
   const executedTasks = useMemo(() => {
@@ -321,7 +332,11 @@ const PlanningPage: React.FC = () => {
       );
     }
     
-    return filtered;
+    return filtered.sort((a, b) => {
+      const dateA = a.due_on || a.start_on || '';
+      const dateB = b.due_on || b.start_on || '';
+      return dateA.localeCompare(dateB);
+    });
   }, [currentMonthTasks, areaFilter]);
 
   const getEstadoSelectStyle = (estado: string, isOverdue?: boolean): React.CSSProperties => {
@@ -388,6 +403,25 @@ const PlanningPage: React.FC = () => {
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
     } finally {
       setExportingTables(false);
+    }
+  };
+
+  const handleExportTablesWord = async () => {
+    setExportingTablesWord(true);
+    try {
+      await exportTasksTablesToWord({
+        executedTasks,
+        overdueTasks,
+        inProcessTasks,
+        date,
+        projectName,
+        areaFilter
+      });
+    } catch (error) {
+      console.error('Error al exportar informe Word:', error);
+      alert('Error al generar el Word. Por favor, intenta de nuevo.');
+    } finally {
+      setExportingTablesWord(false);
     }
   };
 
@@ -642,12 +676,20 @@ const PlanningPage: React.FC = () => {
               )}
             </div>
             <button
-              className="btn-export"
+              className="btn-export-ghost"
               onClick={handleExportTables}
               disabled={exportingTables || (overdueTasks.length === 0 && inProcessTasks.length === 0 && executedTasks.length === 0)}
               title="Exportar tablas a PDF"
             >
-              {exportingTables ? 'Exportando...' : '📄 Exportar'}
+              {exportingTables ? 'Exportando...' : '📄 Informe PDF'}
+            </button>
+            <button
+              className="btn-export-ghost"
+              onClick={handleExportTablesWord}
+              disabled={exportingTablesWord || (overdueTasks.length === 0 && inProcessTasks.length === 0 && executedTasks.length === 0)}
+              title="Exportar tablas a Word"
+            >
+              {exportingTablesWord ? 'Exportando...' : '📝 Informe Word'}
             </button>
           </div>
 
@@ -693,6 +735,14 @@ const PlanningPage: React.FC = () => {
                                 Subactividad de: {task.parent.name}
                               </div>
                             )}
+                            {(() => {
+                              const area = getCustomFieldValue(task, 'Area');
+                              return area && area !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>📂</span> {area}
+                                </div>
+                              ) : null;
+                            })()}
                             {(() => {
                               const resp = getCustomFieldValue(task, 'Responsables de actividad');
                               return resp && resp !== '-' ? (
@@ -788,6 +838,14 @@ const PlanningPage: React.FC = () => {
                                 Subactividad de: {task.parent.name}
                               </div>
                             )}
+                            {(() => {
+                              const area = getCustomFieldValue(task, 'Area');
+                              return area && area !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>📂</span> {area}
+                                </div>
+                              ) : null;
+                            })()}
                             {(() => {
                               const resp = getCustomFieldValue(task, 'Responsables de actividad');
                               return resp && resp !== '-' ? (
@@ -885,6 +943,14 @@ const PlanningPage: React.FC = () => {
                               </div>
                             )}
                             {(() => {
+                              const area = getCustomFieldValue(task, 'Area');
+                              return area && area !== '-' ? (
+                                <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span style={{ opacity: 0.6 }}>📂</span> {area}
+                                </div>
+                              ) : null;
+                            })()}
+                            {(() => {
                               const resp = getCustomFieldValue(task, 'Responsables de actividad');
                               return resp && resp !== '-' ? (
                                 <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -946,51 +1012,84 @@ const PlanningPage: React.FC = () => {
       {selectedEvent && (
         <div className="task-detail-modal" onClick={() => setSelectedEvent(null)}>
           <div className="task-detail-content" onClick={(e) => e.stopPropagation()}>
-            <div className="task-detail-header">
-              <h3>{selectedEvent.title}</h3>
-              <button className="close-btn" onClick={() => setSelectedEvent(null)}>
+
+            {/* Franja Wiphala */}
+            <div style={{ display: 'flex', height: 5, overflow: 'hidden', borderRadius: '16px 16px 0 0' }}>
+              {['#D32F2F','#E65100','#F9A825','#388E3C','#1565C0','#6A1B9A','#880E4F'].map((color, i) => (
+                <div key={i} style={{ flex: 1, backgroundColor: color }} />
+              ))}
+            </div>
+
+            {/* Cabecera */}
+            <div className="task-detail-header" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #ffffff 100%)', alignItems: 'flex-start', paddingTop: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)', fontSize: 20
+                }}>📅</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a2332', lineHeight: 1.35, wordBreak: 'break-word' }}>
+                    {selectedEvent.title}
+                  </div>
+                  {selectedEvent.resource.area && selectedEvent.resource.area !== '-' && (
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <span style={{ opacity: 0.7 }}>📂</span> {selectedEvent.resource.area}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button className="close-btn" style={{ flexShrink: 0, marginTop: '0.1rem' }} onClick={() => setSelectedEvent(null)}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"/>
                   <line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
-            
+
+            {/* Cuerpo */}
             <div className="task-detail-body">
               {selectedEvent.resource.isSubtask && (
                 <div className="task-detail-field">
-                  <span className="field-label">Actividad padre:</span>
+                  <span className="field-label">🔗 Actividad padre:</span>
                   <span className="field-value">{selectedEvent.resource.parentName}</span>
                 </div>
               )}
-              
+
               <div className="task-detail-field">
-                <span className="field-label">Inicio:</span>
+                <span className="field-label">📅 Inicio:</span>
                 <span className="field-value">{moment(selectedEvent.start).format('DD/MM/YYYY')}</span>
               </div>
-              
+
               <div className="task-detail-field">
-                <span className="field-label">Fin:</span>
+                <span className="field-label">📅 Fin:</span>
                 <span className="field-value">{moment(selectedEvent.end).format('DD/MM/YYYY')}</span>
               </div>
-              
+
               {selectedEvent.resource.responsables && selectedEvent.resource.responsables !== '-' && (
                 <div className="task-detail-field">
-                  <span className="field-label">Responsables de actividad:</span>
+                  <span className="field-label">👤 Responsables:</span>
                   <span className="field-value">{selectedEvent.resource.responsables}</span>
                 </div>
               )}
-              
+
               <div className="task-detail-field">
                 <span className="field-label">Estado:</span>
-                <span className={`status-badge ${selectedEvent.resource.estado === 'Ejecutado' ? 'completed' : 'pending'}`}>
-                  {selectedEvent.resource.estado === 'Ejecutado' ? '✓ Ejecutado' : selectedEvent.resource.estado === 'En Proceso' ? '○ En Proceso' : '-'}
+                <span className={`status-badge ${
+                  selectedEvent.resource.estado === 'Ejecutado' ? 'completed' :
+                  selectedEvent.resource.estado === 'Reprogramado' ? 'reprogrammed' : 'pending'
+                }`}>
+                  {selectedEvent.resource.estado === 'Ejecutado' ? '✓ Ejecutado' :
+                   selectedEvent.resource.estado === 'Reprogramado' ? '↩ Reprogramado' :
+                   selectedEvent.resource.estado === 'En Proceso' ? '○ En Proceso' :
+                   selectedEvent.resource.estado || '-'}
                 </span>
               </div>
-              
+
               {selectedEvent.resource.notes && (
                 <div className="task-detail-field full-width">
-                  <span className="field-label">Notas:</span>
+                  <span className="field-label">📝 Notas:</span>
                   <p className="field-notes">{selectedEvent.resource.notes}</p>
                 </div>
               )}

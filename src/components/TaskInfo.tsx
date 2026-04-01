@@ -13,6 +13,7 @@ import VerificationSourcesModal, { FuentesJsonData } from './VerificationSources
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 import { HtmlModalHeader } from './ModalShared';
+import { useAuth } from '../context/AuthContext';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -25,6 +26,8 @@ interface TaskInfoProps {
 }
 
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, statistics, projectName = 'Proyecto', onSubtaskDeleted, onSubtaskCreated }) => {
+  const { user } = useAuth();
+  const canApprove = user?.role === 'administrador' || user?.role === 'director';
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -1099,22 +1102,24 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                     return (
                       <Space size={4}>
                         {!record.completed && !obs.observado && (
-                          <Tooltip title="Aprobar">
+                          <Tooltip title={canApprove ? 'Aprobar' : 'Sin permiso para aprobar'}>
                             <Button
                               type="primary"
                               size="small"
                               icon={<CheckOutlined />}
-                              style={{ backgroundColor: '#2e7d32', borderColor: '#2e7d32' }}
+                              style={{ backgroundColor: canApprove ? '#2e7d32' : undefined, borderColor: canApprove ? '#2e7d32' : undefined }}
+                              disabled={!canApprove}
                               onClick={() => handleApproveRequest(record)}
                             />
                           </Tooltip>
                         )}
                         {!record.completed && (
-                          <Tooltip title={obs.observado ? 'Actualizar observación' : 'Observar solicitud'}>
+                          <Tooltip title={canApprove ? (obs.observado ? 'Actualizar observación' : 'Observar solicitud') : 'Sin permiso para observar'}>
                             <Button
                               size="small"
-                              danger
+                              danger={canApprove}
                               icon={<WarningOutlined />}
+                              disabled={!canApprove}
                               onClick={() => handleObserveRequest(record)}
                             />
                           </Tooltip>
@@ -1150,9 +1155,21 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                           okText="Sí"
                           cancelText="No"
                           okButtonProps={{ danger: true }}
+                          disabled={record.completed || extractObservacion(record.notes).observado || user?.role !== 'director'}
                         >
-                          <Tooltip title="Eliminar">
-                            <Button size="small" danger icon={<DeleteOutlined />} />
+                          <Tooltip title={
+                            user?.role !== 'director'
+                              ? 'Sin permiso para eliminar'
+                              : (record.completed || extractObservacion(record.notes).observado)
+                                ? 'No se puede eliminar una solicitud aprobada u observada'
+                                : 'Eliminar'
+                          }>
+                            <Button
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              disabled={record.completed || extractObservacion(record.notes).observado || user?.role !== 'director'}
+                            />
                           </Tooltip>
                         </Popconfirm>
                       </Space>

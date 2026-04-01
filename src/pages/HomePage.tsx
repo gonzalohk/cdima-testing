@@ -20,6 +20,7 @@ import {
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
+import { useAuth } from '../context/AuthContext';
 
 interface FundItem { id: number; descripcion: string; importeBolivianos: string; }
 interface MaterialItem { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string; }
@@ -240,6 +241,8 @@ const CHUNK = 4;
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const HomePage: React.FC = () => {
+  const { user } = useAuth();
+  const canApprove = user?.role === 'administrador' || user?.role === 'director';
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
@@ -477,11 +480,12 @@ const HomePage: React.FC = () => {
           <Tooltip title="Ver detalle">
             <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
           </Tooltip>
-          <Tooltip title="Agregar observación">
+          <Tooltip title={canApprove ? 'Agregar observación' : 'Sin permiso para observar'}>
             <Button
               size="small"
               icon={<CommentOutlined />}
-              style={{ color: '#b45309', borderColor: '#d97706' }}
+              style={canApprove ? { color: '#b45309', borderColor: '#d97706' } : undefined}
+              disabled={!canApprove}
               onClick={() => { setObserveModal(row); setObserveText(''); }}
             >
               Observar
@@ -494,11 +498,13 @@ const HomePage: React.FC = () => {
             okText="Aprobar"
             cancelText="Cancelar"
             okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
+            disabled={!canApprove}
           >
             <Button
               size="small"
               icon={<CheckCircleOutlined />}
-              style={{ color: '#16a34a', borderColor: '#16a34a' }}
+              style={canApprove ? { color: '#16a34a', borderColor: '#16a34a' } : undefined}
+              disabled={!canApprove}
               loading={approvingGid === row.task.gid}
             >
               Aprobar
@@ -510,7 +516,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div style={{padding: '2rem'}}>
       {/* Header */}
       <div style={{
         padding: '1.25rem 1.75rem',

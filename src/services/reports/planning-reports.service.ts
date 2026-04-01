@@ -406,9 +406,9 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       columnStyles: {
         0: { cellWidth: 68, halign: 'left' },
         1: { cellWidth: 45, halign: 'left' },
-        2: { cellWidth: 35, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
         3: { 
-          cellWidth: 30, 
+          cellWidth: 35, 
           halign: 'center',
           textColor: colors.black,
           fontStyle: 'bold'
@@ -486,9 +486,9 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       columnStyles: {
         0: { cellWidth: 68, halign: 'left' },
         1: { cellWidth: 45, halign: 'left' },
-        2: { cellWidth: 35, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
         3: {
-          cellWidth: 30,
+          cellWidth: 35,
           halign: 'center',
           textColor: colors.black,
           fontStyle: 'bold'
@@ -499,8 +499,12 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     startY = (pdf as any).lastAutoTable.finalY + 12;
   }
 
+  // Separar ejecutadas de reprogramadas
+  const realExecutedTasks = executedTasks.filter(task => getCustomFieldValue(task, 'Estado') !== 'Reprogramado');
+  const reprogrammedTasks = executedTasks.filter(task => getCustomFieldValue(task, 'Estado') === 'Reprogramado');
+
   // ============ SECCIÓN 3: ACTIVIDADES EJECUTADAS ============
-  if (executedTasks.length > 0) {
+  if (realExecutedTasks.length > 0) {
     // Si no hay espacio suficiente, agregar nueva página
     if (startY > pageHeight - 80) {
       pdf.addPage();
@@ -521,22 +525,19 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
     pdf.text(mesAnioEjecutadasCapitalizado, margins.left, startY + 5);
     
     const executedHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
-    const executedBody = executedTasks.map(task => {
+    const executedBody = realExecutedTasks.map(task => {
       const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
       const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
       let fecha = '-';
-      if (inicio && fin) fecha = fin; // Mostrar solo fecha de fin para ejecutadas
+      if (inicio && fin) fecha = fin;
       else if (fin) fecha = fin;
       else if (inicio) fecha = inicio;
-
-      const estadoTask = getCustomFieldValue(task, 'Estado');
-      const estadoLabel = estadoTask === 'Reprogramado' ? 'REPROGRAMADO' : 'EJECUTADO';
 
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
-        estadoLabel
+        'EJECUTADO'
       ];
     });
 
@@ -570,9 +571,86 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       columnStyles: {
         0: { cellWidth: 68, halign: 'left' },
         1: { cellWidth: 45, halign: 'left' },
-        2: { cellWidth: 35, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
         3: { 
-          cellWidth: 30, 
+          cellWidth: 35, 
+          halign: 'center',
+          textColor: colors.black,
+          fontStyle: 'bold'
+        },
+      },
+    });
+
+    startY = (pdf as any).lastAutoTable.finalY + 12;
+  }
+
+  // ============ SECCIÓN 4: ACTIVIDADES REPROGRAMADAS ============
+  if (reprogrammedTasks.length > 0) {
+    if (startY > pageHeight - 80) {
+      pdf.addPage();
+      startY = margins.top + 10;
+    }
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+    pdf.text('ACTIVIDADES REPROGRAMADAS', margins.left, startY);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    const mesAnioRepr = format(date, 'MMMM yyyy', { locale: es });
+    pdf.text(mesAnioRepr.charAt(0).toUpperCase() + mesAnioRepr.slice(1), margins.left, startY + 5);
+
+    const reprHeaders = [['ACTIVIDAD', 'RESPONSABLE(S)', 'FECHA', 'ESTADO']];
+    const reprBody = reprogrammedTasks.map(task => {
+      const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+      const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+      let fecha = '-';
+      if (inicio && fin) fecha = fin;
+      else if (fin) fecha = fin;
+      else if (inicio) fecha = inicio;
+
+      return [
+        task.name,
+        getCustomFieldValue(task, 'Responsables de actividad'),
+        fecha,
+        'REPROGRAMADO'
+      ];
+    });
+
+    autoTable(pdf, {
+      head: reprHeaders,
+      body: reprBody,
+      startY: startY + 10,
+      margin: { left: margins.left, right: margins.right },
+      theme: 'plain',
+      styles: {
+        fontSize: 8.5,
+        cellPadding: 4,
+        overflow: 'linebreak',
+        cellWidth: 'wrap',
+        valign: 'middle',
+        textColor: colors.black,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fillColor: colors.headerGray,
+        textColor: colors.black,
+        fontStyle: 'bold',
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      bodyStyles: {
+        fillColor: colors.white,
+      },
+      columnStyles: {
+        0: { cellWidth: 68, halign: 'left' },
+        1: { cellWidth: 45, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
+        3: {
+          cellWidth: 35,
           halign: 'center',
           textColor: colors.black,
           fontStyle: 'bold'
@@ -594,6 +672,183 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
   const pdfBlob = pdf.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');
+};
+
+/**
+ * Exporta las tablas de tareas a Word (.doc) — mismo contenido que exportTasksTablesToPDF
+ */
+export const exportTasksTablesToWord = async (params: ExportTablesParams): Promise<void> => {
+  const { executedTasks, overdueTasks, inProcessTasks, date, projectName, areaFilter } = params;
+
+  moment.locale('es');
+
+  const realExecutedTasks = executedTasks.filter(task => getCustomFieldValue(task, 'Estado') !== 'Reprogramado');
+  const reprogrammedTasks = executedTasks.filter(task => getCustomFieldValue(task, 'Estado') === 'Reprogramado');
+
+  const periodoHeader = format(date, 'MMMM yyyy', { locale: es });
+  const periodoCapitalizado = periodoHeader.charAt(0).toUpperCase() + periodoHeader.slice(1);
+  const nowStr = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es });
+  const fechaGeneracion = `${format(new Date(), 'dd', { locale: es })} de ${format(new Date(), 'MMMM', { locale: es })} de ${format(new Date(), 'yyyy', { locale: es })}`;
+
+  const escapeHtml = (value: string): string =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const headerStyle = 'border:0.2pt solid #b4b4b4;padding:4pt 4pt;font-size:9pt;font-weight:bold;background-color:#dcdcdc;text-align:left;vertical-align:middle;';
+  const cellStyle = 'border:0.2pt solid #b4b4b4;padding:4pt 4pt;font-size:8.5pt;text-align:left;vertical-align:top;background-color:#ffffff;';
+  const cellCenterStyle = 'border:0.2pt solid #b4b4b4;padding:4pt 4pt;font-size:8.5pt;text-align:center;vertical-align:top;font-weight:bold;background-color:#ffffff;';
+
+  const buildTable = (rows: { name: string; responsables: string; fecha: string; estado: string }[]): string => `
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6pt;">
+      <colgroup>
+        <col style="width:38%;"/>
+        <col style="width:25%;"/>
+        <col style="width:17%;"/>
+        <col style="width:20%;"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th style="${headerStyle}">ACTIVIDAD</th>
+          <th style="${headerStyle}">RESPONSABLE(S)</th>
+          <th style="${headerStyle}">FECHA</th>
+          <th style="${headerStyle}text-align:center;">ESTADO</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+        <tr>
+          <td style="${cellStyle}">${escapeHtml(r.name)}</td>
+          <td style="${cellStyle}">${escapeHtml(r.responsables)}</td>
+          <td style="${cellStyle}">${escapeHtml(r.fecha)}</td>
+          <td style="${cellCenterStyle}">${escapeHtml(r.estado)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+
+  const taskRow = (task: AsanaTask, estadoLabel: string) => {
+    const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+    const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+    let fecha = '-';
+    if (inicio && fin) fecha = `${inicio} - ${fin}`;
+    else if (fin) fecha = fin;
+    else if (inicio) fecha = inicio;
+    return {
+      name: task.name,
+      responsables: getCustomFieldValue(task, 'Responsables de actividad') !== '-' ? getCustomFieldValue(task, 'Responsables de actividad') : '',
+      fecha,
+      estado: estadoLabel
+    };
+  };
+
+  const executedTaskRowFn = (task: AsanaTask, estadoLabel: string) => {
+    const fin = task.due_on ? moment(task.due_on).format('DD/MM/YYYY') : null;
+    const inicio = task.start_on ? moment(task.start_on).format('DD/MM/YYYY') : null;
+    let fecha = '-';
+    if (fin) fecha = fin;
+    else if (inicio) fecha = inicio;
+    return {
+      name: task.name,
+      responsables: getCustomFieldValue(task, 'Responsables de actividad') !== '-' ? getCustomFieldValue(task, 'Responsables de actividad') : '',
+      fecha,
+      estado: estadoLabel
+    };
+  };
+
+  const sectionTitle = (title: string, subtitle: string) => `
+    <div style="margin-top:10pt;margin-bottom:2pt;">
+      <span style="font-size:11pt;font-weight:bold;font-family:Arial,sans-serif;">${title}</span><br/>
+      <span style="font-size:10pt;font-family:Arial,sans-serif;">${subtitle}</span>
+    </div>
+  `;
+
+  let sections = '';
+
+  if (overdueTasks.length > 0) {
+    sections += sectionTitle('ACTIVIDADES EN PROCESO (ATRASADAS)', periodoCapitalizado);
+    sections += buildTable(overdueTasks.map(t => taskRow(t, 'EN PROCESO')));
+  }
+
+  if (inProcessTasks.length > 0) {
+    sections += sectionTitle('ACTIVIDADES EN PROCESO', periodoCapitalizado);
+    sections += buildTable(inProcessTasks.map(t => taskRow(t, 'EN PROCESO')));
+  }
+
+  if (realExecutedTasks.length > 0) {
+    sections += sectionTitle('ACTIVIDADES EJECUTADAS', periodoCapitalizado);
+    sections += buildTable(realExecutedTasks.map(t => executedTaskRowFn(t, 'EJECUTADO')));
+  }
+
+  if (reprogrammedTasks.length > 0) {
+    sections += sectionTitle('ACTIVIDADES REPROGRAMADAS', periodoCapitalizado);
+    sections += buildTable(reprogrammedTasks.map(t => executedTaskRowFn(t, 'REPROGRAMADO')));
+  }
+
+  const htmlContent = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="UTF-8"/>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Normal</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page WordSection1 {
+          size: 21.59cm 27.94cm;
+          margin: 2.0cm 2.0cm 2.0cm 2.0cm;
+          mso-header-margin: 0.5cm;
+          mso-footer-margin: 0.5cm;
+        }
+        div.WordSection1 { page: WordSection1; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; margin: 0; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: 0.2pt solid #b4b4b4; padding: 4pt; font-size: 8.5pt; color: #000; word-wrap: break-word; }
+      </style>
+    </head>
+    <body>
+      <div class="WordSection1">
+        <!-- Encabezado -->
+        <div style="border-bottom:0.3pt solid #dcdcdc;padding-bottom:6pt;margin-bottom:8pt;">
+          <div style="text-align:right;font-size:14pt;font-weight:bold;font-family:Arial,sans-serif;">
+            ESTADO DE ACTIVIDADES MENSUALES &mdash; ${periodoHeader.toUpperCase()}
+          </div>
+          <div style="text-align:right;font-size:9pt;font-family:Arial,sans-serif;margin-top:3pt;">
+            PROYECTO: ${escapeHtml(projectName)}<br/>
+            PER&#205;ODO DE REPORTE: ${periodoCapitalizado}${areaFilter !== 'todas' ? `<br/>&#193;REA: ${escapeHtml(areaFilter)}` : ''}<br/>
+            FECHA DE GENERACI&#211;N: ${fechaGeneracion}
+          </div>
+        </div>
+
+        <!-- Secciones -->
+        ${sections}
+
+        <!-- Pie de página -->
+        <div style="margin-top:8pt;font-size:8pt;color:#000;font-family:Arial,sans-serif;text-align:right;">
+          CDIMA &mdash; Estado de Actividades ${periodoCapitalizado} &mdash; ${nowStr}
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `informe-actividades-${format(date, 'MMMM-yyyy', { locale: es }).toLowerCase()}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -829,7 +1084,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
   const headerDayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   
   const tableHeaders = [
-    ['Área', headerDayNames[0], headerDayNames[1], headerDayNames[2], headerDayNames[3], headerDayNames[4], headerDayNames[5], headerDayNames[6]]
+    [headerDayNames[0], headerDayNames[1], headerDayNames[2], headerDayNames[3], headerDayNames[4], headerDayNames[5], headerDayNames[6]]
   ];
 
   // Construir cuerpo de la tabla con todas las semanas
@@ -853,7 +1108,6 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
 
     // Agregar fila con números de día
     tableBody.push([
-      { content: '', styles: { fillColor: colors.beige, fontStyle: 'bold', halign: 'center' } },
       { content: dayNumbers[0], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
       { content: dayNumbers[1], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
       { content: dayNumbers[2], styles: { fillColor: colors.beige, halign: 'center', fontStyle: 'bold' } },
@@ -891,20 +1145,6 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       for (let i = 0; i < maxActivitiesPerDay; i++) {
         const row: any[] = [];
 
-        // Primera celda: Área (solo en la primera fila con rowSpan)
-        if (i === 0) {
-          row.push({
-            content: area.name,
-            rowSpan: maxActivitiesPerDay,
-            styles: {
-              fontStyle: 'bold',
-              fillColor: colors.lightGray,
-              valign: 'middle',
-              halign: 'left'
-            }
-          });
-        }
-
         // Celdas de los días: mostrar la actividad del índice i si existe
         dayActivities.forEach(activities => {
           const activity = activities[i] || '';
@@ -920,7 +1160,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
     tableBody.push([
       {
         content: 'No hay actividades programadas en este período',
-        colSpan: 8,
+        colSpan: 7,
         styles: {
           fillColor: colors.white,
           textColor: colors.black,
@@ -935,8 +1175,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
 
   // Calcular ancho disponible: pageWidth - márgenes izq y der
   const availableWidth = pageWidth - margins.left - margins.right;
-  const areaColumnWidth = 35; // Ancho fijo para columna de área
-  const dayColumnWidth = (availableWidth - areaColumnWidth) / 7; // Distribuir resto entre 7 días
+  const dayColumnWidth = availableWidth / 7; // 7 columnas iguales
 
   // Generar UNA SOLA tabla continua con todo el mes
   autoTable(pdf, {
@@ -945,7 +1184,7 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
     startY: currentY,
     margin: { left: margins.left, right: margins.right },
     theme: 'grid',
-    showHead: 'everyPage',
+    showHead: 'firstPage',
     tableWidth: availableWidth,
     styles: {
       fontSize: 8,
@@ -969,19 +1208,13 @@ export const exportMonthlyCalendarSchedule = async (params: ExportMonthlySchedul
       fillColor: colors.white,
     },
     columnStyles: {
-      0: { 
-        cellWidth: areaColumnWidth, 
-        halign: 'left',
-        fontStyle: 'bold',
-        fillColor: colors.lightGray
-      },
+      0: { cellWidth: dayColumnWidth, halign: 'left' },
       1: { cellWidth: dayColumnWidth, halign: 'left' },
       2: { cellWidth: dayColumnWidth, halign: 'left' },
       3: { cellWidth: dayColumnWidth, halign: 'left' },
       4: { cellWidth: dayColumnWidth, halign: 'left' },
       5: { cellWidth: dayColumnWidth, halign: 'left' },
       6: { cellWidth: dayColumnWidth, halign: 'left' },
-      7: { cellWidth: dayColumnWidth, halign: 'left' },
     },
   });
 
@@ -1221,7 +1454,7 @@ export const exportMonthlyCalendarScheduleWord = async (params: ExportMonthlySch
             <col style="width:auto;"/>
             <col style="width:auto;"/>
           </colgroup>
-          <thead>
+          <tbody>
             <tr>
               <th>&#193;rea</th>
               <th>Lunes</th>
@@ -1232,8 +1465,6 @@ export const exportMonthlyCalendarScheduleWord = async (params: ExportMonthlySch
               <th>S&#225;bado</th>
               <th>Domingo</th>
             </tr>
-          </thead>
-          <tbody>
             ${tableRows.join('')}
           </tbody>
         </table>

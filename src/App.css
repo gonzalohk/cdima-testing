@@ -294,7 +294,6 @@
 
 .main-content {
   flex: 1;
-  padding: 2rem;
   overflow-y: auto;
   min-width: 0;
   width: 100%;
@@ -2724,6 +2723,11 @@ select.form-input {
 .status-badge.pending {
   background: #fef3c7;
   color: #92400e;
+}
+
+.status-badge.reprogrammed {
+  background: #e9d5ff;
+  color: #4c1d95;
 }
 
 /* Responsive */
