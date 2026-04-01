@@ -3,7 +3,7 @@
 // Para dar/quitar acceso: editar ROLE_PERMISSIONS o ROLE_PAGES
 // ============================================================
 
-export type UserRole = 'administrador' | 'tecnico ev' | 'tecnico ep' | 'comunicacion' | 'director';
+export type UserRole = 'administrador' | 'tecnico ev' | 'tecnico ep' | 'comunicacion' | 'director' | 'planificador';
 
 export type Permission =
   // ── Home ────────────────────────────────────────────────
@@ -140,6 +140,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'reporte.exportar',
     'investigacion.documentos.gestionar',
   ],
+
+  planificador: [
+    'reporte.exportar',
+    'investigacion.documentos.gestionar',
+  ],
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -150,5 +155,6 @@ export const ROLE_PAGES: Record<UserRole, string[]> = {
   administrador: ['/', '/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
   'tecnico ev':  ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
   'tecnico ep':  ['/report', '/biblioteca', '/planificacion', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
-  comunicacion:  ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
+  comunicacion:   ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
+  planificador:   ['/biblioteca', '/planificacion'],
 };

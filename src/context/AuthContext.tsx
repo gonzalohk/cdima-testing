@@ -50,6 +50,12 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
     role: 'comunicacion',
     name: 'Ely Ibáñez',
   },
+  {
+    email: 'cdima.planificador@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_PLANIFICADOR as string,
+    role: 'planificador',
+    name: 'Uusuario Planificador',
+  },
 ];
 
 const STORAGE_KEY = 'cdima_auth_user';
