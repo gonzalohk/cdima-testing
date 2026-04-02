@@ -7,6 +7,7 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { asanaService } from '../services/asana.service';
+import { useAuth } from '../context/AuthContext';
 import { AsanaTask, AsanaProject, TaskStatistics } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import StatisticsSection from '../components/StatisticsSection';
@@ -71,11 +72,13 @@ interface CalendarEvent extends BigCalendarEvent {
     isSubtask: boolean;
     parentName?: string;
     notes?: string;
+    dueOn?: string;
   };
 }
 
 const PlanningPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<AsanaProject[]>([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [tasks, setTasks] = useState<AsanaTask[]>([]);
@@ -91,6 +94,8 @@ const PlanningPage: React.FC = () => {
   const [exportingSchedule, setExportingSchedule] = useState(false);
   const [exportingScheduleWord, setExportingScheduleWord] = useState(false);
   const [updatingTaskGid, setUpdatingTaskGid] = useState<string | null>(null);
+  const [fuenteModal, setFuenteModal] = useState<{ task: AsanaTask; nombre: string; url: string } | null>(null);
+  const [savingFuente, setSavingFuente] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -180,9 +185,10 @@ const PlanningPage: React.FC = () => {
           : moment(task.due_on).toDate();
         
         // Usar due_on como fecha fin, si no existe usar start_on
+        // Se suma 1 día porque react-big-calendar trata el end como exclusivo (RFC 5545)
         const endDate = task.due_on 
-          ? moment(task.due_on).toDate()
-          : moment(task.start_on).toDate();
+          ? moment(task.due_on).add(1, 'day').toDate()
+          : moment(task.start_on).add(1, 'day').toDate();
 
         // Agregar responsables al título si existe
         const responsables = getCustomFieldValue(task, 'Responsables de actividad');
@@ -206,7 +212,8 @@ const PlanningPage: React.FC = () => {
             area: getCustomFieldValue(task, 'Area'),
             isSubtask: !!task.parent,
             parentName: task.parent?.name,
-            notes: task.notes
+            notes: task.notes,
+            dueOn: task.due_on ?? task.start_on
           }
         };
       });
@@ -347,6 +354,20 @@ const PlanningPage: React.FC = () => {
     return { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #9ca3af' };
   };
 
+  const decodeLmod = (task: AsanaTask): string | null => {
+    const lmodField = task.custom_fields?.find(f => f.name === 'lmod');
+    const encoded = lmodField?.text_value;
+    if (!encoded) return null;
+    try {
+      const decoded = JSON.parse(decodeURIComponent(atob(encoded))) as { user: string; date: string };
+      const d = new Date(decoded.date);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${decoded.user} · ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return null;
+    }
+  };
+
   const handleEstadoChange = async (task: AsanaTask, newEstado: string) => {
     const estadoField = task.custom_fields?.find(f => f.name === 'Estado');
     if (!estadoField?.gid) return;
@@ -354,15 +375,51 @@ const PlanningPage: React.FC = () => {
     if (!enumOption?.gid) return;
     setUpdatingTaskGid(task.gid);
     try {
-      const updated = await asanaService.updateTask(task.gid, {
-        custom_fields: { [estadoField.gid]: enumOption.gid }
-      });
+      const customFields: Record<string, string> = { [estadoField.gid]: enumOption.gid };
+      const lmodField = task.custom_fields?.find(f => f.name === 'lmod');
+      if (lmodField?.gid && user) {
+        const payload = JSON.stringify({ user: user.name, date: new Date().toISOString() });
+        customFields[lmodField.gid] = btoa(encodeURIComponent(payload));
+      }
+      const updated = await asanaService.updateTask(task.gid, { custom_fields: customFields });
       setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
     } catch (err) {
       alert('Error al actualizar el estado de la actividad.');
       console.error(err);
     } finally {
       setUpdatingTaskGid(null);
+    }
+  };
+
+  const handleSaveFuente = async (nombre: string, url: string) => {
+    if (!fuenteModal) return;
+    const trimmedUrl = url.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      alert('El enlace debe comenzar con http:// o https://');
+      return;
+    }
+    const { task } = fuenteModal;
+    const fuenteField = task.custom_fields?.find(f => f.name === 'Fuente');
+    const fuenteUrlField = task.custom_fields?.find(f => f.name === 'Fuente URL');
+    if (!fuenteField?.gid || !fuenteUrlField?.gid) {
+      alert('No se encontraron los campos "Fuente" y "Fuente URL" en la tarea.');
+      return;
+    }
+    setSavingFuente(true);
+    try {
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: {
+          [fuenteField.gid]: nombre.trim(),
+          [fuenteUrlField.gid]: trimmedUrl,
+        },
+      });
+      setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
+      setFuenteModal(null);
+    } catch (err) {
+      alert('Error al guardar la fuente de verificación.');
+      console.error(err);
+    } finally {
+      setSavingFuente(false);
     }
   };
 
@@ -711,9 +768,10 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -764,29 +822,76 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const fuente = getCustomFieldValue(task, 'Fuente');
+                            const fuenteUrl = getCustomFieldValue(task, 'Fuente URL');
+                            const hasValidLink = fuenteUrl && fuenteUrl !== '-' && /^https?:\/\//i.test(fuenteUrl);
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasValidLink && (
+                                  <a
+                                    href={fuenteUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={fuente !== '-' ? fuente : fuenteUrl}
+                                    style={{
+                                      display: 'block', fontSize: '0.72rem', color: '#2563eb',
+                                      textDecoration: 'none', maxWidth: '100px',
+                                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                  style={{
+                                    background: 'none',
+                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                    cursor: 'pointer', fontSize: '0.68rem',
+                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                  }}
+                                >
+                                  {hasValidLink ? '✏️' : '+ fuente'}
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
                             const estadoActual = getCustomFieldValue(task, 'Estado');
                             const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            const lmodInfo = decodeLmod(task);
                             return (
-                              <select
-                                value={estadoActual}
-                                onChange={e => handleEstadoChange(task, e.target.value)}
-                                style={{
-                                  padding: '0.375rem 0.5rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.813rem',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  ...getEstadoSelectStyle(estadoActual, true),
-                                }}
-                              >
-                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
-                                {opciones.map(opt => (
-                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
-                                ))}
-                              </select>
+                              <>
+                                <select
+                                  value={estadoActual}
+                                  onChange={e => handleEstadoChange(task, e.target.value)}
+                                  style={{
+                                    padding: '0.375rem 0.5rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.813rem',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    ...getEstadoSelectStyle(estadoActual, true),
+                                  }}
+                                >
+                                  {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                  {opciones.map(opt => (
+                                    <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                  ))}
+                                </select>
+                                {lmodInfo && (
+                                  <div style={{ fontSize: '0.68rem', color: '#bbb', marginTop: '0.25rem', lineHeight: 1.3 }}>
+                                    {lmodInfo}
+                                  </div>
+                                )}
+                              </>
                             );
                           })()}
                         </td>
@@ -814,9 +919,10 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -867,30 +973,77 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const fuente = getCustomFieldValue(task, 'Fuente');
+                            const fuenteUrl = getCustomFieldValue(task, 'Fuente URL');
+                            const hasValidLink = fuenteUrl && fuenteUrl !== '-' && /^https?:\/\//i.test(fuenteUrl);
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasValidLink && (
+                                  <a
+                                    href={fuenteUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={fuente !== '-' ? fuente : fuenteUrl}
+                                    style={{
+                                      display: 'block', fontSize: '0.72rem', color: '#2563eb',
+                                      textDecoration: 'none', maxWidth: '100px',
+                                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                  style={{
+                                    background: 'none',
+                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                    cursor: 'pointer', fontSize: '0.68rem',
+                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                  }}
+                                >
+                                  {hasValidLink ? '✏️' : '+ fuente'}
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
                             const estadoActual = getCustomFieldValue(task, 'Estado');
                             const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            const lmodInfo = decodeLmod(task);
                             return (
-                              <select
-                                value={estadoActual}
-                                onChange={e => handleEstadoChange(task, e.target.value)}
-                                style={{
-                                  padding: '0.375rem 0.5rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.813rem',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  ...getEstadoSelectStyle(estadoActual),
-                                }}
-                              >
-                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
-                                {opciones.map(opt => (
-                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
-                                ))}
-                              </select>
+                              <>
+                                <select
+                                  value={estadoActual}
+                                  onChange={e => handleEstadoChange(task, e.target.value)}
+                                  style={{
+                                    padding: '0.375rem 0.5rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.813rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    ...getEstadoSelectStyle(estadoActual),
+                                  }}
+                                >
+                                  {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                  {opciones.map(opt => (
+                                    <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                  ))}
+                                </select>
+                                {lmodInfo && (
+                                  <div style={{ fontSize: '0.68rem', color: '#bbb', marginTop: '0.25rem', lineHeight: 1.3 }}>
+                                    {lmodInfo}
+                                  </div>
+                                )}
+                              </>
                             );
                           })()}
                         </td>
@@ -918,9 +1071,10 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '65%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '20%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '15%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -971,30 +1125,77 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const fuente = getCustomFieldValue(task, 'Fuente');
+                            const fuenteUrl = getCustomFieldValue(task, 'Fuente URL');
+                            const hasValidLink = fuenteUrl && fuenteUrl !== '-' && /^https?:\/\//i.test(fuenteUrl);
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasValidLink && (
+                                  <a
+                                    href={fuenteUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={fuente !== '-' ? fuente : fuenteUrl}
+                                    style={{
+                                      display: 'block', fontSize: '0.72rem', color: '#2563eb',
+                                      textDecoration: 'none', maxWidth: '100px',
+                                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                  style={{
+                                    background: 'none',
+                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                    cursor: 'pointer', fontSize: '0.68rem',
+                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                  }}
+                                >
+                                  {hasValidLink ? '✏️' : '+ fuente'}
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
                             const estadoActual = getCustomFieldValue(task, 'Estado');
                             const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+                            const lmodInfo = decodeLmod(task);
                             return (
-                              <select
-                                value={estadoActual}
-                                onChange={e => handleEstadoChange(task, e.target.value)}
-                                style={{
-                                  padding: '0.375rem 0.5rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.813rem',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                  ...getEstadoSelectStyle(estadoActual),
-                                }}
-                              >
-                                {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
-                                {opciones.map(opt => (
-                                  <option key={opt.gid} value={opt.name}>{opt.name}</option>
-                                ))}
-                              </select>
+                              <>
+                                <select
+                                  value={estadoActual}
+                                  onChange={e => handleEstadoChange(task, e.target.value)}
+                                  style={{
+                                    padding: '0.375rem 0.5rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.813rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    ...getEstadoSelectStyle(estadoActual),
+                                  }}
+                                >
+                                  {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+                                  {opciones.map(opt => (
+                                    <option key={opt.gid} value={opt.name}>{opt.name}</option>
+                                  ))}
+                                </select>
+                                {lmodInfo && (
+                                  <div style={{ fontSize: '0.68rem', color: '#bbb', marginTop: '0.25rem', lineHeight: 1.3 }}>
+                                    {lmodInfo}
+                                  </div>
+                                )}
+                              </>
                             );
                           })()}
                         </td>
@@ -1006,6 +1207,133 @@ const PlanningPage: React.FC = () => {
             )}
           </div>
         </>
+      )}
+
+      {/* Fuente de Verificación Modal */}
+      {fuenteModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001
+          }}
+          onClick={() => !savingFuente && setFuenteModal(null)}
+        >
+          <div
+            style={{
+              background: 'white', borderRadius: '16px', overflow: 'hidden',
+              width: '100%', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', margin: '1rem'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Franja Wiphala */}
+            <div style={{ display: 'flex', height: 5, overflow: 'hidden' }}>
+              {['#D32F2F','#E65100','#F9A825','#388E3C','#1565C0','#6A1B9A','#880E4F'].map((color, i) => (
+                <div key={i} style={{ flex: 1, backgroundColor: color }} />
+              ))}
+            </div>
+
+            {/* Cabecera */}
+            <div style={{
+              padding: '1.1rem 1.5rem 1rem',
+              background: 'linear-gradient(180deg, #f8faff 0%, #ffffff 100%)',
+              borderBottom: '1px solid #f0f0f0',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #388E3C 0%, #1B5E20 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)', fontSize: 20
+                }}>📂</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.97rem', color: '#1a2332', lineHeight: 1.3 }}>
+                    Fuente de verificación
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#6b7280', marginTop: '0.15rem', lineHeight: 1.4, maxWidth: '270px' }}>
+                    {fuenteModal.task.name}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setFuenteModal(null)}
+                disabled={savingFuente}
+                style={{
+                  flexShrink: 0, background: 'white', border: 'none', cursor: 'pointer',
+                  width: 28, height: 28, borderRadius: '50%', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 1px 6px rgba(0,0,0,0.18)', color: '#374151', fontSize: '0.75rem'
+                }}
+              >✕</button>
+            </div>
+
+            {/* Cuerpo */}
+            <div style={{ padding: '1.25rem 1.5rem 1.5rem' }}>
+              <div style={{ marginBottom: '0.875rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>
+                  Nombre del documento
+                </label>
+                <input
+                  type="text"
+                  value={fuenteModal.nombre}
+                  onChange={(e) => setFuenteModal(prev => prev ? { ...prev, nombre: e.target.value } : null)}
+                  placeholder="Ej: Informe mensual abril 2026"
+                  disabled={savingFuente}
+                  autoFocus
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px',
+                    border: '1px solid #d1d5db', fontSize: '0.875rem',
+                    boxSizing: 'border-box', outline: 'none',
+                    transition: 'border-color 0.15s'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>
+                  🔗 Enlace (URL)
+                </label>
+                <input
+                  type="url"
+                  value={fuenteModal.url}
+                  onChange={(e) => setFuenteModal(prev => prev ? { ...prev, url: e.target.value } : null)}
+                  placeholder="https://drive.google.com/..."
+                  disabled={savingFuente}
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px',
+                    border: '1px solid #d1d5db', fontSize: '0.875rem',
+                    boxSizing: 'border-box', outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setFuenteModal(null)}
+                  disabled={savingFuente}
+                  style={{
+                    padding: '0.5rem 1.1rem', borderRadius: '8px',
+                    border: '1px solid #d1d5db', background: 'white',
+                    cursor: 'pointer', fontSize: '0.875rem', color: '#374151', fontWeight: 500
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleSaveFuente(fuenteModal.nombre, fuenteModal.url)}
+                  disabled={savingFuente || !fuenteModal.url.trim()}
+                  style={{
+                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #388E3C 0%, #1B5E20 100%)',
+                    color: 'white', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600,
+                    boxShadow: '0 2px 6px rgba(56,142,60,0.35)',
+                    opacity: (!fuenteModal.url.trim() || savingFuente) ? 0.55 : 1,
+                  }}
+                >
+                  {savingFuente ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Task Detail Modal */}
@@ -1064,7 +1392,7 @@ const PlanningPage: React.FC = () => {
 
               <div className="task-detail-field">
                 <span className="field-label">📅 Fin:</span>
-                <span className="field-value">{moment(selectedEvent.end).format('DD/MM/YYYY')}</span>
+                <span className="field-value">{moment(selectedEvent.resource.dueOn || selectedEvent.end).format('DD/MM/YYYY')}</span>
               </div>
 
               {selectedEvent.resource.responsables && selectedEvent.resource.responsables !== '-' && (

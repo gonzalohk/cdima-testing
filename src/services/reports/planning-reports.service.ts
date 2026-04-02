@@ -158,10 +158,10 @@ export const exportCalendarViewToPDF = async (params: ExportCalendarParams): Pro
   const current = moment(startOfMonth);
 
   while (current.isSameOrBefore(endOfMonth)) {
-    // Obtener tareas para este día
+    // Obtener tareas para este día (incluyendo actividades con rango de fechas)
+    // event.end es exclusivo (+1 día), así que isBefore cubre hasta el due_on original
     const dayTasks = events.filter(event => {
-      const eventDay = moment(event.start);
-      return eventDay.isSame(current, 'day');
+      return current.isSameOrAfter(moment(event.start), 'day') && current.isBefore(moment(event.end), 'day');
     });
 
     if (dayTasks.length > 0) {
