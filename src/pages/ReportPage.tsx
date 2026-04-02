@@ -41,6 +41,7 @@ const ReportPage: React.FC = () => {
     setLugarFilter,
     setResponsableFilter,
     setSubtasks,
+    setSelectedTask,
     loadTaskDetails,
   } = useReportPage();
 
@@ -153,6 +154,7 @@ const ReportPage: React.FC = () => {
             onExportSubtasksPDF={handleExportPDF}
             onExportSubtasksWord={handleExportWord}
             onTaskUpdate={(updated) => setSubtasks(prev => prev.map(t => t.gid === updated.gid ? updated : t))}
+            onParentTaskUpdate={(updated) => setSelectedTask(updated)}
             // Beneficiaries
             subtasks={subtasks}
             mainTask={selectedTask}
@@ -199,6 +201,7 @@ const ReportPage: React.FC = () => {
             onExportSubtasksPDF={handleExportPDF}
             onExportSubtasksWord={handleExportWord}
             onTaskUpdate={(updated) => setSubtasks(prev => prev.map(t => t.gid === updated.gid ? updated : t))}
+            onParentTaskUpdate={(updated) => setSelectedTask(updated)}
             // Beneficiaries
             subtasks={filteredSubtasks}
             projectName={projects.find(p => p.gid === selectedProject)?.name}

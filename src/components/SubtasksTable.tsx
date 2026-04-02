@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Input, InputNumber, MenuProps, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, EyeOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Descriptions, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { EyeOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
+import { useAuth } from '../context/AuthContext';
 
 interface SubtasksTableProps {
   filteredSubtasks: AsanaTask[];
@@ -19,6 +20,9 @@ interface SubtasksTableProps {
   onExportPDF: () => void;
   onExportWord?: () => void;
   onTaskUpdate?: (updatedTask: AsanaTask) => void;
+  allSubtasks?: AsanaTask[];
+  parentTask?: AsanaTask;
+  onParentTaskUpdate?: (updatedTask: AsanaTask) => void;
 }
 
 const SubtasksTable: React.FC<SubtasksTableProps> = ({
@@ -36,7 +40,11 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   onExportPDF,
   onExportWord,
   onTaskUpdate,
+  allSubtasks,
+  parentTask,
+  onParentTaskUpdate,
 }) => {
+  const { user } = useAuth();
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [detailModal, setDetailModal] = useState<AsanaTask | null>(null);
   const [benefModal, setBenefModal] = useState<AsanaTask | null>(null);
@@ -47,22 +55,81 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   const getFieldGid = (task: AsanaTask, fieldName: string): string | undefined =>
     task.custom_fields?.find(f => f.name === fieldName)?.gid;
 
-  const getEnumOptionGid = (task: AsanaTask, fieldName: string, optionName: string): string | undefined =>
-    task.custom_fields?.find(f => f.name === fieldName)?.enum_options?.find(o => o.name.toLowerCase() === optionName.toLowerCase())?.gid;
-
   const getNumericValue = (task: AsanaTask, fieldName: string): number =>
     task.custom_fields?.find(f => f.name === fieldName)?.number_value ?? 0;
 
-  const handleStatusChange = async (task: AsanaTask, newStatus: 'Ejecutado' | 'En Proceso') => {
-    const fieldGid = getFieldGid(task, 'Estado');
-    const optionGid = getEnumOptionGid(task, 'Estado', newStatus);
-    if (!fieldGid || !optionGid) return;
+  const getEstadoSelectStyle = (estado: string): React.CSSProperties => {
+    if (estado === 'EJECUTADO') return { backgroundColor: '#c8f5c8', color: '#166534', border: '1px solid #16a34a', fontWeight: 700 };
+    if (estado === 'EN PROGRESO') return { backgroundColor: '#bfdbfe', color: '#1e3a8a', border: '1px solid #2563eb', fontWeight: 700 };
+    return { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #9ca3af' };
+  };
+
+  const decodeLmod = (task: AsanaTask): string | null => {
+    const lmodField = task.custom_fields?.find(f => f.name === 'lmod');
+    const encoded = lmodField?.text_value;
+    if (!encoded) return null;
+    try {
+      const decoded = JSON.parse(decodeURIComponent(atob(encoded))) as { user: string; date: string };
+      const d = new Date(decoded.date);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${decoded.user} · ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleStatusChange = async (task: AsanaTask, newStatus: string) => {
+    const estadoField = task.custom_fields?.find(f => f.name === 'Estado');
+    if (!estadoField?.gid) return;
+    const enumOption = estadoField.enum_options?.find(o => o.name === newStatus);
+    if (!enumOption?.gid) return;
     setUpdatingStatus(task.gid);
     try {
-      const updated = await asanaService.updateTask(task.gid, {
-        custom_fields: { [fieldGid]: optionGid },
-      });
+      const customFields: Record<string, string> = { [estadoField.gid]: enumOption.gid };
+      const lmodField = task.custom_fields?.find(f => f.name === 'lmod');
+      if (lmodField?.gid && user) {
+        const payload = JSON.stringify({ user: user.name, date: new Date().toISOString() });
+        customFields[lmodField.gid] = btoa(encodeURIComponent(payload));
+      }
+      const updated = await asanaService.updateTask(task.gid, { custom_fields: customFields });
       onTaskUpdate?.(updated);
+
+      // Sync parent task status
+      if (parentTask) {
+        const updatedAll = (allSubtasks ?? []).map(t => t.gid === task.gid ? updated : t);
+        const realSubtasks = updatedAll.filter(t => {
+          const ts = t.custom_fields?.find(f => f.name === 'Tipo de Solicitud');
+          const tsVal = ts?.display_value || ts?.enum_value?.name || (ts?.text_value ?? '-');
+          return (tsVal === '-' || !tsVal) && !t.name.startsWith('FUENTES DE VERIFICACION');
+        });
+        const parentEstadoField = parentTask.custom_fields?.find(f => f.name === 'Estado');
+        if (parentEstadoField?.gid) {
+          const allExecuted = realSubtasks.length > 0 && realSubtasks.every(t => {
+            const ef = t.custom_fields?.find(f => f.name === 'Estado');
+            const val = ef?.display_value || ef?.enum_value?.name || '';
+            return val === 'EJECUTADO';
+          });
+          let newParentStatus: string | null = null;
+          if (allExecuted) newParentStatus = 'EJECUTADO';
+          else if (newStatus === 'EN PROCESO') newParentStatus = 'EN PROCESO';
+          if (newParentStatus) {
+            const parentEnumOption = parentEstadoField.enum_options?.find(o => o.name === newParentStatus);
+            if (parentEnumOption?.gid) {
+              const parentCF: Record<string, string> = { [parentEstadoField.gid]: parentEnumOption.gid };
+              const parentLmodField = parentTask.custom_fields?.find(f => f.name === 'lmod');
+              if (parentLmodField?.gid && user) {
+                const payload = JSON.stringify({ user: user.name, date: new Date().toISOString() });
+                parentCF[parentLmodField.gid] = btoa(encodeURIComponent(payload));
+              }
+              const updatedParent = await asanaService.updateTask(parentTask.gid, { custom_fields: parentCF });
+              onParentTaskUpdate?.(updatedParent);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      alert('Error al actualizar el estado.');
+      console.error(err);
     } finally {
       setUpdatingStatus(null);
     }
@@ -159,7 +226,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
       title: 'Nombre',
       dataIndex: 'nombre',
       key: 'nombre',
-      width: 220,
+      width: 300,
       render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
     },
     {
@@ -176,45 +243,19 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
       render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
     },
     {
-      title: 'Estado',
-      dataIndex: 'estado',
-      key: 'estado',
-      width: 120,
-      render: (value: string) => {
-        const normalized = value?.toUpperCase?.() || '';
-        if (normalized === 'EJECUTADO') return <Tag color="success">Completada</Tag>;
-        if (normalized === 'EN PROCESO') return <Tag color="processing">En Proceso</Tag>;
-        return <Tag color="default">Pendiente</Tag>;
-      },
-    },
-    {
       title: 'Responsable',
       dataIndex: 'responsable',
       key: 'responsable',
-      width: 180,
+      width: 130,
       render: (value: string) => <Typography.Text>{value || '-'}</Typography.Text>,
     },
     {
       title: 'Acciones',
       key: 'acciones',
-      width: 120,
+      width: 80,
       fixed: 'right' as const,
       render: (_: unknown, record: { task: AsanaTask }) => {
         const task = record.task;
-        const statusMenuItems: MenuProps['items'] = [
-          {
-            key: 'ejecutado',
-            icon: <CheckCircleOutlined style={{ color: '#16a34a' }} />,
-            label: 'Ejecutado',
-            onClick: () => handleStatusChange(task, 'Ejecutado'),
-          },
-          {
-            key: 'en-proceso',
-            icon: <ClockCircleOutlined style={{ color: '#0ea5e9' }} />,
-            label: 'En Proceso',
-            onClick: () => handleStatusChange(task, 'En Proceso'),
-          },
-        ];
         return (
           <Space size={4}>
             <Tooltip title="Ver detalles">
@@ -225,16 +266,6 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
                 style={{ fontSize: 13 }}
               />
             </Tooltip>
-            <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="bottomRight">
-              <Tooltip title="Cambiar estado">
-                <Button
-                  size="small"
-                  icon={<ClockCircleOutlined />}
-                  loading={updatingStatus === task.gid}
-                  style={{ fontSize: 13 }}
-                />
-              </Tooltip>
-            </Dropdown>
             <Tooltip title="Agregar beneficiarios">
               <Button
                 size="small"
@@ -244,6 +275,48 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
               />
             </Tooltip>
           </Space>
+        );
+      },
+    },
+    {
+      title: 'Estado',
+      dataIndex: 'estado',
+      key: 'estado',
+      width: 150,
+      render: (_: string, record: { task: AsanaTask; estado: string }) => {
+        const task = record.task;
+        const estadoActual = record.estado;
+        const opciones = task.custom_fields?.find(f => f.name === 'Estado')?.enum_options ?? [];
+        const lmodInfo = decodeLmod(task);
+        if (updatingStatus === task.gid) {
+          return <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>;
+        }
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+            <select
+              value={estadoActual}
+              onChange={e => handleStatusChange(task, e.target.value)}
+              style={{
+                padding: '0.375rem 0.5rem',
+                borderRadius: '6px',
+                fontSize: '0.813rem',
+                cursor: 'pointer',
+                outline: 'none',
+                width: '100%',
+                ...getEstadoSelectStyle(estadoActual),
+              }}
+            >
+              {opciones.length === 0 && <option value={estadoActual}>{estadoActual}</option>}
+              {opciones.map(opt => (
+                <option key={opt.gid} value={opt.name}>{opt.name}</option>
+              ))}
+            </select>
+            {lmodInfo && (
+              <div style={{ fontSize: '0.65rem', color: '#bbb', lineHeight: 1.3, textAlign: 'center' }}>
+                {lmodInfo}
+              </div>
+            )}
+          </div>
         );
       },
     },

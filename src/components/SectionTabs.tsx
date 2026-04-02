@@ -21,6 +21,7 @@ interface SectionTabsProps {
   onExportSubtasksPDF: () => void;
   onExportSubtasksWord?: () => void;
   onTaskUpdate?: (updatedTask: AsanaTask) => void;
+  onParentTaskUpdate?: (updatedTask: AsanaTask) => void;
   // Beneficiaries
   subtasks: AsanaTask[];
   mainTask?: AsanaTask;
@@ -55,6 +56,7 @@ const SectionTabs: React.FC<SectionTabsProps> = ({
   onExportSubtasksPDF,
   onExportSubtasksWord,
   onTaskUpdate,
+  onParentTaskUpdate,
   subtasks,
   mainTask,
   projectName,
@@ -88,6 +90,9 @@ const SectionTabs: React.FC<SectionTabsProps> = ({
           onExportPDF={onExportSubtasksPDF}
           onExportWord={onExportSubtasksWord}
           onTaskUpdate={onTaskUpdate}
+          allSubtasks={subtasks}
+          parentTask={mainTask}
+          onParentTaskUpdate={onParentTaskUpdate}
         />
       ),
     },

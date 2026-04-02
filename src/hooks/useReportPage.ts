@@ -478,6 +478,7 @@ export const useReportPage = () => {
     setLugarFilter,
     setResponsableFilter,
     setSubtasks,
+    setSelectedTask,
     loadTaskDetails,
   };
 };

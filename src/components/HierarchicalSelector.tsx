@@ -33,8 +33,14 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
   onMainTaskChange,
 }) => {
   const projectOptions = projects.map((project) => ({ label: project.name, value: project.gid }));
-  const sectionOptions = sections.map((section) => ({ label: section.name, value: section.gid }));
-  const taskOptions = filteredMainTasks.map((task) => ({ label: task.name, value: task.gid }));
+  const sectionOptions = [
+    { label: 'Todos', value: '' },
+    ...sections.map((section) => ({ label: section.name, value: section.gid })),
+  ];
+  const taskOptions = [
+    { label: 'Todos', value: '' },
+    ...filteredMainTasks.map((task) => ({ label: task.name, value: task.gid })),
+  ];
 
   const step2Active = !!selectedProject;
   const step3Active = !!selectedProject;
@@ -131,21 +137,20 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
             <RightOutlined style={{ color: step2Active ? CDIMA_BLUE : '#d0d0d0', fontSize: 13, transition: 'color 0.3s' }} />
           </Col>
 
-          {/* ── PASO 2: AÑO ── */}
+          {/* ── PASO 2: PERIODO ── */}
           <Col flex="16%" style={disabledColStyle(step2Active)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               {stepBadge(2, step2Active)}
               <CalendarOutlined style={{ color: step2Active ? CDIMA_BLUE : '#bdbdbd', fontSize: 13, transition: 'color 0.3s' }} />
-              {stepLabel(`Año${step2Active && sections.length > 0 ? ` (${sections.length})` : ''}`, step2Active)}
+              {stepLabel(`Periodo${step2Active && sections.length > 0 ? ` (${sections.length})` : ''}`, step2Active)}
             </div>
             <Select
               size="large"
               value={selectedSection || undefined}
-              onChange={(value) => onSectionChange(value || '')}
+              onChange={(value) => onSectionChange(value ?? '')}
               options={sectionOptions}
               placeholder={getSectionPlaceholder()}
               disabled={!selectedProject || loading}
-              allowClear
               showSearch
               optionFilterProp="label"
               style={{ width: '100%' }}
@@ -172,10 +177,9 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
             <Select
               size="large"
               value={selectedMainTask || undefined}
-              onChange={(value) => onMainTaskChange(value || '')}
+              onChange={(value) => onMainTaskChange(value ?? '')}
               placeholder={getTaskPlaceholder()}
               disabled={!selectedProject || loading}
-              allowClear
               showSearch
               optionFilterProp="label"
               style={{ width: '100%' }}

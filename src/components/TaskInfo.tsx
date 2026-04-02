@@ -9,7 +9,7 @@ import { exportFichaActividadToPDF, exportFichaActividadToWord } from '../servic
 import MaterialRequestModal from './MaterialRequestModal';
 import FundsRequestModal from './FundsRequestModal';
 import MaterialReturnModal from './MaterialReturnModal';
-import VerificationSourcesModal, { FuentesJsonData } from './VerificationSourcesModal';
+import VerificationSourcesModal, { FuentesJsonData, FuenteEntry } from './VerificationSourcesModal';
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 import { HtmlModalHeader } from './ModalShared';
@@ -292,6 +292,23 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   };
 
   // Manejar eliminación de solicitudes
+  const handleDeleteFuente = async (entry: FuenteEntry) => {
+    if (!verificationSubtask || !fuentesData) return;
+    try {
+      const updatedData: FuentesJsonData = {
+        ...fuentesData,
+        entradas: fuentesData.entradas.filter(e => e.id !== entry.id),
+      };
+      await asanaService.updateTask(verificationSubtask.gid, {
+        notes: JSON.stringify(updatedData, null, 2),
+      });
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al eliminar la fuente de verificación.');
+      console.error(err);
+    }
+  };
+
   const handleDeleteRequest = async (solicitud: AsanaTask) => {
     const confirmed = window.confirm(`¿Eliminar la solicitud "${solicitud.name}"? Esta acción no se puede deshacer.`);
     if (!confirmed) return;
@@ -828,7 +845,19 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                                     className="task-ficha-pro__fuente-link"
                                   >
                                     Ver
-                                  </a>
+                                  </a>,
+                                  <Popconfirm
+                                    key="del"
+                                    title="¿Eliminar esta fuente?"
+                                    onConfirm={() => handleDeleteFuente(entry)}
+                                    okText="Sí"
+                                    cancelText="No"
+                                    okButtonProps={{ danger: true }}
+                                  >
+                                    <Tooltip title="Eliminar fuente">
+                                      <Button size="small" danger icon={<DeleteOutlined />} />
+                                    </Tooltip>
+                                  </Popconfirm>
                                 ]}
                               >
                                 <List.Item.Meta
