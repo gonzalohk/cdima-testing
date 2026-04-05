@@ -45,7 +45,7 @@ const BeneficiariesSummary: React.FC<BeneficiariesSummaryProps> = ({ subtasks, m
   const tasksWithReplicantes: AsanaTask[] = [];
 
   subtasks
-    .filter(task => !task.name.startsWith('FUENTES DE VERIFICACION'))
+    .filter(task => !task.name.startsWith('FUENTES DE VERIFICACION') && !task.name.startsWith('Resumen:'))
     .forEach(task => {
     const mujeres = getCustomFieldValue(task, 'Mujeres ');
     const hombres = getCustomFieldValue(task, 'Hombres');

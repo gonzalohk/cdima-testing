@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Button, Card, Checkbox, Descriptions, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, Checkbox, Empty, Form, Input, InputNumber, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined, FileWordOutlined, PrinterOutlined, UserAddOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { useAuth } from '../context/AuthContext';
+import { HtmlModalHeader } from './ModalShared';
 
 interface SubtasksTableProps {
   filteredSubtasks: AsanaTask[];
@@ -64,7 +65,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     return { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #9ca3af' };
   };
 
-  const decodeLmod = (task: AsanaTask): string | null => {
+  const decodeLmod = (task: AsanaTask): { user: string; datetime: string } | null => {
     const lmodField = task.custom_fields?.find(f => f.name === 'lmod');
     const encoded = lmodField?.text_value;
     if (!encoded) return null;
@@ -72,7 +73,10 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
       const decoded = JSON.parse(decodeURIComponent(atob(encoded))) as { user: string; date: string };
       const d = new Date(decoded.date);
       const pad = (n: number) => String(n).padStart(2, '0');
-      return `${decoded.user} · ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      return {
+        user: decoded.user,
+        datetime: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      };
     } catch {
       return null;
     }
@@ -100,7 +104,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
         const realSubtasks = updatedAll.filter(t => {
           const ts = t.custom_fields?.find(f => f.name === 'Tipo de Solicitud');
           const tsVal = ts?.display_value || ts?.enum_value?.name || (ts?.text_value ?? '-');
-          return (tsVal === '-' || !tsVal) && !t.name.startsWith('FUENTES DE VERIFICACION');
+          return (tsVal === '-' || !tsVal) && !t.name.startsWith('FUENTES DE VERIFICACION') && !t.name.startsWith('Resumen:');
         });
         const parentEstadoField = parentTask.custom_fields?.find(f => f.name === 'Estado');
         if (parentEstadoField?.gid) {
@@ -206,7 +210,7 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
   const subtasksWithoutRequests = filteredSubtasks.filter(task => {
     const tipoSolicitud = getCustomFieldValue(task, 'Tipo de Solicitud');
     const isFuentesVerificacion = task.name.startsWith('FUENTES DE VERIFICACION');
-    return tipoSolicitud === '-' && !isFuentesVerificacion;
+    return tipoSolicitud === '-' && !isFuentesVerificacion && !task.name.startsWith('Resumen:');
   });
 
   const rows = subtasksWithoutRequests.map((task) => ({
@@ -312,8 +316,9 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
               ))}
             </select>
             {lmodInfo && (
-              <div style={{ fontSize: '0.65rem', color: '#bbb', lineHeight: 1.3, textAlign: 'center' }}>
-                {lmodInfo}
+              <div style={{ fontSize: '0.65rem', color: '#bbb', lineHeight: 1.4, textAlign: 'center' }}>
+                <div>{lmodInfo.user}</div>
+                <div>{lmodInfo.datetime}</div>
               </div>
             )}
           </div>
@@ -407,161 +412,183 @@ const SubtasksTable: React.FC<SubtasksTableProps> = ({
     </Card>
 
       {/* Modal: Ver Detalles */}
-      <Modal
-        title={
-          <Space>
-            <EyeOutlined style={{ color: '#1677ff' }} />
-            <span>Detalle de Sub Actividad</span>
-          </Space>
-        }
-        open={!!detailModal}
-        onCancel={() => setDetailModal(null)}
-        footer={<Button onClick={() => setDetailModal(null)}>Cerrar</Button>}
-        width={680}
-        destroyOnClose
-      >
-        {detailModal && (() => {
-          const estado = getCustomFieldValue(detailModal, 'Estado');
-          const estadoUpper = estado.toUpperCase();
-          const estadoTag = estadoUpper === 'EJECUTADO'
-            ? <Tag color="success">Ejecutado</Tag>
-            : estadoUpper === 'EN PROCESO'
-            ? <Tag color="processing">En Proceso</Tag>
-            : <Tag color="default">Pendiente</Tag>;
+      {detailModal && (
+        <div className="modal-overlay" onClick={() => setDetailModal(null)} style={{ zIndex: 1001 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <HtmlModalHeader icon="🔍" title="Detalle de Sub Actividad" subtitle={detailModal.name} onClose={() => setDetailModal(null)} />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {(() => {
+                const estado = getCustomFieldValue(detailModal, 'Estado');
+                const estadoUpper = estado.toUpperCase();
+                const estadoTag = estadoUpper === 'EJECUTADO'
+                  ? <Tag color="success">Ejecutado</Tag>
+                  : estadoUpper === 'EN PROCESO'
+                  ? <Tag color="processing">En Proceso</Tag>
+                  : <Tag color="default">Pendiente</Tag>;
 
-          const hombres    = getCustomFieldValue(detailModal, 'Hombres');
-          const mujeres    = getCustomFieldValue(detailModal, 'Mujeres ');
-          const replicantes = getCustomFieldValue(detailModal, 'Replicantes');
-          const poblacion  = getCustomFieldValue(detailModal, 'Población Meta');
-          const lugar      = getCustomFieldValue(detailModal, 'Lugar');
-          const responsable = getCustomFieldValue(detailModal, 'Responsable de Actividad');
-          const responsables = getCustomFieldValue(detailModal, 'Responsables de actividad');
-          const tipo       = getCustomFieldValue(detailModal, 'Tipo');
-          const area       = getCustomFieldValue(detailModal, 'Area');
+                const hombres     = getCustomFieldValue(detailModal, 'Hombres');
+                const mujeres     = getCustomFieldValue(detailModal, 'Mujeres ');
+                const replicantes = getCustomFieldValue(detailModal, 'Replicantes');
+                const poblacion   = getCustomFieldValue(detailModal, 'Población Meta');
+                const lugar       = getCustomFieldValue(detailModal, 'Lugar');
+                const responsable = getCustomFieldValue(detailModal, 'Responsable de Actividad');
+                const responsables = getCustomFieldValue(detailModal, 'Responsables de actividad');
+                const tipo        = getCustomFieldValue(detailModal, 'Tipo');
+                const area        = getCustomFieldValue(detailModal, 'Area');
 
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4, overflow: 'hidden', wordBreak: 'break-word' }}>
-              {/* Bloque principal */}
-              <Descriptions bordered size="small" column={1} style={{ tableLayout: 'fixed', width: '100%' }}>
-                <Descriptions.Item label="Nombre" labelStyle={{ width: 140 }}>
-                  <Typography.Text strong>{detailModal.name}</Typography.Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="Estado">{estadoTag}</Descriptions.Item>
-                {detailModal.start_on && (
-                  <Descriptions.Item label="Fecha de inicio">{detailModal.start_on}</Descriptions.Item>
-                )}
-                {detailModal.due_on && (
-                  <Descriptions.Item label="Fecha de finalización">{detailModal.due_on}</Descriptions.Item>
-                )}
-                {lugar !== '-' && (
-                  <Descriptions.Item label="Lugar">{lugar}</Descriptions.Item>
-                )}
-                {area !== '-' && (
-                  <Descriptions.Item label="Área">{area}</Descriptions.Item>
-                )}
-                {tipo !== '-' && (
-                  <Descriptions.Item label="Tipo">{tipo}</Descriptions.Item>
-                )}
-                {(responsable !== '-' || responsables !== '-') && (
-                  <Descriptions.Item label="Responsable">
-                    {responsable !== '-' ? responsable : responsables}
-                  </Descriptions.Item>
-                )}
-              </Descriptions>
+                return (
+                  <>
+                    {/* Info general */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado</span>
+                        <div style={{ marginTop: '0.15rem' }}>{estadoTag}</div>
+                      </div>
+                      {detailModal.start_on && (
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha de inicio</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{detailModal.start_on}</p>
+                        </div>
+                      )}
+                      {detailModal.due_on && (
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha de finalización</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{detailModal.due_on}</p>
+                        </div>
+                      )}
+                      {lugar !== '-' && (
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugar</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{lugar}</p>
+                        </div>
+                      )}
+                      {area !== '-' && (
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Área</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{area}</p>
+                        </div>
+                      )}
+                      {tipo !== '-' && (
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tipo</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{tipo}</p>
+                        </div>
+                      )}
+                      {(responsable !== '-' || responsables !== '-') && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Responsable</span>
+                          <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#333' }}>{responsable !== '-' ? responsable : responsables}</p>
+                        </div>
+                      )}
+                    </div>
 
-              {/* Beneficiarios */}
-              {(poblacion !== '-' || hombres !== '-' || mujeres !== '-' || replicantes !== '-') && (
-                <div>
-                  <Typography.Text strong style={{ fontSize: 13, color: '#555', display: 'block', marginBottom: 8 }}>
-                    Beneficiarios
-                  </Typography.Text>
-                  <Descriptions bordered size="small" column={2} style={{ tableLayout: 'fixed', width: '100%' }}>
-                    {poblacion !== '-' && (
-                      <Descriptions.Item label="Población Meta" span={2}>
-                        <Tag color="blue">{poblacion}</Tag>
-                      </Descriptions.Item>
+                    {/* Beneficiarios */}
+                    {(poblacion !== '-' || hombres !== '-' || mujeres !== '-' || replicantes !== '-') && (
+                      <div>
+                        <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Beneficiarios</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.6rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                          {poblacion !== '-' && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Población Meta</span>
+                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#1d4ed8', fontWeight: 600 }}>{poblacion}</p>
+                            </div>
+                          )}
+                          {hombres !== '-' && (
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Varones</span>
+                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#1e40af', fontWeight: 600 }}>{hombres}</p>
+                            </div>
+                          )}
+                          {mujeres !== '-' && (
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mujeres</span>
+                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#be185d', fontWeight: 600 }}>{mujeres}</p>
+                            </div>
+                          )}
+                          {replicantes !== '-' && replicantes !== '0' && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <span style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Replicantes</span>
+                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.875rem', color: '#6b21a8', fontWeight: 600 }}>{replicantes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
-                    {hombres !== '-' && (
-                      <Descriptions.Item label="Varones">
-                        <Tag color="geekblue">{hombres}</Tag>
-                      </Descriptions.Item>
-                    )}
-                    {mujeres !== '-' && (
-                      <Descriptions.Item label="Mujeres">
-                        <Tag color="magenta">{mujeres}</Tag>
-                      </Descriptions.Item>
-                    )}
-                    {replicantes !== '-' && replicantes !== '0' && (
-                      <Descriptions.Item label="Replicantes" span={2}>
-                        <Tag color="purple">{replicantes}</Tag>
-                      </Descriptions.Item>
-                    )}
-                  </Descriptions>
-                </div>
-              )}
 
-              {/* Descripción / notas */}
-              {detailModal.notes && detailModal.notes.trim() && (
-                <div>
-                  <Typography.Text strong style={{ fontSize: 13, color: '#555', display: 'block', marginBottom: 6 }}>
-                    Descripción
-                  </Typography.Text>
-                  <div style={{
-                    background: '#fafafa', border: '1px solid #f0f0f0',
-                    borderRadius: 6, padding: '10px 14px',
-                  }}>
-                    <Typography.Text style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
-                      {detailModal.notes}
-                    </Typography.Text>
-                  </div>
-                </div>
-              )}
+                    {/* Notas */}
+                    {detailModal.notes && detailModal.notes.trim() && (
+                      <div>
+                        <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Descripción</p>
+                        <div style={{ background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: 8, padding: '0.75rem 1rem' }}>
+                          <Typography.Text style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{detailModal.notes}</Typography.Text>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          );
-        })()}
-      </Modal>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa' }}>
+              <button type="button" className="button-primary" onClick={() => setDetailModal(null)} style={{ width: '100%' }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Agregar Beneficiarios */}
-      <Modal
-        title="Agregar Beneficiarios"
-        open={!!benefModal}
-        onOk={handleBeneficiarioSubmit}
-        onCancel={() => { setBenefModal(null); setHasReplicantes(false); }}
-        confirmLoading={saving}
-        okText="Guardar"
-        cancelText="Cancelar"
-        destroyOnClose
-      >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-          {benefModal?.name}
-        </Typography.Text>
-        <Form form={benefForm} layout="vertical">
-          <Form.Item label="Población Meta" name="poblacionMeta" rules={[{ required: true, message: 'Requerido' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="Varones" name="hombres" rules={[{ required: true, message: 'Requerido' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="Mujeres" name="mujeres" rules={[{ required: true, message: 'Requerido' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="tieneReplicantes" valuePropName="checked" style={{ marginBottom: hasReplicantes ? 0 : undefined }}>
-            <Checkbox
-              onChange={(e) => {
-                setHasReplicantes(e.target.checked);
-                if (!e.target.checked) benefForm.setFieldValue('replicantes', 0);
-              }}
-            >
-              Tiene replicantes
-            </Checkbox>
-          </Form.Item>
-          {hasReplicantes && (
-            <Form.Item label="Replicantes" name="replicantes" rules={[{ required: true, message: 'Requerido' }]}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-          )}
-        </Form>
-      </Modal>
+      {benefModal && (
+        <div className="modal-overlay" onClick={() => { setBenefModal(null); setHasReplicantes(false); }} style={{ zIndex: 1001 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: 0 }}>
+            <HtmlModalHeader icon="👥" title="Agregar Beneficiarios" subtitle={benefModal.name} onClose={() => { setBenefModal(null); setHasReplicantes(false); }} />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+              <Form form={benefForm} layout="vertical">
+                <Form.Item label={<strong>Población Meta</strong>} name="poblacionMeta" rules={[{ required: true, message: 'Requerido' }]}>
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item label={<strong>Varones</strong>} name="hombres" rules={[{ required: true, message: 'Requerido' }]}>
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item label={<strong>Mujeres</strong>} name="mujeres" rules={[{ required: true, message: 'Requerido' }]}>
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="tieneReplicantes" valuePropName="checked" style={{ marginBottom: hasReplicantes ? 0 : undefined }}>
+                  <Checkbox
+                    onChange={(e) => {
+                      setHasReplicantes(e.target.checked);
+                      if (!e.target.checked) benefForm.setFieldValue('replicantes', 0);
+                    }}
+                  >
+                    Tiene replicantes
+                  </Checkbox>
+                </Form.Item>
+                {hasReplicantes && (
+                  <Form.Item label={<strong>Replicantes</strong>} name="replicantes" rules={[{ required: true, message: 'Requerido' }]}>
+                    <InputNumber min={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                )}
+              </Form>
+            </div>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                style={{ border: '1px solid #d9d9d9', background: '#fff', padding: '0.5rem 1.25rem', borderRadius: 6, cursor: 'pointer' }}
+                onClick={() => { setBenefModal(null); setHasReplicantes(false); }}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleBeneficiarioSubmit}
+                disabled={saving}
+              >
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

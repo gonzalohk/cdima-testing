@@ -392,7 +392,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     let totalReplicantes = 0;
 
     subtasks
-      .filter(subtask => !subtask.name.startsWith('FUENTES DE VERIFICACION'))
+      .filter(subtask => !subtask.name.startsWith('FUENTES DE VERIFICACION') && !subtask.name.startsWith('Resumen:'))
       .forEach(subtask => {
         const mujeres = getCustomFieldValue(subtask, 'Mujeres ');
         const hombres = getCustomFieldValue(subtask, 'Hombres');
@@ -447,7 +447,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       !t.name.startsWith('SFON') &&
       !t.name.startsWith('SMAT') &&
       !t.name.startsWith('DMAT') &&
-      !t.name.startsWith('CPER')
+      !t.name.startsWith('CPER') &&
+      !t.name.startsWith('Resumen:')
     );
     const total = relevantSubtasks.length;
     const completed = relevantSubtasks.filter(t => t.completed).length;

@@ -16,6 +16,7 @@ import {
   CheckCircleOutlined,
   CommentOutlined,
   EyeOutlined,
+  PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
@@ -195,6 +196,21 @@ interface ProjectStats {
   pendingRequests: number;
 }
 
+interface ContratacionRow {
+  key: string;
+  task: AsanaTask;
+  projectName: string;
+  parentTaskName: string;
+}
+
+interface AtrasadaRow {
+  key: string;
+  task: AsanaTask;
+  projectName: string;
+  daysLate: number;
+  subActividades: AsanaTask[];
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 const PROJECT_PALETTE = [
   '#3b82f6','#10b981','#f59e0b','#6366f1','#ef4444',
@@ -253,6 +269,16 @@ const HomePage: React.FC = () => {
   const [observeText, setObserveText] = useState('');
   const [observeSaving, setObserveSaving] = useState(false);
 
+  const [createProjectModal, setCreateProjectModal] = useState(false);
+  const [createProjectName, setCreateProjectName] = useState('');
+  const [createProjectDesc, setCreateProjectDesc] = useState('');
+  const [createProjectArea, setCreateProjectArea] = useState('');
+  const [createProjectSaving, setCreateProjectSaving] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState('');
+  const [createProjectStep, setCreateProjectStep] = useState('');
+  const [contrataciones, setContrataciones] = useState<ContratacionRow[]>([]);
+  const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
+
   const loadSolicitudes = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -268,6 +294,8 @@ const HomePage: React.FC = () => {
       );
 
       const allRows: SolicitudRow[] = [];
+      const allContrataciones: ContratacionRow[] = [];
+      const allAtrasadas: AtrasadaRow[] = [];
       const allStats: ProjectStats[] = [];
       const today = new Date().toISOString().slice(0, 10);
       const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
@@ -278,11 +306,37 @@ const HomePage: React.FC = () => {
         const chunkResults = await Promise.all(
           chunk.map(async project => {
             const rows: SolicitudRow[] = [];
+            const contRows: ContratacionRow[] = [];
+            const atrasadasRows: AtrasadaRow[] = [];
             let pendingReqs = 0;
             try {
               const tasks = await asanaService.getProjectTasks(project.gid);
-              const topLevel = tasks.filter(t => !t.parent);
+              const topLevel = tasks.filter(t => !t.parent && !t.name.startsWith('Resumen:'));
               const parentTasks = topLevel.filter(t => t.num_subtasks && t.num_subtasks > 0);
+
+              // "Completado" = campo personalizado "Estado" con valor "EJECUTADO"
+              const isEjecutado = (t: AsanaTask) => {
+                const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
+                if (!estadoField) return t.completed;
+                const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
+                return val === 'EJECUTADO';
+              };
+
+              // Collect overdue top-level activities and build a lookup map
+              const atrasadasMap = new Map<string, number>();
+              topLevel
+                .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
+                .forEach(t => {
+                  const idx = atrasadasRows.length;
+                  atrasadasMap.set(t.gid, idx);
+                  atrasadasRows.push({
+                    key: t.gid,
+                    task: t,
+                    projectName: project.name,
+                    daysLate: Math.floor((new Date(today).getTime() - new Date(t.due_on!).getTime()) / 86400000),
+                    subActividades: [],
+                  });
+                });
 
               // Fetch subtasks of tasks que tienen subtareas
               for (let j = 0; j < parentTasks.length; j += CHUNK) {
@@ -291,6 +345,15 @@ const HomePage: React.FC = () => {
                   taskChunk.map(async parentTask => {
                     try {
                       const subtasks = await asanaService.getSubtasks(parentTask.gid);
+                      // Populate sub-activities for overdue parent tasks
+                      const atrasadaIdx = atrasadasMap.get(parentTask.gid);
+                      if (atrasadaIdx !== undefined) {
+                        atrasadasRows[atrasadaIdx].subActividades = subtasks.filter(
+                          s => !s.name.startsWith('SFON') && !s.name.startsWith('SMAT') &&
+                               !s.name.startsWith('DMAT') && !s.name.startsWith('CPER') &&
+                               !s.name.startsWith('FUENTES DE VERIFICACION') && !s.name.startsWith('Resumen:')
+                        );
+                      }
                       for (const sub of subtasks) {
                         const prefix = getSolicitudPrefix(sub.name);
                         const jsonData = extractJsonData(sub.notes);
@@ -306,6 +369,15 @@ const HomePage: React.FC = () => {
                             fecha: extractFechaSolicitud(sub.notes),
                           });
                         }
+                        // Collect CPER contrataciones
+                        if (sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
+                          contRows.push({
+                            key: sub.gid,
+                            task: sub,
+                            projectName: project.name,
+                            parentTaskName: parentTask.name,
+                          });
+                        }
                       }
                     } catch {
                       // Ignorar errores de subtareas individuales
@@ -316,13 +388,6 @@ const HomePage: React.FC = () => {
               }
 
               // Build stats for this project
-              // "Completado" = campo personalizado "Estado" con valor "EJECUTADO"
-              const isEjecutado = (t: AsanaTask) => {
-                const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
-                if (!estadoField) return t.completed;
-                const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
-                return val === 'EJECUTADO';
-              };
               const completed = topLevel.filter(isEjecutado).length;
               const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
               const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
@@ -339,14 +404,20 @@ const HomePage: React.FC = () => {
             } catch {
               // Ignorar errores de proyectos individuales
             }
-            return rows;
+            return { rows, contRows, atrasadasRows };
           })
         );
-        chunkResults.forEach(r => allRows.push(...r));
+        chunkResults.forEach(r => {
+          allRows.push(...r.rows);
+          allContrataciones.push(...r.contRows);
+          allAtrasadas.push(...r.atrasadasRows);
+        });
         if (i + CHUNK < filteredProjects.length) await delay(300);
       }
 
       setSolicitudes(allRows);
+      setContrataciones(allContrataciones);
+      setAtrasadas(allAtrasadas.sort((a, b) => b.daysLate - a.daysLate));
       setProjectStats(allStats.sort((a, b) => {
         const pctA = a.totalTasks ? a.completedTasks / a.totalTasks : 0;
         const pctB = b.totalTasks ? b.completedTasks / b.totalTasks : 0;
@@ -367,6 +438,67 @@ const HomePage: React.FC = () => {
       setError('No se encontró el token de Asana. Verifica que VITE_ASANA_TOKEN esté definido en el archivo .env');
     }
   }, [loadSolicitudes]);
+
+  const handleOpenCreateProject = () => {
+    setCreateProjectName('');
+    setCreateProjectDesc('');
+    setCreateProjectArea('');
+    setCreateProjectError('');
+    setCreateProjectStep('');
+    setCreateProjectModal(true);
+  };
+
+  const handleCreateProject = async () => {
+    if (!createProjectName.trim() || !createProjectArea) return;
+    setCreateProjectSaving(true);
+    setCreateProjectError('');
+    try {
+      const workspaces = await asanaService.getWorkspaces();
+      const cdima = workspaces.find(ws => ws.name === 'CDIMA');
+      if (!cdima) throw new Error('No se encontró el workspace CDIMA');
+
+      setCreateProjectStep('Buscando plantilla...');
+      const templates = await asanaService.getProjectTemplates(cdima.gid);
+      const template = templates.find(t => t.name === 'Plantilla Proyecto') ?? templates[0];
+      if (!template) throw new Error('No se encontró ninguna plantilla de proyecto en Asana');
+
+      setCreateProjectStep('Creando proyecto desde plantilla...');
+      const jobGid = await asanaService.instantiateProjectTemplate(template.gid, createProjectName.trim(), cdima.gid);
+
+      setCreateProjectStep('Esperando confirmación de Asana...');
+      const job = await asanaService.pollJob(jobGid);
+      if (!job.new_project?.gid) throw new Error('No se pudo obtener el GID del nuevo proyecto');
+      const projectGid = job.new_project.gid;
+
+      setCreateProjectStep('Creando tarea de resumen...');
+      const task = await asanaService.createTask({
+        name: `Resumen: ${createProjectName.trim()}`,
+        projectGid,
+        workspaceGid: cdima.gid,
+        notes: createProjectDesc.trim(),
+      });
+
+      setCreateProjectStep('Configurando campo Área...');
+      const fullTask = await asanaService.getTask(task.gid);
+      const areaField = fullTask.custom_fields?.find(
+        f => f.name.toLowerCase().replace(/á/g, 'a') === 'area'
+      );
+      if (areaField && areaField.enum_options) {
+        const option = areaField.enum_options.find(o => o.name === createProjectArea);
+        if (option) {
+          await asanaService.updateTask(task.gid, { custom_fields: { [areaField.gid]: option.gid } });
+        }
+      }
+
+      setCreateProjectModal(false);
+      loadSolicitudes();
+    } catch (err) {
+      setCreateProjectError(err instanceof Error ? err.message : 'Error al crear el proyecto');
+    } finally {
+      setCreateProjectSaving(false);
+      setCreateProjectStep('');
+    }
+  };
 
   const handleApprove = async (row: SolicitudRow) => {
     setApprovingGid(row.task.gid);
@@ -417,7 +549,7 @@ const HomePage: React.FC = () => {
     {
       title: 'Solicitud / Proyecto / Actividad',
       key: 'proyectoActividad',
-      width: 320,
+      width: 200,
       render: (_: unknown, row: SolicitudRow) => {
         const jsonData = extractJsonData(row.task.notes);
         const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
@@ -515,6 +647,190 @@ const HomePage: React.FC = () => {
     },
   ];
 
+  const CONTRATACION_PASOS = [
+    'Requerimiento de contratación',
+    'Elaboración de TDRs',
+    'Lanzamiento de convocatoria',
+    'Selección del consultor',
+    'Informe final del consultor',
+  ];
+
+  const contratacionColumns = [
+    {
+      title: 'Contratación / Proyecto / Actividad',
+      key: 'info',
+      width: '50%',
+      render: (_: unknown, row: ContratacionRow) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Tooltip title={row.task.name}>
+            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
+          </Tooltip>
+          <Tooltip title={row.projectName}>
+            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
+          </Tooltip>
+          <Tooltip title={row.parentTaskName}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
+          </Tooltip>
+        </div>
+      ),
+    },
+    {
+      title: 'Estado de contratación',
+      key: 'estado',
+      width: '50%',
+      render: (_: unknown, row: ContratacionRow) => {
+        const data = extractJsonData(row.task.notes);
+        const estadoActual = (data?.estadoActual as string) || '';
+        const pasoActualIndex = estadoActual
+          ? CONTRATACION_PASOS.findIndex(p => p.toLowerCase() === estadoActual.toLowerCase())
+          : -1;
+        const progressPct = pasoActualIndex > 0 ? (pasoActualIndex / (CONTRATACION_PASOS.length - 1)) * 100 : 0;
+        return (
+          <div style={{ position: 'relative', paddingTop: '0.35rem', paddingBottom: '0.25rem' }}>
+            {/* Background line */}
+            <div style={{
+              position: 'absolute', top: 23, left: 14, right: 14,
+              height: 2, backgroundColor: '#e0e0e0', zIndex: 0,
+            }} />
+            {/* Progress line */}
+            {pasoActualIndex > 0 && (
+              <div style={{
+                position: 'absolute', top: 23, left: 14,
+                width: `calc(${progressPct}% * (100% - 28px) / 100%)`,
+                height: 2, backgroundColor: '#4caf50', zIndex: 1,
+              }} />
+            )}
+            {/* Steps */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
+              {CONTRATACION_PASOS.map((paso, index) => {
+                const isCompleted = pasoActualIndex >= 0 && index < pasoActualIndex;
+                const isCurrent = index === pasoActualIndex;
+                return (
+                  <Tooltip key={index} title={paso}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        backgroundColor: isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0',
+                        border: `2px solid ${isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: isCompleted || isCurrent ? '#fff' : '#999',
+                        fontWeight: 600, fontSize: '0.68rem',
+                        boxShadow: isCurrent ? '0 2px 6px rgba(98,98,98,0.35)' : 'none',
+                      }}>
+                        {isCompleted ? '✓' : index + 1}
+                      </div>
+                      <div style={{
+                        marginTop: '0.3rem', fontSize: '0.58rem', textAlign: 'center',
+                        color: isCurrent ? '#626262' : isCompleted ? '#4caf50' : '#bbb',
+                        fontWeight: isCurrent ? 700 : 400, lineHeight: 1.2,
+                        maxWidth: 68,
+                      }}>
+                        {paso}
+                      </div>
+                    </div>
+                  </Tooltip>
+                );
+              })}
+            </div>
+            {!estadoActual && (
+              <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                Sin estado registrado
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const subIsEjecutado = (t: AsanaTask) => {
+    const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
+    if (!estadoField) return t.completed;
+    const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
+    return val === 'EJECUTADO';
+  };
+
+  const atrasadasColumns = [
+    {
+      title: 'Actividad / Proyecto / Responsable',
+      key: 'info',
+      width: '35%',
+      render: (_: unknown, row: AtrasadaRow) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Tooltip title={row.task.name}>
+            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
+          </Tooltip>
+          <Tooltip title={row.projectName}>
+            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
+          </Tooltip>
+          {row.task.assignee ? (
+            <Typography.Text style={{ fontSize: 11, color: '#6b7280' }} ellipsis>
+              👤 {row.task.assignee.name}
+            </Typography.Text>
+          ) : (
+            <Typography.Text style={{ fontSize: 11, color: '#d1d5db' }}>👤 Sin responsable</Typography.Text>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Sub-actividades',
+      key: 'subactividades',
+      width: '40%',
+      render: (_: unknown, row: AtrasadaRow) => {
+        if (row.subActividades.length === 0) {
+          return <Typography.Text style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Sin sub-actividades</Typography.Text>;
+        }
+        const ejecutadas = row.subActividades.filter(subIsEjecutado).length;
+        const total = row.subActividades.length;
+        const pct = total ? Math.round((ejecutadas / total) * 100) : 0;
+        return (
+          <div>
+            <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: '#10b981', borderRadius: 99 }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>{ejecutadas}/{total} ejecutadas</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {row.subActividades.map(sub => {
+                const done = subIsEjecutado(sub);
+                return (
+                  <div key={sub.gid} style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+                    <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>{done ? '✅' : '⏳'}</span>
+                    <Typography.Text
+                      style={{ fontSize: 11, color: done ? '#9ca3af' : '#374151', textDecoration: done ? 'line-through' : 'none' }}
+                      ellipsis
+                    >
+                      {sub.name}
+                    </Typography.Text>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Fecha vencimiento',
+      key: 'due',
+      width: '15%',
+      render: (_: unknown, row: AtrasadaRow) => (
+        <Typography.Text style={{ fontSize: 12, color: '#ef4444' }}>{row.task.due_on}</Typography.Text>
+      ),
+    },
+    {
+      title: 'Días de retraso',
+      key: 'dias',
+      width: '10%',
+      align: 'center' as const,
+      render: (_: unknown, row: AtrasadaRow) => (
+        <span style={{ fontWeight: 700, color: '#ef4444', fontSize: 13 }}>{row.daysLate}</span>
+      ),
+    },
+  ];
+
   return (
     <div style={{padding: '2rem'}}>
       {/* Header */}
@@ -531,19 +847,31 @@ const HomePage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 28 }}>🏠</span>
           <div>
-            <Typography.Title level={3} style={{ margin: 0 }}>Dashboard</Typography.Title>
+            <Typography.Title level={3} style={{ margin: 0 }}>Inicio</Typography.Title>
             <Typography.Text type="secondary">
               Solicitudes pendientes de aprobación
             </Typography.Text>
           </div>
         </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={loadSolicitudes}
-          loading={loading}
-        >
-          Actualizar
-        </Button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {canApprove && (
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={handleOpenCreateProject}
+              style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}
+            >
+              Crear Proyecto
+            </Button>
+          )}
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={loadSolicitudes}
+            loading={loading}
+          >
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Error */}
@@ -589,6 +917,76 @@ const HomePage: React.FC = () => {
               pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
               scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'No hay solicitudes pendientes' }}
+              rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+            />
+          </div>
+        )}
+      </Card>
+
+      {/* ── Contrataciones Activas ──────────────────────────────────────── */}
+      <Card
+        style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
+        styles={{ body: { padding: 0 } }}
+        title={
+          <Space>
+            <span style={{ fontSize: 16 }}>📋</span>
+            <Typography.Text strong style={{ fontSize: 15 }}>Contrataciones Activas</Typography.Text>
+            {!loading && (
+              <Badge
+                count={contrataciones.length}
+                style={{ background: contrataciones.length > 0 ? '#6366f1' : '#9ca3af' }}
+              />
+            )}
+          </Space>
+        }
+      >
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center' }}><Spin /></div>
+        ) : (
+          <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+            <Table
+              columns={contratacionColumns}
+              dataSource={contrataciones}
+              size="middle"
+              bordered
+              tableLayout="fixed"
+              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} contrataciones` }}
+              locale={{ emptyText: 'No hay contrataciones activas' }}
+              rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+            />
+          </div>
+        )}
+      </Card>
+
+      {/* ── Actividades Atrasadas ───────────────────────────────────────── */}
+      <Card
+        style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
+        styles={{ body: { padding: 0 } }}
+        title={
+          <Space>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <Typography.Text strong style={{ fontSize: 15 }}>Actividades Atrasadas</Typography.Text>
+            {!loading && (
+              <Badge
+                count={atrasadas.length}
+                style={{ background: atrasadas.length > 0 ? '#ef4444' : '#9ca3af' }}
+              />
+            )}
+          </Space>
+        }
+      >
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center' }}><Spin /></div>
+        ) : (
+          <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+            <Table
+              columns={atrasadasColumns}
+              dataSource={atrasadas}
+              size="middle"
+              bordered
+              tableLayout="fixed"
+              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} actividades` }}
+              locale={{ emptyText: 'No hay actividades atrasadas' }}
               rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
             />
           </div>
@@ -853,6 +1251,94 @@ const HomePage: React.FC = () => {
                 className="button-primary"
                 style={{ padding: '0.5rem 1.25rem', opacity: (!observeText.trim() || observeSaving) ? 0.6 : 1 }}
               >{observeSaving ? 'Guardando...' : 'Guardar observación'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal: Crear Proyecto */}
+      {createProjectModal && (
+        <div className="modal-overlay" onClick={() => { if (!createProjectSaving) setCreateProjectModal(false); }} style={{ zIndex: 1001 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="🗂️"
+              title="Crear nuevo proyecto"
+              subtitle="Se usará la plantilla configurada en Asana"
+              onClose={() => { if (!createProjectSaving) setCreateProjectModal(false); }}
+            />
+
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Nombre */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, marginBottom: '0.35rem', letterSpacing: '0.5px' }}>📝 Nombre del proyecto *</label>
+                <input
+                  type="text"
+                  placeholder="Nombre del nuevo proyecto"
+                  value={createProjectName}
+                  onChange={e => setCreateProjectName(e.target.value)}
+                  disabled={createProjectSaving}
+                  style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Área */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, marginBottom: '0.35rem', letterSpacing: '0.5px' }}>🏢 Área *</label>
+                <select
+                  value={createProjectArea}
+                  onChange={e => setCreateProjectArea(e.target.value)}
+                  disabled={createProjectSaving}
+                  style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', background: 'white', color: createProjectArea ? '#111' : '#9ca3af' }}
+                >
+                  <option value="" disabled>Seleccionar área...</option>
+                  <option value="Empoderamiento Productivo">Empoderamiento Productivo</option>
+                  <option value="Empoderamiento Político">Empoderamiento Político</option>
+                  <option value="Erradicación de Violencia">Erradicación de Violencia</option>
+                </select>
+              </div>
+
+              {/* Descripción */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, marginBottom: '0.35rem', letterSpacing: '0.5px' }}>📄 Descripción / Resumen</label>
+                <textarea
+                  rows={4}
+                  placeholder="Descripción del proyecto (se añadirá a la tarea de resumen)"
+                  value={createProjectDesc}
+                  onChange={e => setCreateProjectDesc(e.target.value)}
+                  disabled={createProjectSaving}
+                  style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.92rem', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Progreso */}
+              {createProjectSaving && createProjectStep && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: '#6b7280', background: '#f8fafc', borderRadius: '7px', padding: '0.6rem 0.75rem', border: '1px solid #e5e7eb' }}>
+                  <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                  {createProjectStep}
+                </div>
+              )}
+
+              {/* Error */}
+              {createProjectError && (
+                <div style={{ fontSize: '0.85rem', color: '#dc2626', background: '#fef2f2', borderRadius: '7px', padding: '0.6rem 0.75rem', border: '1px solid #fecaca' }}>
+                  ⚠️ {createProjectError}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setCreateProjectModal(false)}
+                disabled={createProjectSaving}
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '7px', border: '1px solid #d1d5db', background: 'white', cursor: createProjectSaving ? 'not-allowed' : 'pointer', fontSize: '0.9rem', color: '#374151', opacity: createProjectSaving ? 0.5 : 1 }}
+              >Cancelar</button>
+              <button
+                type="button"
+                onClick={handleCreateProject}
+                disabled={!createProjectName.trim() || !createProjectArea || createProjectSaving}
+                className="button-primary"
+                style={{ padding: '0.5rem 1.25rem', opacity: (!createProjectName.trim() || !createProjectArea || createProjectSaving) ? 0.6 : 1 }}
+              >{createProjectSaving ? 'Creando...' : '🗂️ Crear Proyecto'}</button>
             </div>
           </div>
         </div>

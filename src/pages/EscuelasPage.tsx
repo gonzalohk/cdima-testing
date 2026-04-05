@@ -1241,15 +1241,15 @@ const EscuelasPage: React.FC = () => {
                             const m5 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
                             const m6 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
                             const m7 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
-                            const total = Math.round((m1 + m2 + m3 + m4 + m5 + m6 + m7) / 7);
+                            const total = parseFloat(((m1 + m2 + m3 + m4 + m5 + m6 + m7) / 7).toFixed(2));
                             return { gid: est.gid, nombre: formatearNombreCompleto(est.name), m1, m2, m3, m4, m5, m6, m7, total };
                           });
-                          const promG = notasData.length > 0 ? Math.round(notasData.reduce((s, e) => s + e.total, 0) / notasData.length) : 0;
+                          const promG = notasData.length > 0 ? parseFloat((notasData.reduce((s, e) => s + e.total, 0) / notasData.length).toFixed(2)) : 0;
                           const aprobados = notasData.filter(e => e.total >= 61).length;
                           const enRiesgo = notasData.filter(e => e.total > 0 && e.total < 61).length;
                           const pctAprobados = notasData.length > 0 ? Math.round((aprobados / notasData.length) * 100) : 0;
                           const colorNota = (n: number): string => { if (n === 0) return '#9ca3af'; if (n < 61) return '#dc2626'; if (n > 90) return '#16a34a'; return '#374151'; };
-                          const calcProm = (vals: number[]) => notasData.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / notasData.length) : 0;
+                          const calcProm = (vals: number[]) => notasData.length > 0 ? parseFloat((vals.reduce((a, b) => a + b, 0) / notasData.length).toFixed(2)) : 0;
                           const filtrados = busquedaCentralizador ? notasData.filter(e => e.nombre.toLowerCase().includes(busquedaCentralizador.toLowerCase())) : notasData;
                           return (
                             <>

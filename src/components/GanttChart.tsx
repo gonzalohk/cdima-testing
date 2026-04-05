@@ -40,7 +40,6 @@ const ROW_MAIN = 54;
 const ROW_SUB = 44;
 const BAR_MAIN = 28;
 const BAR_SUB = 20;
-const MIN_MONTH_PX = 88;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -189,11 +188,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
     const tipo = getCustomFieldValue(t, 'Tipo de Solicitud');
     if (tipo !== '-') return false; // exclude any task with a Tipo de Solicitud value set
     const name = t.name.trim().toUpperCase();
-    return !name.startsWith('FUENTES DE VERIFICACION')
-      && !name.startsWith('SFON')
-      && !name.startsWith('SMAT')
-      && !name.startsWith('DMAT')
-      && !name.startsWith('CPER');
+    if (name.startsWith('FUENTES DE VERIFICACION')
+      || name.startsWith('SFON')
+      || name.startsWith('SMAT')
+      || name.startsWith('DMAT')
+      || name.startsWith('CPER')
+      || name.startsWith('RESUMEN:')) return false;
+    const estado = getCustomFieldValue(t, 'Estado');
+    return estado === 'EJECUTADO' || estado === 'EN PROCESO';
   }), [subtasks]);
 
   const allTasks = useMemo(() => [task, ...ganttSubtasks], [task, ganttSubtasks]);
@@ -233,7 +235,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
     return (differenceInDays(today, rangeStart) / totalDays) * 100;
   }, [rangeStart, rangeEnd, totalDays]);
 
-  const timelineMinWidth = Math.max(months.length * MIN_MONTH_PX, 600);
   const totalRows = 1 + ganttSubtasks.length;
   const bodyHeight = HEADER_H + ROW_MAIN + ganttSubtasks.length * ROW_SUB;
 
@@ -251,7 +252,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
       extra={
         <Space wrap size={[12, 4]}>
           {(Object.keys(STATUS_CONFIG) as (StatusKey | 'default')[])
-            .filter(k => k !== 'default')
+            .filter(k => k !== 'default' && k !== 'Pendiente')
             .map(k => {
               const cfg = STATUS_CONFIG[k];
               return (
@@ -276,10 +277,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
       style={{ marginBottom: '1.5rem', borderRadius: 8 }}
       styles={{ body: { padding: 0, overflow: 'hidden' } }}
     >
-      <div style={{ display: 'flex', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', width: '100%' }}>
         <div style={{
           display: 'flex',
-          minWidth: NAME_COL + timelineMinWidth,
+          width: '100%',
           minHeight: bodyHeight,
         }}>
 
@@ -386,7 +387,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
           {/* ── Timeline column ────────────────────────────────────── */}
           <div style={{
             flex: 1,
-            minWidth: timelineMinWidth,
+            minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
             position: 'relative',
@@ -416,7 +417,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
                     key={m.toISOString()}
                     style={{
                       width: `${widthPct}%`,
-                      minWidth: MIN_MONTH_PX,
                       borderRight: '1px solid #e5e7eb',
                       display: 'flex',
                       alignItems: 'center',

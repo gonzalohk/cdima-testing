@@ -577,7 +577,7 @@ export const exportDiplomadoGeneralWord = ({ diplomado, estudiantes }: ExportDip
             </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">ACTIVIDAD:</span> ________________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">ACTIVIDAD:</span> </td>
             <td class="summary-cell" colspan="4" rowspan="4">
               <table class="summary-counts">
                 <tr><td colspan="2" class="summary-title">NRO. DE ASISTENCIA DE PARTICIPANTES</td></tr>
@@ -591,13 +591,13 @@ export const exportDiplomadoGeneralWord = ({ diplomado, estudiantes }: ExportDip
             </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">TEMA:</span> _____________________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">TEMA:</span> </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">LUGAR Y FECHA:</span> ____________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">LUGAR Y FECHA:</span> </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">RESPONSABLE:</span> ______________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">RESPONSABLE:</span> </td>
           </tr>
           <tr class="participant-head">
             <th rowspan="2">N°</th>

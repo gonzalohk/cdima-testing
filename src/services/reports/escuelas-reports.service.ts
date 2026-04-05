@@ -467,13 +467,13 @@ export const exportEscuelaGeneralWord = ({
             </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">TEMA:</span> _____________________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">TEMA:</span></td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">LUGAR Y FECHA:</span> ____________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">LUGAR Y FECHA:</span></td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">RESPONSABLE:</span> ______________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">RESPONSABLE:</span></td>
           </tr>
           <tr class="participant-head">
             <th rowspan="2">N°</th>

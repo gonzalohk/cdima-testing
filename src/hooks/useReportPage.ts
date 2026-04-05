@@ -220,6 +220,7 @@ export const useReportPage = () => {
     // Si no hay actividad pero hay sección seleccionada, filtrar por sección
     if (selectedProject && selectedSection && allProjectTasks.length > 0) {
       return allProjectTasks.filter((task) => {
+        if (task.name.startsWith('Resumen:')) return false;
         if (!task.memberships || task.memberships.length === 0) {
           return false;
         }
@@ -232,7 +233,7 @@ export const useReportPage = () => {
     
     // Si no hay actividad ni sección seleccionadas, mostrar todas las tareas del proyecto
     if (selectedProject && allProjectTasks.length > 0) {
-      return allProjectTasks;
+      return allProjectTasks.filter(t => !t.name.startsWith('Resumen:'));
     }
     
     return [];
@@ -259,6 +260,7 @@ export const useReportPage = () => {
     const tasksForDistribution = displayTasks.filter((task) => {
       const tipoSolicitud = task.custom_fields?.find(f => f.name === 'Tipo de Solicitud');
       const isFuentesVerificacion = task.name.startsWith('FUENTES DE VERIFICACION');
+      if (task.name.startsWith('Resumen:')) return false;
       return (!tipoSolicitud?.enum_value?.name || tipoSolicitud?.enum_value?.name === '') && !isFuentesVerificacion;
     });
     

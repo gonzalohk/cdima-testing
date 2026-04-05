@@ -129,7 +129,8 @@ const ReportPage: React.FC = () => {
               !t.name.startsWith('SFON') &&
               !t.name.startsWith('SMAT') &&
               !t.name.startsWith('DMAT') &&
-              !t.name.startsWith('CPER')
+              !t.name.startsWith('CPER') &&
+              !t.name.startsWith('Resumen:')
             ).length}
             subtasks={subtasks}
             statistics={statistics}

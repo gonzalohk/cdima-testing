@@ -343,6 +343,76 @@ class AsanaService {
       body: JSON.stringify({ data })
     });
   }
+
+  /**
+   * Obtener plantillas de proyecto disponibles en el workspace
+   */
+  async getProjectTemplates(workspaceGid: string): Promise<{ gid: string; name: string }[]> {
+    return this.fetchAsana<{ gid: string; name: string }[]>(
+      `/project_templates?workspace=${workspaceGid}&opt_fields=name`
+    );
+  }
+
+  /**
+   * Obtener detalles de una plantilla, incluyendo sus variables de fecha requeridas.
+   */
+  async getProjectTemplateDetails(templateGid: string): Promise<{ requested_dates: { gid: string; name: string }[] }> {
+    return this.fetchAsana<{ requested_dates: { gid: string; name: string }[] }>(
+      `/project_templates/${templateGid}?opt_fields=requested_dates`
+    );
+  }
+
+  /**
+   * Instanciar un proyecto desde una plantilla. Devuelve el GID del Job creado.
+   * Obtiene automáticamente las variables de fecha requeridas y las llena con la fecha actual.
+   */
+  async instantiateProjectTemplate(templateGid: string, name: string, workspaceGid: string): Promise<string> {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Obtener variables de fecha que exige la plantilla
+    const details = await this.getProjectTemplateDetails(templateGid);
+    const requested_dates = (details.requested_dates ?? []).map(d => ({
+      gid: d.gid,
+      value: today,
+    }));
+
+    const job = await this.fetchAsana<{ gid: string }>(`/project_templates/${templateGid}/instantiateProject`, {
+      method: 'POST',
+      body: JSON.stringify({
+        data: { name, workspace: workspaceGid, requested_dates }
+      })
+    });
+    return job.gid;
+  }
+
+  /**
+   * Espera a que un Job de Asana termine. Devuelve el resultado del job.
+   */
+  async pollJob(jobGid: string): Promise<{ new_project?: { gid: string } }> {
+    const maxAttempts = 20;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const job = await this.fetchAsana<{ status: string; new_project?: { gid: string } }>(`/jobs/${jobGid}`);
+      if (job.status === 'succeeded') return job;
+      if (job.status === 'failed') throw new Error('La creación del proyecto falló en Asana');
+    }
+    throw new Error('Tiempo de espera excedido al crear el proyecto');
+  }
+
+  /**
+   * Obtener la configuración de campos personalizados de un proyecto
+   */
+  async getProjectCustomFieldSettings(projectGid: string): Promise<{ field_gid: string; field_name: string; enum_options: { gid: string; name: string }[] }[]> {
+    const settings = await this.fetchAsana<{ custom_field: { gid: string; name: string; enum_options?: { gid: string; name: string }[] } }[]>(
+      `/projects/${projectGid}/custom_field_settings?opt_fields=custom_field.gid,custom_field.name,custom_field.enum_options,custom_field.enum_options.gid,custom_field.enum_options.name`
+    );
+    return settings.map(s => ({
+      field_gid: s.custom_field.gid,
+      field_name: s.custom_field.name,
+      enum_options: s.custom_field.enum_options ?? [],
+    }));
+  }
+
 }
 
 export const asanaService = new AsanaService();
