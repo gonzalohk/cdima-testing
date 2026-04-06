@@ -734,14 +734,14 @@ export const exportDiplomadoCentralizadorNotasPDF = ({ diplomado, estudiantes }:
       modulo3,
       modulo4,
       modulo5,
-      total: Math.round(total)
+      total: parseFloat(total.toFixed(2))
     };
   });
 
   const calcularPromedioModulo = (moduloKey: string): number => {
     if (notasEstudiantes.length === 0) return 0;
     const suma = notasEstudiantes.reduce((acc: number, est: any) => acc + est[moduloKey], 0);
-    return Math.round(suma / notasEstudiantes.length);
+    return parseFloat((suma / notasEstudiantes.length).toFixed(2));
   };
   
   // Contar aprobados (>= 51)
@@ -903,7 +903,7 @@ export const exportDiplomadoCentralizadorNotasWord = ({ diplomado, estudiantes }
     const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
     const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
     const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-    const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+    const total = parseFloat(((modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5).toFixed(2));
 
     return {
       nombreFormateado,
@@ -914,15 +914,15 @@ export const exportDiplomadoCentralizadorNotasWord = ({ diplomado, estudiantes }
   });
 
   const calcularPromedioModulo = (index: number): string => {
-    if (notasEstudiantes.length === 0) return '0.0';
+    if (notasEstudiantes.length === 0) return '0.00';
     const suma = notasEstudiantes.reduce((acc, est) => acc + est.modulos[index], 0);
-    return (suma / notasEstudiantes.length).toFixed(1);
+    return (suma / notasEstudiantes.length).toFixed(2);
   };
 
   const promedioGeneral = (): string => {
-    if (notasEstudiantes.length === 0) return '0.0';
+    if (notasEstudiantes.length === 0) return '0.00';
     const suma = notasEstudiantes.reduce((acc, est) => acc + est.total, 0);
-    return (suma / notasEstudiantes.length).toFixed(1);
+    return (suma / notasEstudiantes.length).toFixed(2);
   };
 
   const modulosHeaders = Array.from({ length: 5 }, (_, i) => `
@@ -937,7 +937,7 @@ export const exportDiplomadoCentralizadorNotasWord = ({ diplomado, estudiantes }
         <td>${escapeHtml(est.ci)}</td>
         <td class="name-cell">${escapeHtml(est.nombreFormateado)}</td>
         ${notas}
-        <td class="num-cell">${est.total.toFixed(1)}</td>
+        <td class="num-cell">${est.total.toFixed(2)}</td>
       </tr>
     `;
   }).join('');

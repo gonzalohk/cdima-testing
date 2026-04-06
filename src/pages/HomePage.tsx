@@ -11,6 +11,7 @@ import {
   Typography,
 } from 'antd';
 import { HtmlModalHeader } from '../components/ModalShared';
+import ContratacionUpdateModal, { ContratacionJsonData } from '../components/ContratacionUpdateModal';
 import {
   BellOutlined,
   CheckCircleOutlined,
@@ -273,6 +274,8 @@ const HomePage: React.FC = () => {
 
   const [contrataciones, setContrataciones] = useState<ContratacionRow[]>([]);
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
+  const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
+  const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
 
   const loadSolicitudes = useCallback(async () => {
     setLoading(true);
@@ -482,6 +485,30 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleDeleteHistorialEntry = async (task: AsanaTask, entryFecha: string, entryEstado: string) => {
+    const data = extractJsonData(task.notes) as ContratacionJsonData | null;
+    if (!data) return;
+    const remaining = (data.historialEstados ?? []).filter(
+      (e) => !(e.fecha === entryFecha && e.estado === entryEstado)
+    );
+    const latest = remaining.length > 0 ? remaining[remaining.length - 1] : null;
+    const updated: ContratacionJsonData = {
+      ...data,
+      estadoActual: latest ? latest.estado : '',
+      historialEstados: remaining,
+    };
+    const notasBase = (task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+    const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updated, null, 2)}\n===FIN_DATOS_JSON===`;
+    try {
+      await asanaService.updateTask(task.gid, { notes: newNotes });
+      setContrataciones(prev => prev.map(row =>
+        row.key === task.gid ? { ...row, task: { ...row.task, notes: newNotes } } : row
+      ));
+    } catch (err) {
+      console.error('Error al eliminar entrada del historial:', err);
+    }
+  };
+
   const columns = [
     {
       title: 'Solicitud / Proyecto / Actividad',
@@ -597,98 +624,7 @@ const HomePage: React.FC = () => {
     'Informe final del consultor',
   ];
 
-  const contratacionColumns = [
-    {
-      title: 'Contratación / Proyecto / Actividad',
-      key: 'info',
-      width: '50%',
-      render: (_: unknown, row: ContratacionRow) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <Tooltip title={row.task.name}>
-            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
-          </Tooltip>
-          <Tooltip title={row.projectName}>
-            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
-          </Tooltip>
-          {row.sectionName && (
-            <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }} ellipsis>
-              📅 {row.sectionName}
-            </Typography.Text>
-          )}
-          <Tooltip title={row.parentTaskName}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
-          </Tooltip>
-        </div>
-      ),
-    },
-    {
-      title: 'Estado de contratación',
-      key: 'estado',
-      width: '50%',
-      render: (_: unknown, row: ContratacionRow) => {
-        const data = extractJsonData(row.task.notes);
-        const estadoActual = (data?.estadoActual as string) || '';
-        const pasoActualIndex = estadoActual
-          ? CONTRATACION_PASOS.findIndex(p => p.toLowerCase() === estadoActual.toLowerCase())
-          : -1;
-        const progressPct = pasoActualIndex > 0 ? (pasoActualIndex / (CONTRATACION_PASOS.length - 1)) * 100 : 0;
-        return (
-          <div style={{ position: 'relative', paddingTop: '0.35rem', paddingBottom: '0.25rem' }}>
-            {/* Background line */}
-            <div style={{
-              position: 'absolute', top: 23, left: 14, right: 14,
-              height: 2, backgroundColor: '#e0e0e0', zIndex: 0,
-            }} />
-            {/* Progress line */}
-            {pasoActualIndex > 0 && (
-              <div style={{
-                position: 'absolute', top: 23, left: 14,
-                width: `calc(${progressPct}% * (100% - 28px) / 100%)`,
-                height: 2, backgroundColor: '#4caf50', zIndex: 1,
-              }} />
-            )}
-            {/* Steps */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
-              {CONTRATACION_PASOS.map((paso, index) => {
-                const isCompleted = pasoActualIndex >= 0 && index < pasoActualIndex;
-                const isCurrent = index === pasoActualIndex;
-                return (
-                  <Tooltip key={index} title={paso}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                      <div style={{
-                        width: 24, height: 24, borderRadius: '50%',
-                        backgroundColor: isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0',
-                        border: `2px solid ${isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0'}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: isCompleted || isCurrent ? '#fff' : '#999',
-                        fontWeight: 600, fontSize: '0.68rem',
-                        boxShadow: isCurrent ? '0 2px 6px rgba(98,98,98,0.35)' : 'none',
-                      }}>
-                        {isCompleted ? '✓' : index + 1}
-                      </div>
-                      <div style={{
-                        marginTop: '0.3rem', fontSize: '0.58rem', textAlign: 'center',
-                        color: isCurrent ? '#626262' : isCompleted ? '#4caf50' : '#bbb',
-                        fontWeight: isCurrent ? 700 : 400, lineHeight: 1.2,
-                        maxWidth: 68,
-                      }}>
-                        {paso}
-                      </div>
-                    </div>
-                  </Tooltip>
-                );
-              })}
-            </div>
-            {!estadoActual && (
-              <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#9ca3af', fontStyle: 'italic' }}>
-                Sin estado registrado
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+
 
   const subIsEjecutado = (t: AsanaTask) => {
     const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
@@ -784,7 +720,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div style={{padding: '2rem'}}>
+    <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
       {/* Header */}
       <div style={{
         padding: '1.25rem 1.75rem',
@@ -884,18 +820,181 @@ const HomePage: React.FC = () => {
       >
         {loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}><Spin /></div>
+        ) : contrataciones.length === 0 ? (
+          <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic', fontSize: '0.9rem' }}>
+            No hay contrataciones activas
+          </div>
         ) : (
-          <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
-            <Table
-              columns={contratacionColumns}
-              dataSource={contrataciones}
-              size="middle"
-              bordered
-              tableLayout="fixed"
-              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} contrataciones` }}
-              locale={{ emptyText: 'No hay contrataciones activas' }}
-              rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
-            />
+          <div style={{ padding: '0.75rem 1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {contrataciones.map((row) => {
+              type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[]; usuario?: { nombre: string; email: string } };
+              const contratacionData = extractJsonData(row.task.notes) as ContratacionJsonData | null;
+              const estadoActual = (contratacionData?.estadoActual as string) || '';
+              const pasoActualIndex = estadoActual
+                ? CONTRATACION_PASOS.findIndex(p => p.toLowerCase() === estadoActual.toLowerCase())
+                : -1;
+              const parseFechaHist = (f: string) => {
+                const clean = f.replace(',', '').trim();
+                const [datePart, timePart = '00:00'] = clean.split(/\s+/);
+                const [d, m, y] = datePart.split('/');
+                return new Date(`${y}-${m}-${d}T${timePart}`).getTime();
+              };
+              const historial = ([...(contratacionData?.historialEstados as HistorialEntry[] ?? [])])
+                .sort((a, b) => parseFechaHist(b.fecha) - parseFechaHist(a.fecha));
+              const historialExpanded = expandedHistoriales.has(row.key);
+              const toggleHistorial = () => setExpandedHistoriales(prev => {
+                const next = new Set(prev);
+                next.has(row.key) ? next.delete(row.key) : next.add(row.key);
+                return next;
+              });
+              return (
+                <div key={row.key} style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: 8, border: '1px solid #dee2e6' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Typography.Text strong style={{ fontSize: 13 }}>{row.task.name.replace(/^CPER\s*-?\s*/i, '')}</Typography.Text>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>📁 {row.projectName}</span>
+                        {row.sectionName && <span style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>📅 {row.sectionName}</span>}
+                        {row.parentTaskName && <span style={{ fontSize: 11, color: '#9ca3af' }}>📌 {row.parentTaskName}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setUpdateContratacion({
+                        task: row.task,
+                        data: contratacionData ?? {
+                          tipo: 'Contratacion',
+                          actividad: row.parentTaskName,
+                          subarea: row.task.name.replace(/^CPER\s*-?\s*/i, ''),
+                          descripcion: null,
+                          fechaGeneracion: '',
+                          estadoActual: '',
+                          historialEstados: [],
+                        },
+                      })}
+                      className="button-secondary"
+                      style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 12 }}
+                    >
+                      ✏️ Actualizar estado
+                    </button>
+                  </div>
+
+                  {/* Stepper */}
+                  <div style={{ position: 'relative', paddingTop: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div style={{ position: 'absolute', top: 27, left: 20, right: 20, height: 2, backgroundColor: '#e0e0e0', zIndex: 0 }} />
+                    {pasoActualIndex >= 0 && (
+                      <div style={{
+                        position: 'absolute', top: 27, left: 20,
+                        width: `${(pasoActualIndex / (CONTRATACION_PASOS.length - 1)) * 100}%`,
+                        height: 2, backgroundColor: '#4caf50', zIndex: 1, transition: 'width 0.3s ease',
+                      }} />
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
+                      {CONTRATACION_PASOS.map((paso, index) => {
+                        const isCompleted = pasoActualIndex >= 0 && index < pasoActualIndex;
+                        const isCurrent = index === pasoActualIndex;
+                        return (
+                          <Tooltip key={index} title={paso}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                              <div style={{
+                                width: 30, height: 30, borderRadius: '50%',
+                                backgroundColor: isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0',
+                                border: `2px solid ${isCompleted ? '#4caf50' : isCurrent ? '#626262' : '#e0e0e0'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: isCompleted || isCurrent ? '#fff' : '#999',
+                                fontWeight: 600, fontSize: '0.72rem',
+                                boxShadow: isCurrent ? '0 2px 8px rgba(33,150,243,0.3)' : 'none',
+                              }}>
+                                {isCompleted ? '✓' : index + 1}
+                              </div>
+                              <div style={{
+                                marginTop: '0.4rem', fontSize: '0.6rem', textAlign: 'center',
+                                color: isCurrent ? '#626262' : isCompleted ? '#4caf50' : '#999',
+                                fontWeight: isCurrent ? 700 : 400, lineHeight: 1.2, maxWidth: 90,
+                              }}>
+                                {paso}
+                              </div>
+                            </div>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {pasoActualIndex >= 0 && (
+                    <div style={{ marginBottom: '0.75rem', padding: '0.4rem 0.65rem', backgroundColor: '#f2f2f2', borderRadius: 4, borderLeft: '3px solid #626262' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#4f4f4f' }}><strong>Estado actual:</strong> {CONTRATACION_PASOS[pasoActualIndex]}</span>
+                    </div>
+                  )}
+                  {!estadoActual && (
+                    <div style={{ marginBottom: '0.75rem', fontSize: '0.75rem', color: '#9ca3af', fontStyle: 'italic' }}>Sin estado registrado</div>
+                  )}
+
+                  {/* Historial */}
+                  <div>
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: historial.length > 0 ? 'pointer' : 'default', marginBottom: historialExpanded ? '0.5rem' : 0 }}
+                      onClick={() => historial.length > 0 && toggleHistorial()}
+                    >
+                      {historial.length > 0 && (
+                        <span style={{ fontSize: '0.7rem', color: '#888', display: 'inline-block', transition: 'transform 0.2s', transform: historialExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                      )}
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#555' }}>
+                        📋 Historial de actualizaciones{historial.length > 0 ? ` (${historial.length})` : ''}
+                      </span>
+                    </div>
+                    {historialExpanded && historial.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {historial.map((entry, i) => (
+                          <div key={i} style={{ backgroundColor: '#f8f9fa', borderRadius: 4, borderLeft: '3px solid #626262', fontSize: '0.8rem', padding: '0.55rem 0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (entry.observaciones || entry.archivos?.length > 0) ? '0.35rem' : 0 }}>
+                              <span style={{ fontWeight: 600, color: '#333' }}>{entry.estado}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, marginLeft: 8 }}>
+                                {entry.usuario ? (
+                                  <span style={{ fontSize: '0.72rem', color: '#555' }}>👤 {entry.usuario.nombre} · <span style={{ color: '#9ca3af' }}>{entry.usuario.email}</span></span>
+                                ) : (
+                                  <span style={{ fontSize: '0.72rem', color: '#999' }}>👤 Sin registro</span>
+                                )}
+                                <span style={{ fontSize: '0.72rem', color: '#ccc' }}>·</span>
+                                <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
+                                <Popconfirm
+                                  title="¿Eliminar esta actualización?"
+                                  onConfirm={() => handleDeleteHistorialEntry(row.task, entry.fecha, entry.estado)}
+                                  okText="Eliminar"
+                                  cancelText="Cancelar"
+                                  okButtonProps={{ danger: true }}
+                                >
+                                  <button
+                                    style={{ background: 'none', border: '1px solid #f5c6cb', borderRadius: 4, padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#c0392b', fontSize: '0.75rem', lineHeight: 1 }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                  >🗑️</button>
+                                </Popconfirm>
+                              </div>
+                            </div>
+                            {entry.observaciones && (
+                              <p style={{ margin: '0 0 0.25rem', color: '#555', lineHeight: '1.4' }}>{entry.observaciones}</p>
+                            )}
+                            {entry.archivos?.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                {entry.archivos.map((archivo, j) => (
+                                  <a key={j} href={archivo.link} target="_blank" rel="noopener noreferrer"
+                                    style={{ fontSize: '0.72rem', color: '#1a73e8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    📎 {archivo.nombre}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {historial.length === 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#999', fontStyle: 'italic' }}>Sin actualizaciones aún.</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
@@ -1157,8 +1256,7 @@ const HomePage: React.FC = () => {
       })()}
 
       {/* Modal: Observar */}
-      {observeModal && (
-        <div className="modal-overlay" onClick={() => { setObserveModal(null); setObserveText(''); }} style={{ zIndex: 1001 }}>
+      {observeModal && (        <div className="modal-overlay" onClick={() => { setObserveModal(null); setObserveText(''); }} style={{ zIndex: 1001 }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: 0 }}>
             <HtmlModalHeader
               icon="💬"
@@ -1196,6 +1294,25 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {updateContratacion && (
+        <ContratacionUpdateModal
+          contratacion={updateContratacion.task}
+          currentData={updateContratacion.data}
+          onClose={() => setUpdateContratacion(null)}
+          onSuccess={async () => {
+            try {
+              const updated = await asanaService.getTask(updateContratacion.task.gid);
+              setContrataciones(prev => prev.map(row =>
+                row.key === updated.gid ? { ...row, task: updated } : row
+              ));
+            } catch (err) {
+              console.error('Error al recargar contratación:', err);
+            }
+            setUpdateContratacion(null);
+          }}
+        />
       )}
     </div>
   );

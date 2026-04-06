@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Avatar, Badge, Button, Col, Divider, Empty, Input, Row, Space, Spin, Tag, Tooltip, Typography,
+  Avatar, Badge, Button, Col, Divider, Empty, Input, Modal, Popconfirm, Row, Space, Spin, Tag, Tooltip, Typography,
 } from 'antd';
 import {
   FolderOutlined, FileTextOutlined, FileExcelOutlined, FilePptOutlined, FileImageOutlined,
   VideoCameraOutlined, PaperClipOutlined, FilePdfOutlined, SearchOutlined,
-  FolderOpenOutlined, LinkOutlined, DownloadOutlined, RightOutlined,
+  FolderOpenOutlined, LinkOutlined, DownloadOutlined, RightOutlined, PlusOutlined, DeleteOutlined,
   DatabaseOutlined, AppstoreOutlined, UnorderedListOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaProject, AsanaTask, AsanaAttachment } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
+import { useAuth } from '../context/AuthContext';
 
 const { Text, Title } = Typography;
 
@@ -21,17 +22,20 @@ interface Link {
   label: string;
   viewUrl?: string;
   downloadUrl?: string;
+  fromNotes?: boolean;
 }
 
 interface Subtask {
   id: string;
   name: string;
+  notes?: string;
   links: Link[];
 }
 
 interface Task {
   id: string;
   name: string;
+  notes?: string;
   estado: string | null;
   links: Link[];
   subtasks: Subtask[];
@@ -44,6 +48,13 @@ interface Section {
   tipoColor: string;
   tasks: Task[];
 }
+
+type CreateModal =
+  | { type: 'section' }
+  | { type: 'task'; sectionId: string }
+  | { type: 'subtask'; taskId: string; taskName: string };
+
+type LinkModal = { targetId: string; targetType: 'task' | 'subtask'; targetName: string } | null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const detectFileType = (url: string, label: string): string => {
@@ -127,6 +138,20 @@ const convertAttachmentsToLinks = (attachments?: AsanaAttachment[]): Link[] =>
     .filter(a => a.view_url || a.download_url)
     .map(a => ({ id: a.gid, label: a.name, viewUrl: a.view_url, downloadUrl: a.download_url }));
 
+const extractLinksFromNotes = (notes?: string): Link[] => {
+  if (!notes) return [];
+  const match = notes.match(/===LINKS_JSON===\s*([\s\S]+?)\s*===FIN_LINKS_JSON===/);
+  if (!match) return [];
+  try { return (JSON.parse(match[1]) as Link[]).map(l => ({ ...l, fromNotes: true })); } catch { return []; }
+};
+
+const buildNotesWithLinks = (notes: string | undefined, links: Link[]): string => {
+  const base = (notes ?? '').replace(/\n*===LINKS_JSON===[\s\S]*?===FIN_LINKS_JSON===/g, '').trim();
+  const cleanLinks = links.map(({ fromNotes: _fn, ...rest }) => rest);
+  if (!cleanLinks.length) return base;
+  return `${base}\n\n===LINKS_JSON===\n${JSON.stringify(cleanLinks)}\n===FIN_LINKS_JSON===`;
+};
+
 // Separa un código técnico del nombre legible: "2025-SAIH-1-1 BANNERS" → { code, label }
 const parseTaskName = (name: string): { code: string | null; label: string } => {
   const m = name.match(/^(\d{4}[-–][\w.-]+(?:[-–][\w.-]+)*)\s+(.+)$/);
@@ -136,15 +161,22 @@ const parseTaskName = (name: string): { code: string | null; label: string } => 
 const convertAsanaTaskToTask = (t: AsanaTask): Task => ({
   id: t.gid,
   name: t.name,
+  notes: t.notes,
   estado: t.completed ? 'Entregado' : null,
-  links: convertAttachmentsToLinks(t.attachments),
+  links: [...convertAttachmentsToLinks(t.attachments), ...extractLinksFromNotes(t.notes)],
   subtasks: (t.subtasks ?? []).map(st => ({
-    id: st.gid, name: st.name, links: convertAttachmentsToLinks(st.attachments),
-  })),
+    id: st.gid,
+    name: st.name,
+    notes: st.notes,
+    links: [...convertAttachmentsToLinks(st.attachments), ...extractLinksFromNotes(st.notes)],
+  })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
 });
 
+const sortByName = <T extends { name: string }>(arr: T[]): T[] =>
+  [...arr].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
 // ─── DriveLink: Avatar + texto + botón ghost ───────────────────────────────
-const DriveLink: React.FC<{ link: Link }> = ({ link }) => {
+const DriveLink: React.FC<{ link: Link; onDelete?: () => void }> = ({ link, onDelete }) => {
   const fileType = detectFileType(link.viewUrl || link.downloadUrl || '', link.label);
   const colors   = getFileTypeColors(fileType);
   return (
@@ -179,20 +211,45 @@ const DriveLink: React.FC<{ link: Link }> = ({ link }) => {
               style={{ color: '#8c8c8c', padding: '0 4px' }} />
           </Tooltip>
         )}
+        {onDelete && (
+          <Popconfirm
+            title="¿Eliminar este recurso?"
+            onConfirm={onDelete}
+            okText="Eliminar"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Eliminar recurso">
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                style={{ color: '#ff4d4f', padding: '0 4px' }}
+                onClick={e => e.stopPropagation()}
+              />
+            </Tooltip>
+          </Popconfirm>
+        )}
       </Space>
     </div>
   );
 };
 
 // ─── SubtaskRow: expandible dentro de TaskRow ─────────────────────────────
-const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subtask, accentColor }) => {
+const SubtaskRow: React.FC<{
+  subtask: Subtask;
+  accentColor: string;
+  onAddLink?: () => void;
+  onDeleteLink?: (linkId: string) => void;
+  onDelete?: () => void;
+}> = ({ subtask, accentColor, onAddLink, onDeleteLink, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
   const hasLinks = subtask.links.length > 0;
   return (
     <div style={{ marginBottom: 2 }}>
       <div
-        onClick={() => hasLinks && setExpanded(x => !x)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: hasLinks ? 'pointer' : 'default' }}
+        onClick={() => setExpanded(x => !x)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer' }}
       >
         <RightOutlined style={{
           fontSize: 10, color: accentColor,
@@ -201,10 +258,50 @@ const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subta
         <FolderOpenOutlined style={{ color: accentColor, fontSize: 13 }} />
         <Text style={{ fontSize: 13, flex: 1 }}>{subtask.name}</Text>
         {hasLinks && <Badge count={subtask.links.length} style={{ background: accentColor, fontSize: 10 }} />}
+        {onAddLink && (
+          <Tooltip title="Agregar recurso">
+            <Button
+              type="text"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={e => { e.stopPropagation(); onAddLink(); }}
+              style={{ color: accentColor, padding: '0 4px' }}
+            />
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Popconfirm
+            title="¿Eliminar esta sub-carpeta?"
+            description="Se eliminará permanentemente en Asana."
+            onConfirm={e => { e?.stopPropagation(); onDelete(); }}
+            okText="Eliminar"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Eliminar sub-carpeta">
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={e => e.stopPropagation()}
+                style={{ color: '#ff4d4f', padding: '0 4px' }}
+              />
+            </Tooltip>
+          </Popconfirm>
+        )}
       </div>
-      {expanded && hasLinks && (
+      {expanded && (
         <div style={{ paddingLeft: 28, borderLeft: `2px solid ${accentColor}30`, marginLeft: 12, paddingBottom: 6 }}>
-          {subtask.links.map(l => <DriveLink key={l.id} link={l} />)}
+          {hasLinks
+            ? subtask.links.map(l => (
+                <DriveLink
+                  key={l.id}
+                  link={l}
+                  onDelete={l.fromNotes ? () => onDeleteLink?.(l.id) : undefined}
+                />
+              ))
+            : <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos adjuntos</Text>
+          }
         </div>
       )}
     </div>
@@ -212,7 +309,17 @@ const SubtaskRow: React.FC<{ subtask: Subtask; accentColor: string }> = ({ subta
 };
 
 // ─── TaskRow: fila expandible sin card anidada ────────────────────────────
-const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentColor }) => {
+const TaskRow: React.FC<{
+  task: Task;
+  accentColor: string;
+  onCreateSubtask?: () => void;
+  onAddLink?: () => void;
+  onDeleteLink?: (linkId: string) => void;
+  onAddSubtaskLink?: (subtaskId: string) => void;
+  onDeleteSubtaskLink?: (subtaskId: string, linkId: string) => void;
+  onDeleteSubtask?: (subtaskId: string) => void;
+  onDelete?: () => void;
+}> = ({ task, accentColor, onCreateSubtask, onAddLink, onDeleteLink, onAddSubtaskLink, onDeleteSubtaskLink, onDeleteSubtask, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
   const allLinks   = [...task.links, ...task.subtasks.flatMap(st => st.links)];
   const domType    = getDominantFileType(allLinks);
@@ -246,21 +353,72 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
             {task.estado && <Tag color="success" style={{ marginLeft: 6, fontSize: 11 }}>{task.estado}</Tag>}
           </span>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 1 }}>
-            {allLinks.length > 0
-              ? `${allLinks.length} ${allLinks.length === 1 ? 'recurso' : 'recursos'}${task.subtasks.length > 0 ? ` · ${task.subtasks.length} subcarpetas` : ''}`
-              : 'Sin recursos adjuntos'}
+            {[
+              allLinks.length > 0 ? `${allLinks.length} ${allLinks.length === 1 ? 'recurso' : 'recursos'}` : 'Sin recursos',
+              task.subtasks.length > 0 ? `${task.subtasks.length} ${task.subtasks.length === 1 ? 'subcarpeta' : 'subcarpetas'}` : null,
+            ].filter(Boolean).join(' · ')}
           </Text>
         </div>
-        {hasContent && (
-          <RightOutlined style={{ color: '#bbb', fontSize: 13, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          {onAddLink && (
+            <Tooltip title="Agregar recurso">
+              <Button
+                type="text"
+                size="small"
+                icon={<LinkOutlined />}
+                onClick={e => { e.stopPropagation(); onAddLink(); }}
+                style={{ color: accentColor, padding: '0 4px' }}
+              />
+            </Tooltip>
+          )}
+          {onCreateSubtask && (
+            <Tooltip title="Crear sub-carpeta">
+              <Button
+                type="text"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={e => { e.stopPropagation(); onCreateSubtask(); }}
+                style={{ color: accentColor, padding: '0 4px' }}
+              />
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Popconfirm
+              title="¿Eliminar esta carpeta?"
+              description="Se eliminará permanentemente en Asana junto con sus sub-carpetas."
+              onConfirm={e => { e?.stopPropagation(); onDelete(); }}
+              okText="Eliminar"
+              cancelText="Cancelar"
+              okButtonProps={{ danger: true }}
+            >
+              <Tooltip title="Eliminar carpeta">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={e => e.stopPropagation()}
+                  style={{ color: '#ff4d4f', padding: '0 4px' }}
+                />
+              </Tooltip>
+            </Popconfirm>
+          )}
+          {hasContent && (
+            <RightOutlined style={{ color: '#bbb', fontSize: 13, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+          )}
+        </div>
       </div>
 
       {expanded && (
         <div style={{ paddingLeft: 50, paddingBottom: 12 }}>
           {task.links.length > 0 && (
             <div style={{ marginBottom: task.subtasks.length > 0 ? 8 : 0 }}>
-              {task.links.map(l => <DriveLink key={l.id} link={l} />)}
+              {task.links.map(l => (
+                <DriveLink
+                  key={l.id}
+                  link={l}
+                  onDelete={l.fromNotes ? () => onDeleteLink?.(l.id) : undefined}
+                />
+              ))}
             </div>
           )}
           {task.subtasks.length > 0 && (
@@ -269,7 +427,16 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
               <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
                 <FolderOutlined style={{ marginRight: 4 }} />Subcarpetas
               </Text>
-              {task.subtasks.map(st => <SubtaskRow key={st.id} subtask={st} accentColor={accentColor} />)}
+              {task.subtasks.map(st => (
+                <SubtaskRow
+                  key={st.id}
+                  subtask={st}
+                  accentColor={accentColor}
+                  onAddLink={onAddSubtaskLink ? () => onAddSubtaskLink(st.id) : undefined}
+                  onDeleteLink={onDeleteSubtaskLink ? (linkId) => onDeleteSubtaskLink(st.id, linkId) : undefined}
+                  onDelete={onDeleteSubtask ? () => onDeleteSubtask(st.id) : undefined}
+                />
+              ))}
             </>
           )}
         </div>
@@ -281,6 +448,8 @@ const TaskRow: React.FC<{ task: Task; accentColor: string }> = ({ task, accentCo
 // ─── Página principal ─────────────────────────────────────────────────────────
 const ResourceLibraryPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'comunicacion';
   const [projects, setProjects] = useState<AsanaProject[]>([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [sections, setSections] = useState<Section[]>([]);
@@ -289,6 +458,16 @@ const ResourceLibraryPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sectionLoading, setSectionLoading] = useState(false);
+  const [workspaceGid, setWorkspaceGid] = useState('');
+  const [createModal, setCreateModal] = useState<CreateModal | null>(null);
+  const [createName, setCreateName] = useState('');
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [linkModal, setLinkModal] = useState<LinkModal>(null);
+  const [linkLabel, setLinkLabel] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkError, setLinkError] = useState('');
   const rawTasksBySectionId = useRef<Map<string, AsanaTask[]>>(new Map());
   const loadedSectionIds    = useRef<Set<string>>(new Set());
 
@@ -303,7 +482,10 @@ const ResourceLibraryPage: React.FC = () => {
     try {
       const data = await asanaService.getWorkspaces();
       const cdima = data.find(ws => ws.name === 'CDIMA');
-      if (cdima) await loadProjects(cdima.gid);
+      if (cdima) {
+        setWorkspaceGid(cdima.gid);
+        await loadProjects(cdima.gid);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar workspaces');
     } finally { setLoading(false); }
@@ -331,7 +513,7 @@ const ResourceLibraryPage: React.FC = () => {
     try {
       const withAtt = await asanaService.getSectionTasksWithAttachments(rawTasks);
       loadedSectionIds.current.add(sectionId);
-      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, tasks: withAtt.map(convertAsanaTaskToTask) } : s));
+      setSections(prev => prev.map(s => s.id === sectionId ? { ...s, tasks: sortByName(withAtt.map(convertAsanaTaskToTask)) } : s));
     } catch (err) {
       console.error('Error cargando adjuntos:', err);
     } finally { setSectionLoading(false); }
@@ -350,15 +532,189 @@ const ResourceLibraryPage: React.FC = () => {
           const { tipo, color } = getSectionTypeColor(s.name);
           return {
             id: s.gid, name: s.name, tipo, tipoColor: color,
-            tasks: sectionTasks.map(t => ({ id: t.gid, name: t.name, estado: t.completed ? 'Entregado' : null, links: [], subtasks: [] })),
+            tasks: sortByName(sectionTasks.map(t => ({ id: t.gid, name: t.name, estado: t.completed ? 'Entregado' : null, links: [], subtasks: [] }))),
           };
         })
         .filter(s => s.tasks.length > 0);
-      setSections(converted);
+      setSections(sortByName(converted).reverse());
       if (converted.length > 0) { setActiveSection(converted[0].id); await loadSectionAttachments(converted[0].id); }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar biblioteca');
     } finally { setLoading(false); }
+  };
+
+  const handleCreate = async () => {
+    if (!createName.trim() || !createModal) return;
+    setCreateSaving(true);
+    setCreateError('');
+    try {
+      if (createModal.type === 'section') {
+        const sec = await asanaService.createSection(selectedProject, createName.trim());
+        const { tipo, color } = getSectionTypeColor(sec.name);
+        setSections(prev => sortByName([...prev, { id: sec.gid, name: sec.name, tipo, tipoColor: color, tasks: [] }]).reverse());
+        setActiveSection(sec.gid);
+      } else if (createModal.type === 'task') {
+        const task = await asanaService.createTask({
+          name: createName.trim(),
+          projectGid: selectedProject,
+          workspaceGid,
+          sectionGid: createModal.sectionId,
+        });
+        setSections(prev => prev.map(s =>
+          s.id === createModal.sectionId
+            ? { ...s, tasks: sortByName([...s.tasks, { id: task.gid, name: task.name, estado: null, links: [], subtasks: [] }]) }
+            : s
+        ));
+      } else if (createModal.type === 'subtask') {
+        const subtask = await asanaService.createSubtask(createModal.taskId, workspaceGid, { name: createName.trim() });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t =>
+            t.id === createModal.taskId
+              ? { ...t, subtasks: sortByName([...t.subtasks, { id: subtask.gid, name: subtask.name, links: [] }]) }
+              : t
+          ),
+        })));
+      }
+      setCreateModal(null);
+      setCreateName('');
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Error al crear');
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      await asanaService.deleteSection(sectionId);
+      setSections(prev => prev.filter(s => s.id !== sectionId));
+      if (activeSection === sectionId) setActiveSection(sections.find(s => s.id !== sectionId)?.id ?? '');
+    } catch (err) {
+      console.error('Error al eliminar sección:', err);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string, sectionId: string) => {
+    try {
+      await asanaService.deleteTask(taskId);
+      setSections(prev => prev.map(s =>
+        s.id === sectionId ? { ...s, tasks: s.tasks.filter(t => t.id !== taskId) } : s
+      ));
+    } catch (err) {
+      console.error('Error al eliminar tarea:', err);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string, taskId: string) => {
+    try {
+      await asanaService.deleteTask(subtaskId);
+      setSections(prev => prev.map(s => ({
+        ...s,
+        tasks: s.tasks.map(t =>
+          t.id === taskId ? { ...t, subtasks: t.subtasks.filter(st => st.id !== subtaskId) } : t
+        ),
+      })));
+    } catch (err) {
+      console.error('Error al eliminar sub-carpeta:', err);
+    }
+  };
+
+  const openLinkModal = (targetId: string, targetType: 'task' | 'subtask', targetName: string) => {
+    setLinkLabel('');
+    setLinkUrl('');
+    setLinkError('');
+    setLinkModal({ targetId, targetType, targetName });
+  };
+
+  const handleSaveLink = async () => {
+    if (!linkModal || !linkLabel.trim() || !linkUrl.trim()) return;
+    setLinkSaving(true);
+    setLinkError('');
+    try {
+      const newLink: Link = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        label: linkLabel.trim(),
+        viewUrl: linkUrl.trim(),
+      };
+      const { targetId, targetType } = linkModal;
+      if (targetType === 'task') {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => { if (t.id === targetId) { foundNotes = t.notes ?? ''; foundLinks = extractLinksFromNotes(t.notes); return true; } return false; }));
+        const updatedLinks = [...foundLinks, newLink];
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => t.id === targetId
+            ? { ...t, notes: newNotes, links: [...t.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+            : t
+          ),
+        })));
+      } else {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => t.subtasks.find(st => { if (st.id === targetId) { foundNotes = st.notes ?? ''; foundLinks = extractLinksFromNotes(st.notes); return true; } return false; })));
+        const updatedLinks = [...foundLinks, newLink];
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => ({
+            ...t,
+            subtasks: t.subtasks.map(st => st.id === targetId
+              ? { ...st, notes: newNotes, links: [...st.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+              : st
+            ),
+          })),
+        })));
+      }
+      setLinkModal(null);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : 'Error al guardar recurso');
+    } finally {
+      setLinkSaving(false);
+    }
+  };
+
+  const handleDeleteLink = async (targetId: string, targetType: 'task' | 'subtask', linkId: string) => {
+    try {
+      if (targetType === 'task') {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => { if (t.id === targetId) { foundNotes = t.notes ?? ''; foundLinks = extractLinksFromNotes(t.notes); return true; } return false; }));
+        const updatedLinks = foundLinks.filter(l => l.id !== linkId);
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => t.id === targetId
+            ? { ...t, notes: newNotes, links: [...t.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+            : t
+          ),
+        })));
+      } else {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => t.subtasks.find(st => { if (st.id === targetId) { foundNotes = st.notes ?? ''; foundLinks = extractLinksFromNotes(st.notes); return true; } return false; })));
+        const updatedLinks = foundLinks.filter(l => l.id !== linkId);
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => ({
+            ...t,
+            subtasks: t.subtasks.map(st => st.id === targetId
+              ? { ...st, notes: newNotes, links: [...st.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+              : st
+            ),
+          })),
+        })));
+      }
+    } catch (err) {
+      console.error('Error al eliminar recurso:', err);
+    }
   };
 
   const currentSection = sections.find(s => s.id === activeSection);
@@ -453,7 +809,6 @@ const ResourceLibraryPage: React.FC = () => {
                 return (
                   <div
                     key={s.id}
-                    onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '9px 12px', borderRadius: 7, cursor: 'pointer', marginBottom: 3,
@@ -462,6 +817,7 @@ const ResourceLibraryPage: React.FC = () => {
                       boxShadow: isActive ? `inset 0 0 0 1px rgba(255,255,255,0.3), 0 2px 6px ${wipColor}55` : 'none',
                       transition: 'all .15s',
                     }}
+                    onClick={() => { setActiveSection(s.id); setSearch(''); loadSectionAttachments(s.id); }}
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
                       {s.tipo !== 'Material Comunicacional' && (
@@ -486,20 +842,63 @@ const ResourceLibraryPage: React.FC = () => {
                         {s.name}
                       </Text>
                     </div>
-                    {rCount > 0 && (
-                      <Badge count={rCount} overflowCount={99}
-                        style={{
-                          background: isActive ? 'rgba(255,255,255,0.35)' : wipColor,
-                          color: isActive ? wipColor : '#fff',
-                          fontSize: 10, marginLeft: 6, flexShrink: 0,
-                          boxShadow: 'none',
-                        }}
-                      />
-                    )}
+                    <Space size={4} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                      {rCount > 0 && (
+                        <Badge count={rCount} overflowCount={99}
+                          style={{
+                            background: isActive ? 'rgba(255,255,255,0.35)' : wipColor,
+                            color: isActive ? wipColor : '#fff',
+                            fontSize: 10,
+                            boxShadow: 'none',
+                          }}
+                        />
+                      )}
+                      {canEdit && (s.tasks.length > 0 ? (
+                        <Tooltip title={`No se puede eliminar: contiene ${s.tasks.length} carpeta${s.tasks.length !== 1 ? 's' : ''}. Elimínalas primero.`}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            disabled
+                            style={{ color: isActive ? 'rgba(255,255,255,0.3)' : '#d9d9d9', padding: '0 2px', cursor: 'not-allowed' }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Popconfirm
+                          title="¿Eliminar esta sección?"
+                          description="Se eliminará permanentemente en Asana."
+                          onConfirm={() => handleDeleteSection(s.id)}
+                          okText="Eliminar"
+                          cancelText="Cancelar"
+                          okButtonProps={{ danger: true }}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            style={{ color: isActive ? 'rgba(255,255,255,0.7)' : '#bbb', padding: '0 2px' }}
+                          />
+                        </Popconfirm>
+                      ))}
+                    </Space>
                   </div>
                 );
               })}
             </div>
+            {canEdit && (
+              <div style={{ padding: '8px', borderTop: '1px solid #f0f0f0' }}>
+                <Button
+                  type="dashed"
+                  block
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => { setCreateName(''); setCreateError(''); setCreateModal({ type: 'section' }); }}
+                  style={{ color: '#8c8c8c', fontSize: 12 }}
+                >
+                  Nueva Sección
+                </Button>
+              </div>
+            )}
           </div>
         </Col>
 
@@ -526,6 +925,17 @@ const ResourceLibraryPage: React.FC = () => {
                 <Text type="secondary" style={{ fontSize: 13 }}>
                   {sectionResourceCount} recursos · {filteredTasks.length} carpetas
                 </Text>
+                {canEdit && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => { setCreateName(''); setCreateError(''); setCreateModal({ type: 'task', sectionId: currentSection.id }); }}
+                    style={{ background: currentSection.tipoColor, borderColor: currentSection.tipoColor }}
+                  >
+                    Nueva Carpeta
+                  </Button>
+                )}
               </div>
 
               {/* Lista de tareas */}
@@ -541,7 +951,21 @@ const ResourceLibraryPage: React.FC = () => {
                   />
                 ) : (
                   filteredTasks.map(task => (
-                    <TaskRow key={task.id} task={task} accentColor={currentSection.tipoColor} />
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      accentColor={currentSection.tipoColor}
+                      onCreateSubtask={canEdit ? () => { setCreateName(''); setCreateError(''); setCreateModal({ type: 'subtask', taskId: task.id, taskName: task.name }); } : undefined}
+                      onAddLink={canEdit ? () => openLinkModal(task.id, 'task', task.name) : undefined}
+                      onDeleteLink={canEdit ? (linkId) => handleDeleteLink(task.id, 'task', linkId) : undefined}
+                      onAddSubtaskLink={canEdit ? (subtaskId) => {
+                        const st = task.subtasks.find(s => s.id === subtaskId);
+                        openLinkModal(subtaskId, 'subtask', st?.name ?? '');
+                      } : undefined}
+                      onDeleteSubtaskLink={canEdit ? (subtaskId, linkId) => handleDeleteLink(subtaskId, 'subtask', linkId) : undefined}
+                      onDeleteSubtask={canEdit ? (subtaskId) => handleDeleteSubtask(subtaskId, task.id) : undefined}
+                      onDelete={canEdit ? () => handleDeleteTask(task.id, currentSection.id) : undefined}
+                    />
                   ))
                 )}
               </div>
@@ -549,6 +973,93 @@ const ResourceLibraryPage: React.FC = () => {
           )}
         </Col>
       </Row>
+
+      {/* ── Modal de creación ────────────────────────────────────────────── */}
+      <Modal
+        open={createModal !== null}
+        title={
+          createModal?.type === 'section' ? '📁 Nueva Sección / Período' :
+          createModal?.type === 'task'    ? '📂 Nueva Carpeta' :
+                                            '📄 Nueva Sub-carpeta'
+        }
+        onCancel={() => { setCreateModal(null); setCreateName(''); setCreateError(''); }}
+        onOk={handleCreate}
+        confirmLoading={createSaving}
+        okText="Crear"
+        cancelText="Cancelar"
+        okButtonProps={{ disabled: !createName.trim() }}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+          {createModal?.type === 'subtask' && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              En carpeta: <strong>{(createModal as { type: 'subtask'; taskId: string; taskName: string }).taskName}</strong>
+            </Typography.Text>
+          )}
+          {createModal?.type === 'task' && (() => {
+            const sid = (createModal as { type: 'task'; sectionId: string }).sectionId;
+            const sec = sections.find(s => s.id === sid);
+            return sec ? (
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                En sección: <strong>{sec.name}</strong>
+              </Typography.Text>
+            ) : null;
+          })()}
+          <Input
+            placeholder={
+              createModal?.type === 'section' ? 'Nombre del período o sección' :
+              createModal?.type === 'task'    ? 'Nombre de la carpeta' :
+                                                'Nombre de la sub-carpeta'
+            }
+            value={createName}
+            onChange={e => setCreateName(e.target.value)}
+            onPressEnter={handleCreate}
+            autoFocus
+            maxLength={150}
+          />
+          {createError && (
+            <Typography.Text type="danger" style={{ fontSize: 12 }}>⚠️ {createError}</Typography.Text>
+          )}
+        </div>
+      </Modal>
+
+      {/* ── Modal agregar recurso ────────────────────────────────────────── */}
+      <Modal
+        open={linkModal !== null}
+        title="🔗 Agregar recurso"
+        onCancel={() => { setLinkModal(null); setLinkLabel(''); setLinkUrl(''); setLinkError(''); }}
+        onOk={handleSaveLink}
+        confirmLoading={linkSaving}
+        okText="Guardar"
+        cancelText="Cancelar"
+        okButtonProps={{ disabled: !linkLabel.trim() || !linkUrl.trim() }}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+          {linkModal && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              En: <strong>{linkModal.targetName}</strong>
+            </Typography.Text>
+          )}
+          <Input
+            placeholder="Nombre del archivo o carpeta"
+            value={linkLabel}
+            onChange={e => setLinkLabel(e.target.value)}
+            autoFocus
+            maxLength={200}
+          />
+          <Input
+            placeholder="URL de Google Drive"
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            onPressEnter={handleSaveLink}
+            maxLength={2000}
+          />
+          {linkError && (
+            <Typography.Text type="danger" style={{ fontSize: 12 }}>⚠️ {linkError}</Typography.Text>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
