@@ -21,6 +21,12 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
     name: 'Director CDIMA',
   },
   {
+    email: 'alicia.cdima@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_DIRECTOR as string,
+    role: 'director',
+    name: 'Director CDIMA',
+  },
+  {
     email: 'cdima.eviolencia@gmail.com',
     password: import.meta.env.VITE_PASSWORD_TECNICO_EV as string,
     role: 'tecnico ev',
@@ -34,6 +40,12 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
   },
   {
     email: 'cdima.epolitico@gmail.com',
+    password: import.meta.env.VITE_PASSWORD_TECNICO_EP as string,
+    role: 'tecnico ep',
+    name: 'Técnico Empoderamiento Politico',
+  },
+  {
+    email: 'cdima.empoderamientopolitico@gmail.com',
     password: import.meta.env.VITE_PASSWORD_TECNICO_EP as string,
     role: 'tecnico ep',
     name: 'Técnico Empoderamiento Politico',
