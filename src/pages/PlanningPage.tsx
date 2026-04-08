@@ -423,6 +423,25 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  const handleDeleteFuente = async (task: AsanaTask) => {
+    const fuenteField = task.custom_fields?.find(f => f.name === 'Fuente');
+    const fuenteUrlField = task.custom_fields?.find(f => f.name === 'Fuente URL');
+    if (!fuenteField?.gid || !fuenteUrlField?.gid) return;
+    if (!window.confirm('¿Eliminar la fuente de verificación de esta actividad?')) return;
+    try {
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: {
+          [fuenteField.gid]: '',
+          [fuenteUrlField.gid]: '',
+        },
+      });
+      setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
+    } catch (err) {
+      alert('Error al eliminar la fuente de verificación.');
+      console.error(err);
+    }
+  };
+
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Planificación';
 
   // Handlers para exportación de reportes
@@ -843,19 +862,37 @@ const PlanningPage: React.FC = () => {
                                     🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
                                   </a>
                                 )}
-                                <button
-                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
-                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
-                                  style={{
-                                    background: 'none',
-                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
-                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
-                                    cursor: 'pointer', fontSize: '0.68rem',
-                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
-                                  }}
-                                >
-                                  {hasValidLink ? '✏️' : '+ fuente'}
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                    title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasValidLink ? '✏️' : '+ fuente'}
+                                  </button>
+                                  {hasValidLink && (
+                                    <button
+                                      onClick={() => handleDeleteFuente(task)}
+                                      title="Eliminar fuente de verificación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
@@ -994,19 +1031,37 @@ const PlanningPage: React.FC = () => {
                                     🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
                                   </a>
                                 )}
-                                <button
-                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
-                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
-                                  style={{
-                                    background: 'none',
-                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
-                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
-                                    cursor: 'pointer', fontSize: '0.68rem',
-                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
-                                  }}
-                                >
-                                  {hasValidLink ? '✏️' : '+ fuente'}
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                    title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasValidLink ? '✏️' : '+ fuente'}
+                                  </button>
+                                  {hasValidLink && (
+                                    <button
+                                      onClick={() => handleDeleteFuente(task)}
+                                      title="Eliminar fuente de verificación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
@@ -1146,19 +1201,37 @@ const PlanningPage: React.FC = () => {
                                     🔗 {fuente !== '-' ? fuente : 'Ver fuente'}
                                   </a>
                                 )}
-                                <button
-                                  onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
-                                  title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
-                                  style={{
-                                    background: 'none',
-                                    border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
-                                    borderRadius: '4px', padding: '0.15rem 0.5rem',
-                                    cursor: 'pointer', fontSize: '0.68rem',
-                                    color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
-                                  }}
-                                >
-                                  {hasValidLink ? '✏️' : '+ fuente'}
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setFuenteModal({ task, nombre: fuente !== '-' ? fuente : '', url: fuenteUrl !== '-' ? fuenteUrl : '' })}
+                                    title={hasValidLink ? 'Editar fuente de verificación' : 'Agregar fuente de verificación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasValidLink ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasValidLink ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasValidLink ? '✏️' : '+ fuente'}
+                                  </button>
+                                  {hasValidLink && (
+                                    <button
+                                      onClick={() => handleDeleteFuente(task)}
+                                      title="Eliminar fuente de verificación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
