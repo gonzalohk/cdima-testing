@@ -25,11 +25,19 @@ interface Link {
   fromNotes?: boolean;
 }
 
+interface Subsubtask {
+  id: string;
+  name: string;
+  notes?: string;
+  links: Link[];
+}
+
 interface Subtask {
   id: string;
   name: string;
   notes?: string;
   links: Link[];
+  subsubtasks: Subsubtask[];
 }
 
 interface Task {
@@ -52,9 +60,10 @@ interface Section {
 type CreateModal =
   | { type: 'section' }
   | { type: 'task'; sectionId: string }
-  | { type: 'subtask'; taskId: string; taskName: string };
+  | { type: 'subtask'; taskId: string; taskName: string }
+  | { type: 'subsubtask'; subtaskId: string; subtaskName: string };
 
-type LinkModal = { targetId: string; targetType: 'task' | 'subtask'; targetName: string } | null;
+type LinkModal = { targetId: string; targetType: 'task' | 'subtask' | 'subsubtask'; targetName: string } | null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const detectFileType = (url: string, label: string): string => {
@@ -169,6 +178,12 @@ const convertAsanaTaskToTask = (t: AsanaTask): Task => ({
     name: st.name,
     notes: st.notes,
     links: [...convertAttachmentsToLinks(st.attachments), ...extractLinksFromNotes(st.notes)],
+    subsubtasks: (st.subtasks ?? []).map(sst => ({
+      id: sst.gid,
+      name: sst.name,
+      notes: sst.notes,
+      links: extractLinksFromNotes(sst.notes),
+    })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
   })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
 });
 
@@ -235,6 +250,79 @@ const DriveLink: React.FC<{ link: Link; onDelete?: () => void }> = ({ link, onDe
   );
 };
 
+// ─── SubSubtaskRow: expandible dentro de SubtaskRow ──────────────────────
+const SubSubtaskRow: React.FC<{
+  subsubtask: Subsubtask;
+  accentColor: string;
+  onAddLink?: () => void;
+  onDeleteLink?: (linkId: string) => void;
+  onDelete?: () => void;
+}> = ({ subsubtask, accentColor, onAddLink, onDeleteLink, onDelete }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasLinks = subsubtask.links.length > 0;
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div
+        onClick={() => setExpanded(x => !x)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', cursor: 'pointer' }}
+      >
+        <RightOutlined style={{
+          fontSize: 9, color: accentColor,
+          transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s',
+        }} />
+        <FileTextOutlined style={{ color: accentColor, fontSize: 12 }} />
+        <Text style={{ fontSize: 12, flex: 1 }}>{subsubtask.name}</Text>
+        {hasLinks && <Badge count={subsubtask.links.length} style={{ background: accentColor, fontSize: 10 }} />}
+        {onAddLink && (
+          <Tooltip title="Agregar recurso">
+            <Button
+              type="text"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={e => { e.stopPropagation(); onAddLink(); }}
+              style={{ color: accentColor, padding: '0 4px' }}
+            />
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Popconfirm
+            title="¿Eliminar esta sub-sub-carpeta?"
+            description="Se eliminará permanentemente en Asana."
+            onConfirm={e => { e?.stopPropagation(); onDelete(); }}
+            okText="Eliminar"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Eliminar sub-sub-carpeta">
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={e => e.stopPropagation()}
+                style={{ color: '#ff4d4f', padding: '0 4px' }}
+              />
+            </Tooltip>
+          </Popconfirm>
+        )}
+      </div>
+      {expanded && (
+        <div style={{ paddingLeft: 22, borderLeft: `2px solid ${accentColor}20`, marginLeft: 10, paddingBottom: 4 }}>
+          {hasLinks
+            ? subsubtask.links.map(l => (
+                <DriveLink
+                  key={l.id}
+                  link={l}
+                  onDelete={l.fromNotes ? () => onDeleteLink?.(l.id) : undefined}
+                />
+              ))
+            : <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos adjuntos</Text>
+          }
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── SubtaskRow: expandible dentro de TaskRow ─────────────────────────────
 const SubtaskRow: React.FC<{
   subtask: Subtask;
@@ -242,9 +330,15 @@ const SubtaskRow: React.FC<{
   onAddLink?: () => void;
   onDeleteLink?: (linkId: string) => void;
   onDelete?: () => void;
-}> = ({ subtask, accentColor, onAddLink, onDeleteLink, onDelete }) => {
+  onCreateSubsubtask?: () => void;
+  onAddSubsubtaskLink?: (subsubtaskId: string) => void;
+  onDeleteSubsubtaskLink?: (subsubtaskId: string, linkId: string) => void;
+  onDeleteSubsubtask?: (subsubtaskId: string) => void;
+}> = ({ subtask, accentColor, onAddLink, onDeleteLink, onDelete, onCreateSubsubtask, onAddSubsubtaskLink, onDeleteSubsubtaskLink, onDeleteSubsubtask }) => {
   const [expanded, setExpanded] = useState(false);
   const hasLinks = subtask.links.length > 0;
+  const hasSubsubtasks = subtask.subsubtasks.length > 0;
+  const hasContent = hasLinks || hasSubsubtasks;
   return (
     <div style={{ marginBottom: 2 }}>
       <div
@@ -265,6 +359,17 @@ const SubtaskRow: React.FC<{
               size="small"
               icon={<LinkOutlined />}
               onClick={e => { e.stopPropagation(); onAddLink(); }}
+              style={{ color: accentColor, padding: '0 4px' }}
+            />
+          </Tooltip>
+        )}
+        {onCreateSubsubtask && (
+          <Tooltip title="Crear sub-sub-carpeta">
+            <Button
+              type="text"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={e => { e.stopPropagation(); onCreateSubsubtask(); }}
               style={{ color: accentColor, padding: '0 4px' }}
             />
           </Tooltip>
@@ -292,16 +397,34 @@ const SubtaskRow: React.FC<{
       </div>
       {expanded && (
         <div style={{ paddingLeft: 28, borderLeft: `2px solid ${accentColor}30`, marginLeft: 12, paddingBottom: 6 }}>
-          {hasLinks
-            ? subtask.links.map(l => (
-                <DriveLink
-                  key={l.id}
-                  link={l}
-                  onDelete={l.fromNotes ? () => onDeleteLink?.(l.id) : undefined}
+          {hasLinks && subtask.links.map(l => (
+            <DriveLink
+              key={l.id}
+              link={l}
+              onDelete={l.fromNotes ? () => onDeleteLink?.(l.id) : undefined}
+            />
+          ))}
+          {!hasContent && (
+            <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos adjuntos</Text>
+          )}
+          {hasSubsubtasks && (
+            <>
+              {hasLinks && <Divider dashed style={{ margin: '4px 0' }} />}
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                <FolderOutlined style={{ marginRight: 4 }} />Sub-subcarpetas
+              </Text>
+              {subtask.subsubtasks.map(sst => (
+                <SubSubtaskRow
+                  key={sst.id}
+                  subsubtask={sst}
+                  accentColor={accentColor}
+                  onAddLink={onAddSubsubtaskLink ? () => onAddSubsubtaskLink(sst.id) : undefined}
+                  onDeleteLink={onDeleteSubsubtaskLink ? (linkId) => onDeleteSubsubtaskLink(sst.id, linkId) : undefined}
+                  onDelete={onDeleteSubsubtask ? () => onDeleteSubsubtask(sst.id) : undefined}
                 />
-              ))
-            : <Text type="secondary" style={{ fontSize: 12 }}>Sin recursos adjuntos</Text>
-          }
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -319,9 +442,13 @@ const TaskRow: React.FC<{
   onDeleteSubtaskLink?: (subtaskId: string, linkId: string) => void;
   onDeleteSubtask?: (subtaskId: string) => void;
   onDelete?: () => void;
-}> = ({ task, accentColor, onCreateSubtask, onAddLink, onDeleteLink, onAddSubtaskLink, onDeleteSubtaskLink, onDeleteSubtask, onDelete }) => {
+  onCreateSubsubtask?: (subtaskId: string) => void;
+  onAddSubsubtaskLink?: (subsubtaskId: string) => void;
+  onDeleteSubsubtaskLink?: (subsubtaskId: string, linkId: string) => void;
+  onDeleteSubsubtask?: (subsubtaskId: string, subtaskId: string) => void;
+}> = ({ task, accentColor, onCreateSubtask, onAddLink, onDeleteLink, onAddSubtaskLink, onDeleteSubtaskLink, onDeleteSubtask, onDelete, onCreateSubsubtask, onAddSubsubtaskLink, onDeleteSubsubtaskLink, onDeleteSubsubtask }) => {
   const [expanded, setExpanded] = useState(false);
-  const allLinks   = [...task.links, ...task.subtasks.flatMap(st => st.links)];
+  const allLinks   = [...task.links, ...task.subtasks.flatMap(st => [...st.links, ...st.subsubtasks.flatMap(sst => sst.links)])];
   const domType    = getDominantFileType(allLinks);
   const colors     = getFileTypeColors(domType);
   const hasContent = task.links.length > 0 || task.subtasks.length > 0;
@@ -435,6 +562,10 @@ const TaskRow: React.FC<{
                   onAddLink={onAddSubtaskLink ? () => onAddSubtaskLink(st.id) : undefined}
                   onDeleteLink={onDeleteSubtaskLink ? (linkId) => onDeleteSubtaskLink(st.id, linkId) : undefined}
                   onDelete={onDeleteSubtask ? () => onDeleteSubtask(st.id) : undefined}
+                  onCreateSubsubtask={onCreateSubsubtask ? () => onCreateSubsubtask(st.id) : undefined}
+                  onAddSubsubtaskLink={onAddSubsubtaskLink ? (sstId) => onAddSubsubtaskLink(sstId) : undefined}
+                  onDeleteSubsubtaskLink={onDeleteSubsubtaskLink ? (sstId, linkId) => onDeleteSubsubtaskLink(sstId, linkId) : undefined}
+                  onDeleteSubsubtask={onDeleteSubsubtask ? (sstId) => onDeleteSubsubtask(sstId, st.id) : undefined}
                 />
               ))}
             </>
@@ -571,9 +702,22 @@ const ResourceLibraryPage: React.FC = () => {
           ...s,
           tasks: s.tasks.map(t =>
             t.id === createModal.taskId
-              ? { ...t, subtasks: sortByName([...t.subtasks, { id: subtask.gid, name: subtask.name, links: [] }]) }
+              ? { ...t, subtasks: sortByName([...t.subtasks, { id: subtask.gid, name: subtask.name, links: [], subsubtasks: [] }]) }
               : t
           ),
+        })));
+      } else if (createModal.type === 'subsubtask') {
+        const subsubtask = await asanaService.createSubtask(createModal.subtaskId, workspaceGid, { name: createName.trim() });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => ({
+            ...t,
+            subtasks: t.subtasks.map(st =>
+              st.id === createModal.subtaskId
+                ? { ...st, subsubtasks: sortByName([...st.subsubtasks, { id: subsubtask.gid, name: subsubtask.name, links: [] }]) }
+                : st
+            ),
+          })),
         })));
       }
       setCreateModal(null);
@@ -620,7 +764,26 @@ const ResourceLibraryPage: React.FC = () => {
     }
   };
 
-  const openLinkModal = (targetId: string, targetType: 'task' | 'subtask', targetName: string) => {
+  const handleDeleteSubsubtask = async (subsubtaskId: string, subtaskId: string) => {
+    try {
+      await asanaService.deleteTask(subsubtaskId);
+      setSections(prev => prev.map(s => ({
+        ...s,
+        tasks: s.tasks.map(t => ({
+          ...t,
+          subtasks: t.subtasks.map(st =>
+            st.id === subtaskId
+              ? { ...st, subsubtasks: st.subsubtasks.filter(sst => sst.id !== subsubtaskId) }
+              : st
+          ),
+        })),
+      })));
+    } catch (err) {
+      console.error('Error al eliminar sub-sub-carpeta:', err);
+    }
+  };
+
+  const openLinkModal = (targetId: string, targetType: 'task' | 'subtask' | 'subsubtask', targetName: string) => {
     setLinkLabel('');
     setLinkUrl('');
     setLinkError('');
@@ -652,7 +815,7 @@ const ResourceLibraryPage: React.FC = () => {
             : t
           ),
         })));
-      } else {
+      } else if (targetType === 'subtask') {
         let foundNotes = '';
         let foundLinks: Link[] = [];
         sections.find(s => s.tasks.find(t => t.subtasks.find(st => { if (st.id === targetId) { foundNotes = st.notes ?? ''; foundLinks = extractLinksFromNotes(st.notes); return true; } return false; })));
@@ -669,6 +832,29 @@ const ResourceLibraryPage: React.FC = () => {
             ),
           })),
         })));
+      } else {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => t.subtasks.find(st => st.subsubtasks.find(sst => {
+          if (sst.id === targetId) { foundNotes = sst.notes ?? ''; foundLinks = extractLinksFromNotes(sst.notes); return true; }
+          return false;
+        }))));
+        const updatedLinks = [...foundLinks, newLink];
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => ({
+            ...t,
+            subtasks: t.subtasks.map(st => ({
+              ...st,
+              subsubtasks: st.subsubtasks.map(sst => sst.id === targetId
+                ? { ...sst, notes: newNotes, links: [...sst.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+                : sst
+              ),
+            })),
+          })),
+        })));
       }
       setLinkModal(null);
     } catch (err) {
@@ -678,7 +864,7 @@ const ResourceLibraryPage: React.FC = () => {
     }
   };
 
-  const handleDeleteLink = async (targetId: string, targetType: 'task' | 'subtask', linkId: string) => {
+  const handleDeleteLink = async (targetId: string, targetType: 'task' | 'subtask' | 'subsubtask', linkId: string) => {
     try {
       if (targetType === 'task') {
         let foundNotes = '';
@@ -694,7 +880,7 @@ const ResourceLibraryPage: React.FC = () => {
             : t
           ),
         })));
-      } else {
+      } else if (targetType === 'subtask') {
         let foundNotes = '';
         let foundLinks: Link[] = [];
         sections.find(s => s.tasks.find(t => t.subtasks.find(st => { if (st.id === targetId) { foundNotes = st.notes ?? ''; foundLinks = extractLinksFromNotes(st.notes); return true; } return false; })));
@@ -709,6 +895,29 @@ const ResourceLibraryPage: React.FC = () => {
               ? { ...st, notes: newNotes, links: [...st.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
               : st
             ),
+          })),
+        })));
+      } else {
+        let foundNotes = '';
+        let foundLinks: Link[] = [];
+        sections.find(s => s.tasks.find(t => t.subtasks.find(st => st.subsubtasks.find(sst => {
+          if (sst.id === targetId) { foundNotes = sst.notes ?? ''; foundLinks = extractLinksFromNotes(sst.notes); return true; }
+          return false;
+        }))));
+        const updatedLinks = foundLinks.filter(l => l.id !== linkId);
+        const newNotes = buildNotesWithLinks(foundNotes, updatedLinks);
+        await asanaService.updateTask(targetId, { notes: newNotes });
+        setSections(prev => prev.map(s => ({
+          ...s,
+          tasks: s.tasks.map(t => ({
+            ...t,
+            subtasks: t.subtasks.map(st => ({
+              ...st,
+              subsubtasks: st.subsubtasks.map(sst => sst.id === targetId
+                ? { ...sst, notes: newNotes, links: [...sst.links.filter(l => !l.fromNotes), ...updatedLinks.map(l => ({ ...l, fromNotes: true as const }))] }
+                : sst
+              ),
+            })),
           })),
         })));
       }
@@ -726,16 +935,16 @@ const ResourceLibraryPage: React.FC = () => {
     return currentSection.tasks.filter(t =>
       t.name.toLowerCase().includes(q) ||
       t.links.some(l => l.label.toLowerCase().includes(q)) ||
-      t.subtasks.some(st => st.name.toLowerCase().includes(q) || st.links.some(l => l.label.toLowerCase().includes(q)))
+      t.subtasks.some(st => st.name.toLowerCase().includes(q) || st.links.some(l => l.label.toLowerCase().includes(q)) || st.subsubtasks.some(sst => sst.name.toLowerCase().includes(q) || sst.links.some(l => l.label.toLowerCase().includes(q))))
     );
   }, [currentSection, search]);
 
   const sectionResourceCount = currentSection
-    ? currentSection.tasks.reduce((acc, t) => acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length, 0), 0)
+    ? currentSection.tasks.reduce((acc, t) => acc + t.links.length + t.subtasks.reduce((a, st) => a + st.links.length + st.subsubtasks.reduce((b, sst) => b + sst.links.length, 0), 0), 0)
     : 0;
 
   const totalRecursos = sections.reduce((acc, s) =>
-    acc + s.tasks.reduce((a, t) => a + t.links.length + t.subtasks.reduce((b, st) => b + st.links.length, 0), 0), 0);
+    acc + s.tasks.reduce((a, t) => a + t.links.length + t.subtasks.reduce((b, st) => b + st.links.length + st.subsubtasks.reduce((c, sst) => c + sst.links.length, 0), 0), 0), 0);
 
   const projectName = projects.find(p => p.gid === selectedProject)?.name || 'Proyecto';
 
@@ -965,6 +1174,18 @@ const ResourceLibraryPage: React.FC = () => {
                       onDeleteSubtaskLink={canEdit ? (subtaskId, linkId) => handleDeleteLink(subtaskId, 'subtask', linkId) : undefined}
                       onDeleteSubtask={canEdit ? (subtaskId) => handleDeleteSubtask(subtaskId, task.id) : undefined}
                       onDelete={canEdit ? () => handleDeleteTask(task.id, currentSection.id) : undefined}
+                      onCreateSubsubtask={canEdit ? (subtaskId) => {
+                        const st = task.subtasks.find(s => s.id === subtaskId);
+                        setCreateName(''); setCreateError('');
+                        setCreateModal({ type: 'subsubtask', subtaskId, subtaskName: st?.name ?? '' });
+                      } : undefined}
+                      onAddSubsubtaskLink={canEdit ? (subsubtaskId) => {
+                        let sstName = '';
+                        task.subtasks.forEach(st => { const found = st.subsubtasks.find(sst => sst.id === subsubtaskId); if (found) sstName = found.name; });
+                        openLinkModal(subsubtaskId, 'subsubtask', sstName);
+                      } : undefined}
+                      onDeleteSubsubtaskLink={canEdit ? (subsubtaskId, linkId) => handleDeleteLink(subsubtaskId, 'subsubtask', linkId) : undefined}
+                      onDeleteSubsubtask={canEdit ? (subsubtaskId, subtaskId) => handleDeleteSubsubtask(subsubtaskId, subtaskId) : undefined}
                     />
                   ))
                 )}
@@ -978,9 +1199,10 @@ const ResourceLibraryPage: React.FC = () => {
       <Modal
         open={createModal !== null}
         title={
-          createModal?.type === 'section' ? '📁 Nueva Sección / Período' :
-          createModal?.type === 'task'    ? '📂 Nueva Carpeta' :
-                                            '📄 Nueva Sub-carpeta'
+          createModal?.type === 'section'     ? '📁 Nueva Sección / Período' :
+          createModal?.type === 'task'        ? '📂 Nueva Carpeta' :
+          createModal?.type === 'subsubtask'  ? '📋 Nueva Sub-sub-carpeta' :
+                                                '📄 Nueva Sub-carpeta'
         }
         onCancel={() => { setCreateModal(null); setCreateName(''); setCreateError(''); }}
         onOk={handleCreate}
@@ -996,6 +1218,11 @@ const ResourceLibraryPage: React.FC = () => {
               En carpeta: <strong>{(createModal as { type: 'subtask'; taskId: string; taskName: string }).taskName}</strong>
             </Typography.Text>
           )}
+          {createModal?.type === 'subsubtask' && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              En sub-carpeta: <strong>{(createModal as { type: 'subsubtask'; subtaskId: string; subtaskName: string }).subtaskName}</strong>
+            </Typography.Text>
+          )}
           {createModal?.type === 'task' && (() => {
             const sid = (createModal as { type: 'task'; sectionId: string }).sectionId;
             const sec = sections.find(s => s.id === sid);
@@ -1007,9 +1234,10 @@ const ResourceLibraryPage: React.FC = () => {
           })()}
           <Input
             placeholder={
-              createModal?.type === 'section' ? 'Nombre del período o sección' :
-              createModal?.type === 'task'    ? 'Nombre de la carpeta' :
-                                                'Nombre de la sub-carpeta'
+              createModal?.type === 'section'     ? 'Nombre del período o sección' :
+              createModal?.type === 'task'        ? 'Nombre de la carpeta' :
+              createModal?.type === 'subsubtask'  ? 'Nombre de la sub-sub-carpeta' :
+                                                    'Nombre de la sub-carpeta'
             }
             value={createName}
             onChange={e => setCreateName(e.target.value)}
