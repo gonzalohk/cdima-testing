@@ -22,7 +22,12 @@ export const ASANA_CUSTOM_FIELDS = {
   // ============================================
   MODULO_6: 'Módulo 6',
   MODULO_7: 'Módulo 7',
+  MODULO_8: 'Módulo 8',
+  MODULO_9: 'Módulo 9',
+  MODULO_10: 'Módulo 10',
   TIPO_ESCUELA: 'Tipo de Escuela',
+  AREA_ESCUELA: 'Area',
+  NUMERO_MODULOS: 'Número de módulos',
   
   // ============================================
   // CAMPOS DE PLANIFICACIÓN
@@ -63,6 +68,11 @@ export const ASANA_CUSTOM_FIELDS = {
   TIPO_ESCUELA_VALORES: {
     LIDERAZGO_SOCIAL: 'Liderazgo Social',
     LIDERAZGO_GESTION: 'Liderazgo de Gestión',
+  },
+  AREA_ESCUELA_VALORES: {
+    EMPODERAMIENTO_POLITICO: 'Empoderamiento político',
+    ERRADICACION_VIOLENCIA: 'Erradicación de violencia',
+    OTRO: 'Otro',
   },
 } as const;
 

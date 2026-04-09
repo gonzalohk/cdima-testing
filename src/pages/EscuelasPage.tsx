@@ -125,6 +125,7 @@ const EscuelasPage: React.FC = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [estudiantes, setEstudiantes] = useState<AsanaTask[]>([]);
   const [documentos, setDocumentos] = useState<AsanaTask[]>([]);
+  const [numeroModulos, setNumeroModulos] = useState<number>(7);
 
   // Estados para documentos
   const [docModalSubtask, setDocModalSubtask] = useState<AsanaTask | null>(null);
@@ -297,6 +298,19 @@ const EscuelasPage: React.FC = () => {
       if (tareaDocumentos) {
         const subtasks = await asanaService.getSubtasks(tareaDocumentos.gid);
         setDocumentos(subtasks);
+      }
+
+      // Cargar número de módulos desde campo personalizado de tarea Resumen
+      const tareaResumen = sectionTasks.find(t => t.name.startsWith('Resumen:'));
+      if (tareaResumen) {
+        const tareaResumenFull = await asanaService.getTask(tareaResumen.gid);
+        const modulosField = tareaResumenFull.custom_fields?.find(
+          (f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS
+        );
+        const numMod = modulosField?.number_value ?? null;
+        setNumeroModulos(numMod !== null ? Math.min(10, Math.max(1, Math.round(numMod))) : 7);
+      } else {
+        setNumeroModulos(7);
       }
     } catch (err) {
       console.error('Error loading escuela details:', err);
@@ -829,7 +843,8 @@ const EscuelasPage: React.FC = () => {
     try {
       await exportEscuelaCentralizadorNotasPDF({
         escuela: selectedEscuela,
-        estudiantes
+        estudiantes,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar centralizador:', error);
@@ -857,7 +872,8 @@ const EscuelasPage: React.FC = () => {
     try {
       exportEscuelaActaCalificacionesWord({
         escuela: selectedEscuela,
-        estudiantes
+        estudiantes,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar acta de calificaciones:', error);
@@ -869,7 +885,8 @@ const EscuelasPage: React.FC = () => {
     try {
       await exportEscuelaEstudiantePDF({
         estudiante,
-        escuela: selectedEscuela ?? undefined
+        escuela: selectedEscuela ?? undefined,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar reporte de estudiante:', error);
@@ -1241,8 +1258,12 @@ const EscuelasPage: React.FC = () => {
                             const m5 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
                             const m6 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
                             const m7 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
-                            const total = parseFloat(((m1 + m2 + m3 + m4 + m5 + m6 + m7) / 7).toFixed(2));
-                            return { gid: est.gid, nombre: formatearNombreCompleto(est.name), m1, m2, m3, m4, m5, m6, m7, total };
+                            const m8 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_8, 0);
+                            const m9 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_9, 0);
+                            const m10 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_10, 0);
+                            const todosModulos = [m1, m2, m3, m4, m5, m6, m7, m8, m9, m10].slice(0, numeroModulos);
+                            const total = parseFloat((todosModulos.reduce((a, b) => a + b, 0) / numeroModulos).toFixed(2));
+                            return { gid: est.gid, nombre: formatearNombreCompleto(est.name), m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, total };
                           });
                           const promG = notasData.length > 0 ? parseFloat((notasData.reduce((s, e) => s + e.total, 0) / notasData.length).toFixed(2)) : 0;
                           const aprobados = notasData.filter(e => e.total >= 61).length;
@@ -1286,8 +1307,8 @@ const EscuelasPage: React.FC = () => {
                                       className="button-primary"
                                       style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                                     >📝 Registrar Notas</button>
-                                    <button onClick={handleExportCentralizadorNotas} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Exportar Notas</button>
-                                    <button onClick={handleExportActaCalificacionesWord} title="Exportar Acta" style={{ background: 'none', border: '1px solid #90caf9', borderRadius: '6px', padding: '0.5rem 0.65rem', cursor: 'pointer', color: '#1565c0', fontSize: '1.1rem', lineHeight: 1, display: 'flex', alignItems: 'center', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = '#e3f2fd')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📝</button>
+                                    <button onClick={handleExportCentralizadorNotas} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Notas PDF</button>
+                                    <button onClick={handleExportActaCalificacionesWord} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Notas WORD</button>
                                   </div>
                                 </div>
                                 <div style={{ overflowX: 'auto' }}>
@@ -1296,13 +1317,9 @@ const EscuelasPage: React.FC = () => {
                                     <tr>
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
                                       <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px', position: 'sticky', left: 0, zIndex: 2, background: '#f1f5f9' }}>Estudiante</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 1</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 2</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 3</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 4</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 5</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 6</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 7</th>
+                                      {Array.from({ length: numeroModulos }, (_, i) => (
+                                        <th key={i} style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. {i + 1}</th>
+                                      ))}
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#1e3a5f', color: '#ffffff', minWidth: '80px', borderLeft: '3px solid #3b82f6', letterSpacing: '0.04em' }}>FINAL</th>
                                     </tr>
                                   </thead>
@@ -1311,14 +1328,14 @@ const EscuelasPage: React.FC = () => {
                                       <tr key={index}>
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{index + 1}</td>
                                         <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', position: 'sticky', left: 0, zIndex: 1 }}>{est.nombre}</td>
-                                        {[est.m1, est.m2, est.m3, est.m4, est.m5, est.m6, est.m7].map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
+                                        {[est.m1, est.m2, est.m3, est.m4, est.m5, est.m6, est.m7, est.m8, est.m9, est.m10].slice(0, numeroModulos).map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
                                         <td className="nota-semantica" style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', backgroundColor: est.total >= 61 ? '#d1fae5' : '#fee2e2', color: est.total >= 61 ? '#065f46' : '#991b1b', borderLeft: '3px solid #3b82f6' }}>{est.total || '–'}</td>
                                       </tr>
                                     ))}
                                     <tr style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f1f5f9', fontWeight: 700 }}>
                                       <td style={{ textAlign: 'center', padding: '0.6rem 0.5rem', color: '#94a3b8', fontSize: '0.75rem' }}></td>
                                       <td className="col-name-s" style={{ padding: '0.6rem 0.75rem', textAlign: 'left', position: 'sticky', left: 0, zIndex: 1, background: '#f1f5f9', color: '#374151', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Promedio General</td>
-                                      {[calcProm(notasData.map(e=>e.m1)),calcProm(notasData.map(e=>e.m2)),calcProm(notasData.map(e=>e.m3)),calcProm(notasData.map(e=>e.m4)),calcProm(notasData.map(e=>e.m5)),calcProm(notasData.map(e=>e.m6)),calcProm(notasData.map(e=>e.m7))].map((v,i) => (
+                                      {[calcProm(notasData.map(e=>e.m1)),calcProm(notasData.map(e=>e.m2)),calcProm(notasData.map(e=>e.m3)),calcProm(notasData.map(e=>e.m4)),calcProm(notasData.map(e=>e.m5)),calcProm(notasData.map(e=>e.m6)),calcProm(notasData.map(e=>e.m7)),calcProm(notasData.map(e=>e.m8)),calcProm(notasData.map(e=>e.m9)),calcProm(notasData.map(e=>e.m10))].slice(0, numeroModulos).map((v,i) => (
                                         <td key={i} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', color: '#374151', fontWeight: 600 }}>{v}</td>
                                       ))}
                                       <td style={{ textAlign: 'center', padding: '0.6rem 0.75rem', backgroundColor: '#1e3a5f', color: '#ffffff', fontSize: '1rem', fontWeight: 800, borderLeft: '3px solid #3b82f6' }}>{calcProm(notasData.map(e=>e.total))}</td>
@@ -1566,7 +1583,7 @@ const EscuelasPage: React.FC = () => {
                   gap: '0.5rem'
                 }}
               >
-                📄 Exportar Notas
+                📄 Notas PDF
               </button>
               {/* <button
                 onClick={handleExportCentralizadorNotasWord}
@@ -1579,7 +1596,7 @@ const EscuelasPage: React.FC = () => {
                   gap: '0.5rem'
                 }}
               >
-                📄 Exportar Notas a Documento
+                📄 Notas WORD
               </button> */}
               <button
                 onClick={handleExportActaCalificacionesWord}
@@ -2074,14 +2091,23 @@ const EscuelasPage: React.FC = () => {
 
               {(() => {
                 // Usar el helper robusto importado
-                const modulo1 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
-                const modulo2 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
-                const modulo3 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
-                const modulo4 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
-                const modulo5 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-                const modulo6 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
-                const modulo7 = getCustomFieldValueSafe(estudianteSeleccionadoNotas, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
-                const promedio = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5 + modulo6 + modulo7) / 7;
+                const allModulosFields = [
+                  ASANA_CUSTOM_FIELDS.MODULO_1,
+                  ASANA_CUSTOM_FIELDS.MODULO_2,
+                  ASANA_CUSTOM_FIELDS.MODULO_3,
+                  ASANA_CUSTOM_FIELDS.MODULO_4,
+                  ASANA_CUSTOM_FIELDS.MODULO_5,
+                  ASANA_CUSTOM_FIELDS.MODULO_6,
+                  ASANA_CUSTOM_FIELDS.MODULO_7,
+                  ASANA_CUSTOM_FIELDS.MODULO_8,
+                  ASANA_CUSTOM_FIELDS.MODULO_9,
+                  ASANA_CUSTOM_FIELDS.MODULO_10,
+                ].slice(0, numeroModulos);
+                const modulosConNotas = allModulosFields.map((field, i) => ({
+                  nombre: `Módulo ${i + 1}`,
+                  nota: getCustomFieldValueSafe(estudianteSeleccionadoNotas, field, 0),
+                }));
+                const promedio = modulosConNotas.reduce((sum, m) => sum + m.nota, 0) / numeroModulos;
 
                 return (
                   <div>
@@ -2107,15 +2133,7 @@ const EscuelasPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {[
-                            { nombre: 'Módulo 1', nota: modulo1 },
-                            { nombre: 'Módulo 2', nota: modulo2 },
-                            { nombre: 'Módulo 3', nota: modulo3 },
-                            { nombre: 'Módulo 4', nota: modulo4 },
-                            { nombre: 'Módulo 5', nota: modulo5 },
-                            { nombre: 'Módulo 6', nota: modulo6 },
-                            { nombre: 'Módulo 7', nota: modulo7 }
-                          ].map((modulo, index) => (
+                          {modulosConNotas.map((modulo, index) => (
                             <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
                               <td style={{ padding: '0.6rem 0.65rem', fontWeight: 600, color: '#1e3a5f', fontSize: '0.875rem' }}>
                                 {modulo.nombre}
@@ -2524,13 +2542,9 @@ const EscuelasPage: React.FC = () => {
                       minWidth: '150px'
                     }}
                   >
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_1}>Módulo 1</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_2}>Módulo 2</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_3}>Módulo 3</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_4}>Módulo 4</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_5}>Módulo 5</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_6}>Módulo 6</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_7}>Módulo 7</option>
+                    {[ASANA_CUSTOM_FIELDS.MODULO_1, ASANA_CUSTOM_FIELDS.MODULO_2, ASANA_CUSTOM_FIELDS.MODULO_3, ASANA_CUSTOM_FIELDS.MODULO_4, ASANA_CUSTOM_FIELDS.MODULO_5, ASANA_CUSTOM_FIELDS.MODULO_6, ASANA_CUSTOM_FIELDS.MODULO_7, ASANA_CUSTOM_FIELDS.MODULO_8, ASANA_CUSTOM_FIELDS.MODULO_9, ASANA_CUSTOM_FIELDS.MODULO_10].slice(0, numeroModulos).map((mod, i) => (
+                      <option key={mod} value={mod}>Módulo {i + 1}</option>
+                    ))}
                   </select>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#424242' }}>

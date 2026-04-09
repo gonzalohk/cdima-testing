@@ -48,7 +48,8 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   escuelaData
 }) => {
   const [nombreEscuela, setNombreEscuela] = useState('');
-  const [tipoEscuela, setTipoEscuela] = useState('');
+  const [areaEscuela, setAreaEscuela] = useState('');
+  const [numeroModulos, setNumeroModulos] = useState(7);
   const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +59,6 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   useEffect(() => {
     if (editMode && escuelaData) {
       setNombreEscuela(escuelaData.nombre);
-      setTipoEscuela(escuelaData.tipoEscuela || '');
       
       // Parsear nombres que vienen en formato "Nombre, Apellido Paterno, Apellido Materno"
       const parseNombreCompleto = (nombreCompleto: string) => {
@@ -118,8 +118,12 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         throw new Error('El nombre de la escuela es obligatorio');
       }
 
-      if (!tipoEscuela.trim()) {
-        throw new Error('El tipo de escuela es obligatorio');
+      if (!areaEscuela.trim()) {
+        throw new Error('El área es obligatoria');
+      }
+
+      if (numeroModulos < 5 || numeroModulos > 10) {
+        throw new Error('El número de módulos debe estar entre 5 y 10');
       }
 
       const estudiantesValidos = editMode
@@ -152,22 +156,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           await asanaService.updateSection(escuelaData.gid, nombreEscuela);
         }
 
-        // 2. Actualizar tipo de escuela en las notas de la tarea Estudiantes
-        if (tipoEscuela !== escuelaData.tipoEscuela) {
-          const tareaEstudiantes = await asanaService.getTask(escuelaData.estudiantesTaskGid);
-          const notasActualizadas = tareaEstudiantes.notes
-            ? tareaEstudiantes.notes.replace(
-                new RegExp(`${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}:.*`),
-                `${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`
-              )
-            : `Lista de estudiantes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`;
-          
-          await asanaService.updateTask(escuelaData.estudiantesTaskGid, {
-            notes: notasActualizadas
-          });
-        }
-
-        // 3. Actualizar estudiantes
+        // 2. Actualizar estudiantes
         const estudiantesOriginales = escuelaData.estudiantes;
         const estudiantesActuales = estudiantesValidos;
 
@@ -265,7 +254,7 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           projectGid: projectGid,
           workspaceGid: cdima.gid,
           sectionGid: seccion.gid,
-          notes: `Lista de estudiantes de la escuela\n\n${ASANA_CUSTOM_FIELDS.TIPO_ESCUELA}: ${tipoEscuela}`
+          notes: 'Lista de estudiantes de la escuela'
         });
 
         const tareaDocumentos = await asanaService.createTask({
@@ -275,6 +264,35 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
           sectionGid: seccion.gid,
           notes: 'Documentos relacionados a la escuela'
         });
+
+        // 3. Crear tarea Resumen con área y número de módulos en custom fields
+        const resumenNotes = `Resumen de la escuela\n===RESUMEN_JSON===\n${JSON.stringify({ numeroModulos })}\n===FIN_RESUMEN_JSON===`;
+        const resumenTask = await asanaService.createTask({
+          name: `Resumen: ${nombreEscuela.trim()}`,
+          projectGid: projectGid,
+          workspaceGid: cdima.gid,
+          sectionGid: seccion.gid,
+          notes: resumenNotes
+        });
+        // Obtener la tarea recién creada para acceder a los GIDs de sus custom fields
+        const resumenTaskFull = await asanaService.getTask(resumenTask.gid);
+        const customFieldsUpdate: { [gid: string]: string | number | null } = {};
+        const areaField = resumenTaskFull.custom_fields?.find(f => f.name === ASANA_CUSTOM_FIELDS.AREA_ESCUELA);
+        if (areaField) {
+          if (areaField.type === 'enum' && areaField.enum_options) {
+            const opt = areaField.enum_options.find(o => o.name === areaEscuela);
+            if (opt) customFieldsUpdate[areaField.gid] = opt.gid;
+          } else {
+            customFieldsUpdate[areaField.gid] = areaEscuela;
+          }
+        }
+        const modulosField = resumenTaskFull.custom_fields?.find(f => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS);
+        if (modulosField) {
+          customFieldsUpdate[modulosField.gid] = numeroModulos;
+        }
+        if (Object.keys(customFieldsUpdate).length > 0) {
+          await asanaService.updateTask(resumenTask.gid, { custom_fields: customFieldsUpdate });
+        }
 
         // 3. Crear subtareas de documentos
         const documentosTipo = ['Currícula', 'Informe', 'Otros'];
@@ -341,21 +359,39 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                 />
               </div>
 
-              {/* Tipo de Escuela */}
+              {/* Área */}
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  Tipo de Escuela <span style={{ color: 'red' }}>*</span>
+                  Área <span style={{ color: 'red' }}>*</span>
                 </label>
                 <select
-                  value={tipoEscuela}
-                  onChange={(e) => setTipoEscuela(e.target.value)}
+                  value={areaEscuela}
+                  onChange={(e) => setAreaEscuela(e.target.value)}
                   style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
                   required
                 >
                   <option value="">Seleccione...</option>
-                  <option value="Liderazgo Social">Liderazgo Social</option>
-                  <option value="Liderazgo de Gestión">Liderazgo de Gestión</option>
+                  <option value="Empoderamiento político">Empoderamiento político</option>
+                  <option value="Erradicación de violencia">Erradicación de violencia</option>
+                  <option value="Otro">Otro</option>
                 </select>
+              </div>
+
+              {/* Número de módulos */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Número de módulos <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  value={numeroModulos}
+                  onChange={(e) => setNumeroModulos(Math.min(10, Math.max(5, parseInt(e.target.value) || 5)))}
+                  min={5}
+                  max={10}
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
+                  required
+                />
+                <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>Mínimo 5, máximo 10</span>
               </div>
 
               {/* Estudiantes - solo en modo edición */}
