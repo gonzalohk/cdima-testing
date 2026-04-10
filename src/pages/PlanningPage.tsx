@@ -96,6 +96,8 @@ const PlanningPage: React.FC = () => {
   const [updatingTaskGid, setUpdatingTaskGid] = useState<string | null>(null);
   const [fuenteModal, setFuenteModal] = useState<{ task: AsanaTask; nombre: string; url: string } | null>(null);
   const [savingFuente, setSavingFuente] = useState(false);
+  const [observacionModal, setObservacionModal] = useState<{ task: AsanaTask; texto: string } | null>(null);
+  const [savingObservacion, setSavingObservacion] = useState(false);
 
   // Verificar token al cargar
   useEffect(() => {
@@ -368,6 +370,17 @@ const PlanningPage: React.FC = () => {
     }
   };
 
+  const decodeObservacion = (task: AsanaTask): string | null => {
+    const obsField = task.custom_fields?.find(f => f.name === 'Observaciones');
+    const encoded = obsField?.text_value;
+    if (!encoded) return null;
+    try {
+      return decodeURIComponent(atob(encoded));
+    } catch {
+      return null;
+    }
+  };
+
   const handleEstadoChange = async (task: AsanaTask, newEstado: string) => {
     const estadoField = task.custom_fields?.find(f => f.name === 'Estado');
     if (!estadoField?.gid) return;
@@ -438,6 +451,45 @@ const PlanningPage: React.FC = () => {
       setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
     } catch (err) {
       alert('Error al eliminar la fuente de verificación.');
+      console.error(err);
+    }
+  };
+
+  const handleSaveObservacion = async () => {
+    if (!observacionModal) return;
+    const { task, texto } = observacionModal;
+    const obsField = task.custom_fields?.find(f => f.name === 'Observaciones');
+    if (!obsField?.gid) {
+      alert('No se encontró el campo "Observaciones" en la tarea.');
+      return;
+    }
+    setSavingObservacion(true);
+    try {
+      const encoded = texto.trim() ? btoa(encodeURIComponent(texto.trim())) : '';
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: { [obsField.gid]: encoded },
+      });
+      setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
+      setObservacionModal(null);
+    } catch (err) {
+      alert('Error al guardar la observación.');
+      console.error(err);
+    } finally {
+      setSavingObservacion(false);
+    }
+  };
+
+  const handleDeleteObservacion = async (task: AsanaTask) => {
+    const obsField = task.custom_fields?.find(f => f.name === 'Observaciones');
+    if (!obsField?.gid) return;
+    if (!window.confirm('¿Eliminar la observación de esta actividad?')) return;
+    try {
+      const updated = await asanaService.updateTask(task.gid, {
+        custom_fields: { [obsField.gid]: '' },
+      });
+      setTasks(prev => prev.map(t => t.gid === task.gid ? { ...t, ...updated } : t));
+    } catch (err) {
+      alert('Error al eliminar la observación.');
       console.error(err);
     }
   };
@@ -787,10 +839,11 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '44%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '13%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '11%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '18%' }}>Observaciones</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '14%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -898,6 +951,59 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const obsText = decodeObservacion(task);
+                            const hasObs = !!obsText;
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasObs && (
+                                  <div
+                                    style={{
+                                      fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic',
+                                      lineHeight: 1.4, textAlign: 'left',
+                                      wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+                                      marginBottom: '0.25rem',
+                                    }}
+                                  >
+                                    {obsText}
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setObservacionModal({ task, texto: obsText ?? '' })}
+                                    title={hasObs ? 'Editar observación' : 'Agregar observación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasObs ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasObs ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasObs ? '✏️' : '+ obs.'}
+                                  </button>
+                                  {hasObs && (
+                                    <button
+                                      onClick={() => handleDeleteObservacion(task)}
+                                      title="Eliminar observación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
@@ -956,10 +1062,11 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '44%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '13%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '11%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '18%' }}>Observaciones</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '14%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1067,6 +1174,59 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const obsText = decodeObservacion(task);
+                            const hasObs = !!obsText;
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasObs && (
+                                  <div
+                                    style={{
+                                      fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic',
+                                      lineHeight: 1.4, textAlign: 'left',
+                                      wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+                                      marginBottom: '0.25rem',
+                                    }}
+                                  >
+                                    {obsText}
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setObservacionModal({ task, texto: obsText ?? '' })}
+                                    title={hasObs ? 'Editar observación' : 'Agregar observación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasObs ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasObs ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasObs ? '✏️' : '+ obs.'}
+                                  </button>
+                                  {hasObs && (
+                                    <button
+                                      onClick={() => handleDeleteObservacion(task)}
+                                      title="Eliminar observación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
@@ -1126,10 +1286,11 @@ const PlanningPage: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '57%' }}>Actividad</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '17%' }}>Fecha</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Fuente</th>
-                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '13%' }}>Estado</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '44%' }}>Actividad</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'left', fontWeight: 600, color: '#333', width: '13%' }}>Fecha</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '11%' }}>Fuente</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '18%' }}>Observaciones</th>
+                      <th style={{ padding: '0.875rem', textAlign: 'center', fontWeight: 600, color: '#333', width: '14%' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1237,6 +1398,59 @@ const PlanningPage: React.FC = () => {
                           })()}
                         </td>
                         <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
+                          {(() => {
+                            const obsText = decodeObservacion(task);
+                            const hasObs = !!obsText;
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {hasObs && (
+                                  <div
+                                    style={{
+                                      fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic',
+                                      lineHeight: 1.4, textAlign: 'left',
+                                      wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+                                      marginBottom: '0.25rem',
+                                    }}
+                                  >
+                                    {obsText}
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => setObservacionModal({ task, texto: obsText ?? '' })}
+                                    title={hasObs ? 'Editar observación' : 'Agregar observación'}
+                                    style={{
+                                      background: 'none',
+                                      border: `1px dashed ${hasObs ? '#d1d5db' : '#e5e7eb'}`,
+                                      borderRadius: '4px', padding: '0.15rem 0.5rem',
+                                      cursor: 'pointer', fontSize: '0.68rem',
+                                      color: hasObs ? '#6b7280' : '#d1d5db', lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {hasObs ? '✏️' : '+ obs.'}
+                                  </button>
+                                  {hasObs && (
+                                    <button
+                                      onClick={() => handleDeleteObservacion(task)}
+                                      title="Eliminar observación"
+                                      style={{
+                                        background: 'none', border: 'none',
+                                        cursor: 'pointer', padding: '0.15rem 0.3rem',
+                                        color: '#d1d5db', fontSize: '0.7rem', lineHeight: 1,
+                                        borderRadius: '4px',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                      onMouseLeave={e => (e.currentTarget.style.color = '#d1d5db')}
+                                    >
+                                      🗑
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.875rem', textAlign: 'center', verticalAlign: 'top' }}>
                           {updatingTaskGid === task.gid ? (
                             <span style={{ fontSize: '0.8rem', color: '#999' }}>Actualizando...</span>
                           ) : (() => {
@@ -1280,6 +1494,116 @@ const PlanningPage: React.FC = () => {
             )}
           </div>
         </>
+      )}
+
+      {/* Observaciones Modal */}
+      {observacionModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001
+          }}
+          onClick={() => !savingObservacion && setObservacionModal(null)}
+        >
+          <div
+            style={{
+              background: 'white', borderRadius: '16px', overflow: 'hidden',
+              width: '100%', maxWidth: '480px', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', margin: '1rem'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Franja Wiphala */}
+            <div style={{ display: 'flex', height: 5, overflow: 'hidden' }}>
+              {['#D32F2F','#E65100','#F9A825','#388E3C','#1565C0','#6A1B9A','#880E4F'].map((color, i) => (
+                <div key={i} style={{ flex: 1, backgroundColor: color }} />
+              ))}
+            </div>
+
+            {/* Cabecera */}
+            <div style={{
+              padding: '1.1rem 1.5rem 1rem',
+              background: 'linear-gradient(180deg, #f8faff 0%, #ffffff 100%)',
+              borderBottom: '1px solid #f0f0f0',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #F57C00 0%, #E65100 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)', fontSize: 20
+                }}>📝</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.97rem', color: '#1a2332', lineHeight: 1.3 }}>
+                    Observaciones
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#6b7280', marginTop: '0.15rem', lineHeight: 1.4, maxWidth: '290px' }}>
+                    {observacionModal.task.name}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setObservacionModal(null)}
+                disabled={savingObservacion}
+                style={{
+                  flexShrink: 0, background: 'white', border: 'none', cursor: 'pointer',
+                  width: 28, height: 28, borderRadius: '50%', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 1px 6px rgba(0,0,0,0.18)', color: '#374151', fontSize: '0.75rem'
+                }}
+              >✕</button>
+            </div>
+
+            {/* Cuerpo */}
+            <div style={{ padding: '1.25rem 1.5rem 1.5rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>
+                  Texto de observación
+                </label>
+                <textarea
+                  value={observacionModal.texto}
+                  onChange={(e) => setObservacionModal(prev => prev ? { ...prev, texto: e.target.value } : null)}
+                  placeholder="Escribe la observación para esta actividad..."
+                  disabled={savingObservacion}
+                  autoFocus
+                  rows={5}
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px',
+                    border: '1px solid #d1d5db', fontSize: '0.875rem',
+                    boxSizing: 'border-box', outline: 'none', resize: 'vertical',
+                    fontFamily: 'inherit', lineHeight: 1.5,
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setObservacionModal(null)}
+                  disabled={savingObservacion}
+                  style={{
+                    padding: '0.5rem 1.1rem', borderRadius: '8px',
+                    border: '1px solid #d1d5db', background: 'white',
+                    cursor: 'pointer', fontSize: '0.875rem', color: '#374151', fontWeight: 500
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveObservacion}
+                  disabled={savingObservacion}
+                  style={{
+                    padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #F57C00 0%, #E65100 100%)',
+                    color: 'white', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600,
+                    boxShadow: '0 2px 6px rgba(245,124,0,0.35)',
+                    opacity: savingObservacion ? 0.55 : 1,
+                  }}
+                >
+                  {savingObservacion ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Fuente de Verificación Modal */}

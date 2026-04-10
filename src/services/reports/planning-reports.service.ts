@@ -37,6 +37,17 @@ const getCustomFieldValue = (task: AsanaTask, fieldName: string): string => {
   return '-';
 };
 
+const decodeObservacion = (task: AsanaTask): string | null => {
+  const obsField = task.custom_fields?.find(f => f.name === 'Observaciones');
+  const encoded = obsField?.text_value;
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(atob(encoded));
+  } catch {
+    return null;
+  }
+};
+
 interface CalendarEvent {
   id: string;
   title: string;
@@ -362,15 +373,17 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       if (inicio && fin) fecha = `${inicio} - ${fin}`;
       else if (inicio) fecha = inicio;
       else if (fin) fecha = fin;
-      
+      const obs = decodeObservacion(task);
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
         {
-          content: 'EN PROCESO',
+          content: obs ? `EN PROCESO\n(${obs})` : 'EN PROCESO',
           styles: {
-            textColor: colors.black
+            textColor: colors.black,
+            fontStyle: obs ? 'normal' : 'bold',
+            fontSize: obs ? 7.5 : 8.5,
           }
         }
       ];
@@ -444,14 +457,18 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       if (inicio && fin) fecha = `${inicio} - ${fin}`;
       else if (inicio) fecha = inicio;
       else if (fin) fecha = fin;
-
+      const obs = decodeObservacion(task);
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
         {
-          content: 'EN PROCESO',
-          styles: { textColor: colors.black }
+          content: obs ? `EN PROCESO\n(${obs})` : 'EN PROCESO',
+          styles: {
+            textColor: colors.black,
+            fontStyle: obs ? 'normal' : 'bold',
+            fontSize: obs ? 7.5 : 8.5,
+          }
         }
       ];
     });
@@ -532,12 +549,19 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       if (inicio && fin) fecha = fin;
       else if (fin) fecha = fin;
       else if (inicio) fecha = inicio;
-
+      const obs = decodeObservacion(task);
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
-        'EJECUTADO'
+        {
+          content: obs ? `EJECUTADO\n(${obs})` : 'EJECUTADO',
+          styles: {
+            textColor: colors.black,
+            fontStyle: obs ? 'normal' : 'bold',
+            fontSize: obs ? 7.5 : 8.5,
+          }
+        }
       ];
     });
 
@@ -609,12 +633,19 @@ export const exportTasksTablesToPDF = async (params: ExportTablesParams): Promis
       if (inicio && fin) fecha = fin;
       else if (fin) fecha = fin;
       else if (inicio) fecha = inicio;
-
+      const obs = decodeObservacion(task);
       return [
         task.name,
         getCustomFieldValue(task, 'Responsables de actividad'),
         fecha,
-        'REPROGRAMADO'
+        {
+          content: obs ? `REPROGRAMADO\n(${obs})` : 'REPROGRAMADO',
+          styles: {
+            textColor: colors.black,
+            fontStyle: obs ? 'normal' : 'bold',
+            fontSize: obs ? 7.5 : 8.5,
+          }
+        }
       ];
     });
 
@@ -702,7 +733,7 @@ export const exportTasksTablesToWord = async (params: ExportTablesParams): Promi
   const cellStyle = 'border:0.2pt solid #b4b4b4;padding:4pt 4pt;font-size:8.5pt;text-align:left;vertical-align:top;background-color:#ffffff;';
   const cellCenterStyle = 'border:0.2pt solid #b4b4b4;padding:4pt 4pt;font-size:8.5pt;text-align:center;vertical-align:top;font-weight:bold;background-color:#ffffff;';
 
-  const buildTable = (rows: { name: string; responsables: string; fecha: string; estado: string }[]): string => `
+  const buildTable = (rows: { name: string; responsables: string; fecha: string; estado: string; observacion?: string | null }[]): string => `
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:6pt;">
       <colgroup>
         <col style="width:38%;"/>
@@ -724,7 +755,7 @@ export const exportTasksTablesToWord = async (params: ExportTablesParams): Promi
           <td style="${cellStyle}">${escapeHtml(r.name)}</td>
           <td style="${cellStyle}">${escapeHtml(r.responsables)}</td>
           <td style="${cellStyle}">${escapeHtml(r.fecha)}</td>
-          <td style="${cellCenterStyle}">${escapeHtml(r.estado)}</td>
+          <td style="${cellCenterStyle}">${escapeHtml(r.estado)}${r.observacion ? `<br/><span style="font-size:7pt;color:#6b7280;font-style:italic;font-weight:normal;line-height:1.4;">(${escapeHtml(r.observacion)})</span>` : ''}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -741,7 +772,8 @@ export const exportTasksTablesToWord = async (params: ExportTablesParams): Promi
       name: task.name,
       responsables: getCustomFieldValue(task, 'Responsables de actividad') !== '-' ? getCustomFieldValue(task, 'Responsables de actividad') : '',
       fecha,
-      estado: estadoLabel
+      estado: estadoLabel,
+      observacion: decodeObservacion(task),
     };
   };
 
@@ -755,7 +787,8 @@ export const exportTasksTablesToWord = async (params: ExportTablesParams): Promi
       name: task.name,
       responsables: getCustomFieldValue(task, 'Responsables de actividad') !== '-' ? getCustomFieldValue(task, 'Responsables de actividad') : '',
       fecha,
-      estado: estadoLabel
+      estado: estadoLabel,
+      observacion: decodeObservacion(task),
     };
   };
 

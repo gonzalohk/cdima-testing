@@ -6,6 +6,7 @@ import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
 import CreateDiplomadoModal from '../components/CreateDiplomadoModal';
+import CreateCursoAltoNivelModal from '../components/CreateCursoAltoNivelModal';
 import Notification from '../components/Notification';
 import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
@@ -144,6 +145,8 @@ const ProduccionAltoNivelPage: React.FC = () => {
   const [savingDoc, setSavingDoc] = useState(false);
   const [docModalError, setDocModalError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [showCursoCreateModal, setShowCursoCreateModal] = useState(false);
+  const [numeroModulos, setNumeroModulos] = useState<number>(5);
 
   useEffect(() => {
     const token = asanaService.getToken();
@@ -319,6 +322,19 @@ const ProduccionAltoNivelPage: React.FC = () => {
       const tareaDocentes = sectionTasks.find(t => t.name === 'Docentes');
       const tareaEstudiantes = sectionTasks.find(t => t.name === 'Estudiantes');
       const tareaDocumentos = sectionTasks.find(t => t.name === 'Documentos');
+
+      // Cargar número de módulos desde la tarea Resumen
+      const tareaResumen = sectionTasks.find(t => t.name.startsWith('Resumen:'));
+      if (tareaResumen) {
+        const tareaResumenFull = await asanaService.getTask(tareaResumen.gid);
+        const modulosField = tareaResumenFull.custom_fields?.find(
+          (f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS
+        );
+        const numMod = modulosField?.number_value ?? null;
+        setNumeroModulos(numMod !== null ? Math.min(10, Math.max(1, Math.round(numMod))) : 5);
+      } else {
+        setNumeroModulos(5);
+      }
 
       // Obtener subtareas de cada tarea
       if (tareaDocentes) {
@@ -894,7 +910,8 @@ const ProduccionAltoNivelPage: React.FC = () => {
     try {
       await exportAltoNivelCentralizadorNotasPDF({
         curso: selectedCurso,
-        estudiantes
+        estudiantes,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar centralizador:', error);
@@ -907,7 +924,8 @@ const ProduccionAltoNivelPage: React.FC = () => {
     try {
       await exportAltoNivelCentralizadorNotasWord({
         curso: selectedCurso,
-        estudiantes
+        estudiantes,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar documento WORD:', error);
@@ -919,7 +937,8 @@ const ProduccionAltoNivelPage: React.FC = () => {
     try {
       await exportAltoNivelEstudiantePDF({
         estudiante,
-        curso: selectedCurso ?? undefined
+        curso: selectedCurso ?? undefined,
+        numeroModulos
       });
     } catch (error) {
       console.error('Error al exportar reporte de estudiante:', error);
@@ -1074,7 +1093,7 @@ const ProduccionAltoNivelPage: React.FC = () => {
         </div>
         <Dropdown
           menu={{ items: [
-            { key: 'crear', label: '➕ Crear nuevo Curso', onClick: () => { setEditMode(false); setCursoToEdit(null); setShowCreateModal(true); } },
+            { key: 'crear', label: '➕ Crear nuevo Curso', onClick: () => setShowCursoCreateModal(true) },
             ...(selectedCurso ? [{ key: 'editar', label: '✏️ Editar Curso', onClick: handleEditDiplomado }] : []),
           ]}}
           trigger={['click']}
@@ -1313,7 +1332,7 @@ const ProduccionAltoNivelPage: React.FC = () => {
                                   style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
-                                >＋ Inscribir</button>
+                                >＋ Inscribir Estudiante</button>
                               </div>
                             </div>
                             {estudiantes.length === 0 ? (
@@ -2504,7 +2523,16 @@ const ProduccionAltoNivelPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Creación/Edición */}
+      {/* Modal de Creación de Curso */}
+      {showCursoCreateModal && (
+        <CreateCursoAltoNivelModal
+          projectGid={cursosProjectGid}
+          onClose={() => setShowCursoCreateModal(false)}
+          onSuccess={() => { setShowCursoCreateModal(false); loadCursos(); }}
+        />
+      )}
+
+      {/* Modal de Edición */}
       {showCreateModal && (
         <CreateDiplomadoModal
           projectGid={cursosProjectGid}

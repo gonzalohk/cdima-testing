@@ -153,8 +153,19 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 export const ROLE_PAGES: Record<UserRole, string[]> = {
   director:      ['/', '/report', '/planificacion', '/biblioteca', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
   administrador: ['/', '/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
-  'tecnico ev':  ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
+  'tecnico ev':  ['/report', '/biblioteca', '/planificacion', '/escuelas','/investigacion-e-incidencia'],
   'tecnico ep':  ['/report', '/biblioteca', '/planificacion', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
   comunicacion:   ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
   planificador:   ['/biblioteca', '/planificacion'],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Restricción de área para escuelas
+// Si el rol aparece aquí, solo verá escuelas cuya tarea "Resumen:"
+// tenga el campo "Area" igual al valor indicado.
+// Roles ausentes (director, administrador, comunicacion, etc.) ven todas.
+// ─────────────────────────────────────────────────────────────
+export const ROLE_ESCUELA_AREA: Partial<Record<UserRole, string>> = {
+  'tecnico ev': 'Erradicación de violencia',
+  'tecnico ep': 'Empoderamiento político',
 };

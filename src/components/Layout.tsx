@@ -5,7 +5,7 @@ import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection } from '../types/asana.types';
 import { useAuth } from '../context/AuthContext';
-import { ROLE_PAGES } from '../context/permissions';
+import { ROLE_PAGES, ROLE_ESCUELA_AREA } from '../context/permissions';
 import logoCdima from '../assets/logocdima.png';
 
 const Layout: React.FC = () => {
@@ -45,7 +45,27 @@ const Layout: React.FC = () => {
       );
       if (escuelasProject) {
         const escuelasSections = await asanaService.getSections(escuelasProject.gid);
-        setEscuelas(escuelasSections);
+        const areaRequerida = user?.role ? ROLE_ESCUELA_AREA[user.role] : undefined;
+        if (areaRequerida !== undefined) {
+          const sectionsWithArea = await Promise.all(
+            escuelasSections.map(async (section) => {
+              try {
+                const sectionTasks = await asanaService.getSectionTasks(section.gid);
+                const tareaResumen = sectionTasks.find((t: any) => t.name.startsWith('Resumen:'));
+                if (!tareaResumen) return { section, area: null };
+                const tareaResumenFull = await asanaService.getTask(tareaResumen.gid);
+                const areaField = tareaResumenFull.custom_fields?.find((f: any) => f.name === 'Area');
+                const area = areaField?.display_value ?? areaField?.enum_value?.name ?? null;
+                return { section, area };
+              } catch {
+                return { section, area: null };
+              }
+            })
+          );
+          setEscuelas(sectionsWithArea.filter(({ area }) => area === areaRequerida).map(({ section }) => section));
+        } else {
+          setEscuelas(escuelasSections);
+        }
       }
 
       // Cargar Diplomados
@@ -196,7 +216,7 @@ const Layout: React.FC = () => {
                   {showEscuelasSubmenu ? '▲' : '▼'}
                 </span>
               </a>
-              {showEscuelasSubmenu && escuelas.length > 0 && (
+              {showEscuelasSubmenu && (
                 <ul className="submenu">
                   <li>
                     <Link
@@ -207,6 +227,11 @@ const Layout: React.FC = () => {
                       Ver todas
                     </Link>
                   </li>
+                  {escuelas.length === 0 && (
+                    <li style={{ padding: '0.4rem 1rem', fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                      Sin escuelas aún
+                    </li>
+                  )}
                   {escuelas.map(escuela => (
                     <li key={escuela.gid}>
                       <button

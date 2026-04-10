@@ -4,6 +4,7 @@ import Notification from './Notification';
 import { serializeEstudianteData, parseAsistenciaRecords, updateNotasWithAsistencia } from '../utils/asana-helpers';
 import { validateData, EstudianteDataSchema, DocenteDataSchema } from '../schemas/diplomado.schemas';
 import { HtmlModalHeader } from './ModalShared';
+import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
 
 interface DiplomadoEditData {
   gid: string;
@@ -48,6 +49,7 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
   diplomadoData
 }) => {
   const [nombreDiplomado, setNombreDiplomado] = useState('');
+  const [numeroModulos, setNumeroModulos] = useState(5);
   const [docentes, setDocentes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', especialidad: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
@@ -358,6 +360,10 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           throw new Error(`Ya existe un diplomado con el nombre "${duplicado.name}". Por favor usa un nombre diferente.`);
         }
 
+        if (numeroModulos < 1 || numeroModulos > 10) {
+          throw new Error('El número de módulos debe estar entre 1 y 10');
+        }
+
         // 1. Crear la sección (diplomado)
         const seccion = await asanaService.createSection(projectGid, nombreDiplomado);
 
@@ -391,6 +397,23 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
         for (const doc of documentosTipo) {
           await asanaService.createSubtask(tareaDocumentos.gid, cdima.gid, {
             name: doc
+          });
+        }
+
+        // 4. Crear tarea Resumen con número de módulos en custom fields
+        const resumenNotes = `Resumen del curso\n===RESUMEN_JSON===\n${JSON.stringify({ numeroModulos })}\n===FIN_RESUMEN_JSON===`;
+        const resumenTask = await asanaService.createTask({
+          name: `Resumen: ${nombreDiplomado.trim()}`,
+          projectGid: projectGid,
+          workspaceGid: cdima.gid,
+          sectionGid: seccion.gid,
+          notes: resumenNotes
+        });
+        const resumenTaskFull = await asanaService.getTask(resumenTask.gid);
+        const modulosField = resumenTaskFull.custom_fields?.find((f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS);
+        if (modulosField) {
+          await asanaService.updateTask(resumenTask.gid, {
+            custom_fields: { [modulosField.gid]: numeroModulos }
           });
         }
 
@@ -450,6 +473,25 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                   maxLength={120}
                 />
               </div>
+
+              {/* Número de módulos */}
+              {!editMode && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Número de módulos <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  value={numeroModulos}
+                  onChange={(e) => setNumeroModulos(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                  min={1}
+                  max={10}
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
+                  required
+                />
+                <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>Mínimo 1, máximo 10 (por defecto: 5)</span>
+              </div>
+              )}
 
               {/* Docentes - solo en modo edición */}
               {editMode && (

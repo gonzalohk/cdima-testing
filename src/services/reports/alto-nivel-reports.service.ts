@@ -38,11 +38,13 @@ interface ExportDiplomadoGeneralParams {
 interface ExportDiplomadoCentralizadorNotasParams {
   curso: AsanaSection;
   estudiantes: AsanaTask[];
+  numeroModulos?: number;
 }
 
 interface ExportDiplomadoEstudianteParams {
   estudiante: AsanaTask;
   curso?: AsanaSection;
+  numeroModulos?: number;
 }
 
 interface ExportDiplomadoGeneralWordParams {
@@ -637,7 +639,8 @@ export const exportAltoNivelGeneralWord = ({ curso, estudiantes }: ExportDiploma
 /**
  * Genera un reporte PDF de centralizador de notas del diplomado
  */
-export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes, numeroModulos }: ExportDiplomadoCentralizadorNotasParams): void => {
+  const n = Math.min(10, Math.max(1, Math.round(numeroModulos ?? 5)));
   const colors = {
     black: [0, 0, 0],
     white: [255, 255, 255],
@@ -724,7 +727,14 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
     const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
     const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
     const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-    const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+    const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+    const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+    const modulo8 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_8, 0);
+    const modulo9 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_9, 0);
+    const modulo10 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_10, 0);
+    const allModulos = [modulo1, modulo2, modulo3, modulo4, modulo5, modulo6, modulo7, modulo8, modulo9, modulo10];
+    const activeModulos = allModulos.slice(0, n);
+    const adjustedTotal = activeModulos.reduce((a, b) => a + b, 0) / n;
     
     return {
       nombreFormateado,
@@ -734,7 +744,12 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
       modulo3,
       modulo4,
       modulo5,
-      total: Math.round(total)
+      modulo6,
+      modulo7,
+      modulo8,
+      modulo9,
+      modulo10,
+      total: Math.round(adjustedTotal)
     };
   });
 
@@ -750,15 +765,12 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
   };
 
   // Preparar datos para la tabla con numeración
+  const allModuloKeys = ['modulo1', 'modulo2', 'modulo3', 'modulo4', 'modulo5', 'modulo6', 'modulo7', 'modulo8', 'modulo9', 'modulo10'] as const;
   const tableBody = notasEstudiantes.map((est, index) => [
     (index + 1).toString(), // No.
     est.ci, // C.I
     est.nombreFormateado, // Nombres en formato Apellido Paterno, Apellido Materno, Nombre
-    est.modulo1.toString(),
-    est.modulo2.toString(),
-    est.modulo3.toString(),
-    est.modulo4.toString(),
-    est.modulo5.toString(),
+    ...allModuloKeys.slice(0, n).map(k => (est as any)[k].toString()),
     est.total.toString()
   ]);
 
@@ -768,16 +780,12 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
       '',
       '',
       'PROMEDIO GENERAL',
-      calcularPromedioModulo('modulo1').toString(),
-      calcularPromedioModulo('modulo2').toString(),
-      calcularPromedioModulo('modulo3').toString(),
-      calcularPromedioModulo('modulo4').toString(),
-      calcularPromedioModulo('modulo5').toString(),
+      ...allModuloKeys.slice(0, n).map(k => calcularPromedioModulo(k).toString()),
       calcularPromedioModulo('total').toString()
     ]);
 
     autoTable(pdf, {
-      head: [['No.', 'C.I', 'Nombres', 'Módulo 1', 'Módulo 2', 'Módulo 3', 'Módulo 4', 'Módulo 5', 'Prom.']],
+      head: [['No.', 'C.I', 'Nombres', ...Array.from({ length: n }, (_, i) => `Módulo ${i + 1}`), 'Prom.']],
       body: tableBody,
       startY: startY,
       margin: { left: margins.left, right: margins.right },
@@ -807,24 +815,20 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
         fillColor: colors.white
       },
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 18, halign: 'center' },
-        2: { cellWidth: 66, halign: 'left' },
-        3: { cellWidth: 14, halign: 'center' },
-        4: { cellWidth: 14, halign: 'center' },
-        5: { cellWidth: 14, halign: 'center' },
-        6: { cellWidth: 14, halign: 'center' },
-        7: { cellWidth: 14, halign: 'center' },
-        8: { cellWidth: 14, halign: 'center' }
+        0: { cellWidth: 6, halign: 'center' },
+        1: { cellWidth: 16, halign: 'center' },
+        2: { cellWidth: 54, halign: 'left' },
+        ...Object.fromEntries(Array.from({ length: n }, (_, i) => [3 + i, { cellWidth: 12, halign: 'center' }])),
+        [3 + n]: { cellWidth: 12, halign: 'center' }
       },
       didParseCell: (data: any) => {
-        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 7) {
+        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 2 + n) {
           data.cell.styles.minCellHeight = 20;
           data.cell.text = [''];
         }
       },
       didDrawCell: (data: any) => {
-        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 7) {
+        if (data.section === 'head' && data.row.index === 0 && data.column.index >= 3 && data.column.index <= 2 + n) {
           const moduleLabel = `Módulo ${data.column.index - 2}`;
           const textWidth = pdf.getTextWidth(moduleLabel);
           const x = data.cell.x + data.cell.width / 2;
@@ -879,7 +883,8 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes }: Exp
  * Genera un reporte WORD de centralizador de notas del diplomado
  * sin cabecera, mostrando solo el título y la tabla.
  */
-export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: ExportDiplomadoCentralizadorNotasParams): void => {
+export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes, numeroModulos }: ExportDiplomadoCentralizadorNotasParams): void => {
+  const n = Math.min(10, Math.max(1, Math.round(numeroModulos ?? 5)));
   const escapeHtml = (value: string): string =>
     value
       .replace(/&/g, '&amp;')
@@ -903,13 +908,19 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: Ex
     const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
     const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
     const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-    const total = (modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5;
+    const modulo6 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_6, 0);
+    const modulo7 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_7, 0);
+    const modulo8 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_8, 0);
+    const modulo9 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_9, 0);
+    const modulo10 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_10, 0);
+    const modulos = [modulo1, modulo2, modulo3, modulo4, modulo5, modulo6, modulo7, modulo8, modulo9, modulo10].slice(0, n);
+    const adjustedTotal = modulos.reduce((a, b) => a + b, 0) / n;
 
     return {
       nombreFormateado,
       ci,
-      modulos: [modulo1, modulo2, modulo3, modulo4, modulo5],
-      total
+      modulos,
+      total: adjustedTotal
     };
   });
 
@@ -948,11 +959,7 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: Ex
         <td></td>
         <td></td>
         <td class="name-cell">PROMEDIO GENERAL</td>
-        <td class="num-cell">${calcularPromedioModulo(0)}</td>
-        <td class="num-cell">${calcularPromedioModulo(1)}</td>
-        <td class="num-cell">${calcularPromedioModulo(2)}</td>
-        <td class="num-cell">${calcularPromedioModulo(3)}</td>
-        <td class="num-cell">${calcularPromedioModulo(4)}</td>
+        ${Array.from({ length: n }, (_, i) => `<td class="num-cell">${calcularPromedioModulo(i)}</td>`).join('\n        ')}
         <td class="num-cell">${promedioGeneral()}</td>
       </tr>
     `
@@ -990,7 +997,7 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: Ex
         <table>
           <thead>
             <tr>
-              <th colspan="11" class="doc-header-cell">
+              <th colspan="${n + 4}" class="doc-header-cell">
                 <div class="header-grid">
                   <div class="logo-block">
                     <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
@@ -1020,7 +1027,7 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: Ex
             </tr>
           </thead>
           <tbody>
-            ${filas || '<tr><td colspan="11" class="num-cell">No hay actividades programadas en este período</td></tr>'}
+            ${filas || `<tr><td colspan="${n + 4}" class="num-cell">No hay actividades programadas en este período</td></tr>`}
             ${filaPromedio}
           </tbody>
         </table>
@@ -1042,7 +1049,7 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes }: Ex
 /**
  * Genera un reporte PDF individual de un estudiante
  */
-export const exportAltoNivelEstudiantePDF = ({ estudiante, curso }: ExportDiplomadoEstudianteParams): void => {
+export const exportAltoNivelEstudiantePDF = ({ estudiante, curso, numeroModulos }: ExportDiplomadoEstudianteParams): void => {
   const colors = {
     black: [0, 0, 0],
     white: [255, 255, 255],
@@ -1149,12 +1156,15 @@ export const exportAltoNivelEstudiantePDF = ({ estudiante, curso }: ExportDiplom
   startY = textY + 6;
 
   // ============ NOTAS POR MÓDULO ============
-  const modulo1 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
-  const modulo2 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
-  const modulo3 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
-  const modulo4 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
-  const modulo5 = getCustomFieldValueSafe(estudiante, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-  const promedio = Math.round((modulo1 + modulo2 + modulo3 + modulo4 + modulo5) / 5);
+  const n = Math.min(10, Math.max(1, Math.round(numeroModulos ?? 5)));
+  const allModuloKeys = [
+    ASANA_CUSTOM_FIELDS.MODULO_1, ASANA_CUSTOM_FIELDS.MODULO_2, ASANA_CUSTOM_FIELDS.MODULO_3,
+    ASANA_CUSTOM_FIELDS.MODULO_4, ASANA_CUSTOM_FIELDS.MODULO_5, ASANA_CUSTOM_FIELDS.MODULO_6,
+    ASANA_CUSTOM_FIELDS.MODULO_7, ASANA_CUSTOM_FIELDS.MODULO_8, ASANA_CUSTOM_FIELDS.MODULO_9,
+    ASANA_CUSTOM_FIELDS.MODULO_10
+  ];
+  const moduloValues = allModuloKeys.slice(0, n).map(key => getCustomFieldValueSafe(estudiante, key, 0));
+  const promedio = Math.round(moduloValues.reduce((a, b) => a + b, 0) / n);
 
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'bold');
@@ -1163,13 +1173,11 @@ export const exportAltoNivelEstudiantePDF = ({ estudiante, curso }: ExportDiplom
 
   startY += 8;
 
-  const notasData = [
-    ['Módulo 1', modulo1.toString(), modulo1 >= 51 ? 'Aprobado' : 'Reprobado'],
-    ['Módulo 2', modulo2.toString(), modulo2 >= 51 ? 'Aprobado' : 'Reprobado'],
-    ['Módulo 3', modulo3.toString(), modulo3 >= 51 ? 'Aprobado' : 'Reprobado'],
-    ['Módulo 4', modulo4.toString(), modulo4 >= 51 ? 'Aprobado' : 'Reprobado'],
-    ['Módulo 5', modulo5.toString(), modulo5 >= 51 ? 'Aprobado' : 'Reprobado']
-  ];
+  const notasData = moduloValues.map((nota, i) => [
+    `Módulo ${i + 1}`,
+    nota.toString(),
+    nota >= 51 ? 'Aprobado' : 'Reprobado'
+  ]);
 
   const notasTableWidth = 160;
   const notasMarginLeft = (pageWidth - notasTableWidth) / 2;

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Dropdown, Select, Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { ROLE_ESCUELA_AREA } from '../context/permissions';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -86,6 +88,7 @@ const _buildDocNotesE = (originalNotes: string | undefined | null, documentos: D
 const EscuelasPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -185,7 +188,29 @@ const EscuelasPage: React.FC = () => {
 
       // Obtener secciones del proyecto (cada sección es una escuela)
       const sections = await asanaService.getSections(escuelasProject.gid);
-      setEscuelas(sections);
+
+      // Filtrar escuelas por área según el rol del usuario
+      const areaRequerida = user?.role ? ROLE_ESCUELA_AREA[user.role] : undefined;
+      if (areaRequerida !== undefined) {
+        const sectionsWithArea = await Promise.all(
+          sections.map(async (section) => {
+            try {
+              const sectionTasks = await asanaService.getSectionTasks(section.gid);
+              const tareaResumen = sectionTasks.find((t: any) => t.name.startsWith('Resumen:'));
+              if (!tareaResumen) return { section, area: null };
+              const tareaResumenFull = await asanaService.getTask(tareaResumen.gid);
+              const areaField = tareaResumenFull.custom_fields?.find((f: any) => f.name === 'Area');
+              const area = areaField?.display_value ?? areaField?.enum_value?.name ?? null;
+              return { section, area };
+            } catch {
+              return { section, area: null };
+            }
+          })
+        );
+        setEscuelas(sectionsWithArea.filter(({ area }) => area === areaRequerida).map(({ section }) => section));
+      } else {
+        setEscuelas(sections);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar escuelas');
       console.error('Error loading escuelas:', err);
