@@ -1431,7 +1431,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Motivo observación */}
-                {isDetailObserved && detailJsonData?.motivoObservacion && (
+                {isDetailObserved && !!(detailJsonData?.motivoObservacion) && (
                   <div style={{ marginBottom: '1.25rem', padding: '0.6rem 0.85rem', backgroundColor: '#fffbeb', borderRadius: 6, border: '1px solid #fcd34d', borderLeft: '3px solid #b45309' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>💬 Motivo de observación</div>
                     <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f' }}>{detailJsonData.motivoObservacion as string}</p>
