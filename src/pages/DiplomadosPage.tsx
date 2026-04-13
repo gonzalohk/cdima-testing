@@ -144,6 +144,16 @@ const DiplomadosPage: React.FC = () => {
   const [showAgregarDocenteModal, setShowAgregarDocenteModal] = useState(false);
   const [showAgregarEstudianteModal, setShowAgregarEstudianteModal] = useState(false);
 
+  // Estados para eliminar persona
+  const [eliminarPersonaTarget, setEliminarPersonaTarget] = useState<{ task: AsanaTask; tipo: 'Docente' | 'Estudiante' } | null>(null);
+  const [eliminarTextoConfirm, setEliminarTextoConfirm] = useState('');
+  const [eliminandoPersona, setEliminandoPersona] = useState(false);
+
+  // Estados para eliminar sección
+  const [eliminarSeccionConfirm, setEliminarSeccionConfirm] = useState(false);
+  const [eliminarSeccionTexto, setEliminarSeccionTexto] = useState('');
+  const [eliminandoSeccion, setEliminandoSeccion] = useState(false);
+
   // Estados para documentos
   const [docModalSubtask, setDocModalSubtask] = useState<AsanaTask | null>(null);
   const [docNombre, setDocNombre] = useState('');
@@ -1047,6 +1057,57 @@ const DiplomadosPage: React.FC = () => {
     }
   };
 
+  const handleEliminarPersona = async () => {
+    if (!eliminarPersonaTarget) return;
+    if (eliminarTextoConfirm.toLowerCase() !== 'eliminar') return;
+    setEliminandoPersona(true);
+    try {
+      await asanaService.deleteTask(eliminarPersonaTarget.task.gid);
+      if (eliminarPersonaTarget.tipo === 'Docente') {
+        setDocentes(prev => prev.filter(d => d.gid !== eliminarPersonaTarget.task.gid));
+      } else {
+        setEstudiantes(prev => prev.filter(e => e.gid !== eliminarPersonaTarget.task.gid));
+      }
+      setNotification({ message: `${eliminarPersonaTarget.tipo} eliminado correctamente`, type: 'success' });
+      setEliminarPersonaTarget(null);
+      setEliminarTextoConfirm('');
+    } catch (err) {
+      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar', type: 'error' });
+    } finally {
+      setEliminandoPersona(false);
+    }
+  };
+
+  const handleEliminarSeccion = async () => {
+    if (!selectedDiplomado) return;
+    if (eliminarSeccionTexto.toLowerCase() !== 'eliminar') return;
+    setEliminandoSeccion(true);
+    try {
+      const sectionTasks = await asanaService.getSectionTasks(selectedDiplomado.gid);
+      const BATCH_SIZE = 10;
+      for (const task of sectionTasks) {
+        const subtasks = await asanaService.getSubtasks(task.gid);
+        for (let i = 0; i < subtasks.length; i += BATCH_SIZE) {
+          await Promise.all(subtasks.slice(i, i + BATCH_SIZE).map(s => asanaService.deleteTask(s.gid)));
+        }
+        await asanaService.deleteTask(task.gid);
+      }
+      await asanaService.deleteSection(selectedDiplomado.gid);
+      setSelectedDiplomado(null);
+      setDocentes([]);
+      setEstudiantes([]);
+      setDocumentos([]);
+      setEliminarSeccionConfirm(false);
+      setEliminarSeccionTexto('');
+      await loadDiplomados();
+      setNotification({ message: 'Diplomado eliminado correctamente', type: 'success' });
+    } catch (err) {
+      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar diplomado', type: 'error' });
+    } finally {
+      setEliminandoSeccion(false);
+    }
+  };
+
   if (loading) {
     return <LoadingOverlay message="Cargando diplomados..." />;
   }
@@ -1107,6 +1168,18 @@ const DiplomadosPage: React.FC = () => {
           <Dropdown
             menu={{ items: [
               { key: 'editar', label: '✏️ Editar Diplomado', onClick: handleEditDiplomado },
+              { type: 'divider' },
+              {
+                key: 'eliminar-seccion',
+                label: (
+                  <span title={docentes.length > 0 || estudiantes.length > 0 ? 'Elimina todos los docentes y estudiantes antes de eliminar el diplomado' : ''}>
+                    🗑️ Eliminar Diplomado
+                  </span>
+                ),
+                danger: true,
+                disabled: loadingDetails || docentes.length > 0 || estudiantes.length > 0,
+                onClick: () => { setEliminarSeccionTexto(''); setEliminarSeccionConfirm(true); },
+              },
             ]}}
             trigger={['click']}
           >
@@ -1279,6 +1352,7 @@ const DiplomadosPage: React.FC = () => {
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
                                           <div className="row-acts" style={{ display: 'flex', gap: '0.15rem', justifyContent: 'center' }}>
                                             <button onClick={() => handleShowInfo(docente, 'Docente')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                            <button onClick={() => { setEliminarPersonaTarget({ task: docente, tipo: 'Docente' }); setEliminarTextoConfirm(''); }} title="Eliminar docente" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#dc2626', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#fee2e2'} onMouseLeave={e => e.currentTarget.style.background='none'}>🗑️</button>
                                           </div>
                                         </td>
                                       </tr>
@@ -1406,6 +1480,7 @@ const DiplomadosPage: React.FC = () => {
                                             <button onClick={() => setEstudianteSeleccionadoNotas(estudiante)} title="Ver notas" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#e0e7ff'} onMouseLeave={e => e.currentTarget.style.background='none'}>📊</button>
                                             <button onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)} title="Ver asistencia" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#dcfce7'} onMouseLeave={e => e.currentTarget.style.background='none'}>✓</button>
                                             <button onClick={() => handleShowInfo(estudiante, 'Estudiante')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                            <button onClick={() => { setEliminarPersonaTarget({ task: estudiante, tipo: 'Estudiante' }); setEliminarTextoConfirm(''); }} title="Eliminar estudiante" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#dc2626', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#fee2e2'} onMouseLeave={e => e.currentTarget.style.background='none'}>🗑️</button>
                                           </div>
                                         </td>
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
@@ -3109,6 +3184,106 @@ const DiplomadosPage: React.FC = () => {
                   disabled={loadingAsistencia || asistencias.length === 0}
                 >
                   {loadingAsistencia ? 'Guardando...' : '💾 Guardar Asistencia'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para eliminar persona */}
+      {eliminarPersonaTarget && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '420px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', backgroundColor: '#fff5f5' }}>
+              <h2 style={{ fontSize: '1.1rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🗑️ Eliminar {eliminarPersonaTarget.tipo}
+              </h2>
+              <button onClick={() => { setEliminarPersonaTarget(null); setEliminarTextoConfirm(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: '#6b7280', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.95rem', color: '#374151' }}>
+                Estás a punto de eliminar a <strong>{eliminarPersonaTarget.task.name}</strong>.
+              </p>
+              <p style={{ marginBottom: '1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Esta acción es <strong>irreversible</strong> y eliminará permanentemente todos los datos del registro en Asana.
+              </p>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151', fontWeight: 600 }}>
+                Para confirmar, escribe <span style={{ color: '#dc2626', fontFamily: 'monospace' }}>eliminar</span> en el campo de abajo:
+              </p>
+              <input
+                type="text"
+                value={eliminarTextoConfirm}
+                onChange={e => setEliminarTextoConfirm(e.target.value)}
+                placeholder="eliminar"
+                autoFocus
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${eliminarTextoConfirm.toLowerCase() === 'eliminar' ? '#dc2626' : '#d1d5db'}`, borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none' }}
+                onKeyDown={e => { if (e.key === 'Enter' && eliminarTextoConfirm.toLowerCase() === 'eliminar') handleEliminarPersona(); }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                <button
+                  onClick={() => { setEliminarPersonaTarget(null); setEliminarTextoConfirm(''); }}
+                  disabled={eliminandoPersona}
+                  style={{ padding: '0.5rem 1.25rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#374151', cursor: 'pointer', fontSize: '0.9rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEliminarPersona}
+                  disabled={eliminandoPersona || eliminarTextoConfirm.toLowerCase() !== 'eliminar'}
+                  style={{ padding: '0.5rem 1.25rem', border: 'none', borderRadius: '6px', background: eliminarTextoConfirm.toLowerCase() === 'eliminar' ? '#dc2626' : '#fca5a5', color: 'white', cursor: eliminarTextoConfirm.toLowerCase() === 'eliminar' ? 'pointer' : 'not-allowed', fontSize: '0.9rem', fontWeight: 600 }}
+                >
+                  {eliminandoPersona ? 'Eliminando...' : '🗑️ Eliminar definitivamente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para eliminar sección */}
+      {eliminarSeccionConfirm && selectedDiplomado && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '420px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', backgroundColor: '#fff5f5' }}>
+              <h2 style={{ fontSize: '1.1rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🗑️ Eliminar Diplomado
+              </h2>
+              <button onClick={() => { setEliminarSeccionConfirm(false); setEliminarSeccionTexto(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: '#6b7280', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.95rem', color: '#374151' }}>
+                Estás a punto de eliminar el diplomado <strong>{selectedDiplomado.name}</strong> junto con todas sus tareas y subtareas.
+              </p>
+              <p style={{ marginBottom: '1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Esta acción es <strong>irreversible</strong>. Solo se eliminará el contenido de esta sección.
+              </p>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151', fontWeight: 600 }}>
+                Para confirmar, escribe <span style={{ color: '#dc2626', fontFamily: 'monospace' }}>eliminar</span> en el campo de abajo:
+              </p>
+              <input
+                type="text"
+                value={eliminarSeccionTexto}
+                onChange={e => setEliminarSeccionTexto(e.target.value)}
+                placeholder="eliminar"
+                autoFocus
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${eliminarSeccionTexto.toLowerCase() === 'eliminar' ? '#dc2626' : '#d1d5db'}`, borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none' }}
+                onKeyDown={e => { if (e.key === 'Enter' && eliminarSeccionTexto.toLowerCase() === 'eliminar') handleEliminarSeccion(); }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                <button
+                  onClick={() => { setEliminarSeccionConfirm(false); setEliminarSeccionTexto(''); }}
+                  disabled={eliminandoSeccion}
+                  style={{ padding: '0.5rem 1.25rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#374151', cursor: 'pointer', fontSize: '0.9rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEliminarSeccion}
+                  disabled={eliminandoSeccion || eliminarSeccionTexto.toLowerCase() !== 'eliminar'}
+                  style={{ padding: '0.5rem 1.25rem', border: 'none', borderRadius: '6px', background: eliminarSeccionTexto.toLowerCase() === 'eliminar' ? '#dc2626' : '#fca5a5', color: 'white', cursor: eliminarSeccionTexto.toLowerCase() === 'eliminar' ? 'pointer' : 'not-allowed', fontSize: '0.9rem', fontWeight: 600 }}
+                >
+                  {eliminandoSeccion ? 'Eliminando...' : '🗑️ Eliminar definitivamente'}
                 </button>
               </div>
             </div>
