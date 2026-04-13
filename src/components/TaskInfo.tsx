@@ -310,6 +310,22 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   };
 
   const handleDeleteRequest = async (solicitud: AsanaTask) => {
+    const data = extractJsonData(solicitud.notes);
+    const creatorEmail = (data?.usuario as { email?: string } | undefined)?.email;
+    const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
+    const isCreator = !!user?.email && user.email === creatorEmail;
+    const isObservada = extractObservacion(solicitud.notes).observado;
+    const isAprobada = !!solicitud.completed;
+
+    if (!isAdminOrDirector && !isCreator) {
+      alert('No tienes permiso para eliminar esta solicitud.');
+      return;
+    }
+    if (!isAdminOrDirector && isCreator && (isObservada || isAprobada)) {
+      alert('No puedes eliminar una solicitud que ya fue aprobada u observada.');
+      return;
+    }
+
     const confirmed = window.confirm(`¿Eliminar la solicitud "${solicitud.name}"? Esta acción no se puede deshacer.`);
     if (!confirmed) return;
     try {
@@ -1185,20 +1201,44 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                           okText="Sí"
                           cancelText="No"
                           okButtonProps={{ danger: true }}
-                          disabled={record.completed || extractObservacion(record.notes).observado || user?.role !== 'director'}
+                          disabled={(() => {
+                            const data = extractJsonData(record.notes);
+                            const creatorEmail = (data?.usuario as { email?: string } | undefined)?.email;
+                            const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
+                            const isCreator = !!user?.email && user.email === creatorEmail;
+                            const isObservada = extractObservacion(record.notes).observado;
+                            const isAprobada = !!record.completed;
+                            if (isAdminOrDirector) return false;
+                            if (isCreator && !isObservada && !isAprobada) return false;
+                            return true;
+                          })()}
                         >
-                          <Tooltip title={
-                            user?.role !== 'director'
-                              ? 'Sin permiso para eliminar'
-                              : (record.completed || extractObservacion(record.notes).observado)
-                                ? 'No se puede eliminar una solicitud aprobada u observada'
-                                : 'Eliminar'
-                          }>
+                          <Tooltip title={(() => {
+                            const data = extractJsonData(record.notes);
+                            const creatorEmail = (data?.usuario as { email?: string } | undefined)?.email;
+                            const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
+                            const isCreator = !!user?.email && user.email === creatorEmail;
+                            const isObservada = extractObservacion(record.notes).observado;
+                            const isAprobada = !!record.completed;
+                            if (!isAdminOrDirector && !isCreator) return 'Sin permiso para eliminar';
+                            if (!isAdminOrDirector && isCreator && (isObservada || isAprobada)) return 'No se puede eliminar una solicitud aprobada u observada';
+                            return 'Eliminar';
+                          })()}>
                             <Button
                               size="small"
                               danger
                               icon={<DeleteOutlined />}
-                              disabled={record.completed || extractObservacion(record.notes).observado || user?.role !== 'director'}
+                              disabled={(() => {
+                                const data = extractJsonData(record.notes);
+                                const creatorEmail = (data?.usuario as { email?: string } | undefined)?.email;
+                                const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
+                                const isCreator = !!user?.email && user.email === creatorEmail;
+                                const isObservada = extractObservacion(record.notes).observado;
+                                const isAprobada = !!record.completed;
+                                if (isAdminOrDirector) return false;
+                                if (isCreator && !isObservada && !isAprobada) return false;
+                                return true;
+                              })()}
                             />
                           </Tooltip>
                         </Popconfirm>

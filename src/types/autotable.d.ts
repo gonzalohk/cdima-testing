@@ -27,6 +27,16 @@ declare module 'jspdf-autotable' {
     cellWidth?: number | 'auto' | 'wrap';
   }
 
+  export interface CellHookData {
+    cell: { styles: Styles & { [key: string]: any } };
+    row: { index: number; section: string };
+    column: { index: number; dataKey: string | number };
+    table: any;
+    pageNumber: number;
+    pageCount: number;
+    cursor: { x: number; y: number } | null;
+  }
+
   export interface Config {
     head?: (string | CellDef)[][];
     body?: (string | CellDef)[][];
@@ -44,6 +54,10 @@ declare module 'jspdf-autotable' {
     footStyles?: Partial<Styles>;
     alternateRowStyles?: Partial<Styles>;
     columnStyles?: { [key: string]: Partial<Styles> };
+    didParseCell?: (data: CellHookData) => void;
+    willDrawCell?: (data: CellHookData) => void;
+    didDrawCell?: (data: CellHookData) => void;
+    didDrawPage?: (data: CellHookData) => void;
   }
 
   export default function autoTable(doc: jsPDF, config: Config): void;

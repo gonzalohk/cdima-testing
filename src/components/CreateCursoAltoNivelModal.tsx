@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
 import { HtmlModalHeader } from './ModalShared';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
 
+interface CursoEditData {
+  gid: string;
+  nombre: string;
+  numeroModulos?: number;
+  resumenTaskGid?: string;
+}
+
 interface CreateCursoAltoNivelModalProps {
   projectGid: string;
   onClose: () => void;
   onSuccess: () => void;
+  editMode?: boolean;
+  cursoData?: CursoEditData;
 }
 
 const CreateCursoAltoNivelModal: React.FC<CreateCursoAltoNivelModalProps> = ({
   projectGid,
   onClose,
-  onSuccess
+  onSuccess,
+  editMode = false,
+  cursoData
 }) => {
   const [nombreCurso, setNombreCurso] = useState('');
   const [numeroModulos, setNumeroModulos] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Cargar datos cuando está en modo edición
+  useEffect(() => {
+    if (editMode && cursoData) {
+      setNombreCurso(cursoData.nombre);
+      if (cursoData.numeroModulos !== undefined) setNumeroModulos(cursoData.numeroModulos);
+    }
+  }, [editMode, cursoData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +54,28 @@ const CreateCursoAltoNivelModal: React.FC<CreateCursoAltoNivelModalProps> = ({
         throw new Error('El número de módulos debe estar entre 1 y 10');
       }
 
+      if (editMode && cursoData) {
+        // MODO EDICIÓN - solo nombre y número de módulos
+        if (nombreCurso.trim() !== cursoData.nombre) {
+          await asanaService.updateSection(cursoData.gid, nombreCurso.trim());
+        }
+
+        if (cursoData.resumenTaskGid) {
+          const resumenTaskFull = await asanaService.getTask(cursoData.resumenTaskGid);
+          const modulosField = resumenTaskFull.custom_fields?.find((f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS);
+          if (modulosField) {
+            await asanaService.updateTask(cursoData.resumenTaskGid, {
+              custom_fields: { [modulosField.gid]: numeroModulos }
+            });
+          }
+        }
+
+        setNotification({ message: '¡Curso actualizado exitosamente!', type: 'success' });
+        setTimeout(() => { onSuccess(); }, 1500);
+        return;
+      }
+
+      // MODO CREACIÓN
       const workspaces = await asanaService.getWorkspaces();
       const cdima = workspaces.find(ws => ws.name === 'CDIMA');
       if (!cdima) throw new Error('No se encontró el workspace CDIMA');
@@ -129,7 +170,7 @@ const CreateCursoAltoNivelModal: React.FC<CreateCursoAltoNivelModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           style={{ maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}
         >
-          <HtmlModalHeader icon="🎓" title="Crear nuevo Curso de Alto Nivel" onClose={onClose} />
+          <HtmlModalHeader icon="🎓" title={editMode ? 'Editar Curso de Alto Nivel' : 'Crear nuevo Curso de Alto Nivel'} onClose={onClose} />
 
           {error && (
             <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
@@ -177,6 +218,15 @@ const CreateCursoAltoNivelModal: React.FC<CreateCursoAltoNivelModalProps> = ({
 
             </div>
 
+              {/* Nota informativa en modo edición */}
+              {editMode && (
+                <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>
+                    <strong>Nota:</strong> Se actualizará el nombre y número de módulos del curso. Los docentes y estudiantes se gestionan individualmente.
+                  </p>
+                </div>
+              )}
+
             <div className="modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', padding: '1rem 1.5rem' }}>
               <button
                 type="button"
@@ -191,7 +241,7 @@ const CreateCursoAltoNivelModal: React.FC<CreateCursoAltoNivelModalProps> = ({
                 className="button-primary"
                 disabled={loading}
               >
-                {loading ? 'Creando...' : 'Crear Curso'}
+                {loading ? (editMode ? 'Guardando...' : 'Creando...') : (editMode ? 'Guardar cambios' : 'Crear Curso')}
               </button>
             </div>
           </form>

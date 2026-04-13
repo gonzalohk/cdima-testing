@@ -11,7 +11,7 @@ import Notification from '../components/Notification';
 import { HtmlModalHeader } from '../components/ModalShared';
 import AgregarPersonaModal from '../components/AgregarPersonaModal';
 import InfoPrimariaModal from '../components/InfoPrimariaModal';
-import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaActaCalificacionesWord, exportEscuelaEstudiantePDF, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
+import { exportEscuelaGeneralPDF, exportEscuelaGeneralWord, exportEscuelaCentralizadorNotasPDF, exportEscuelaActaCalificacionesWord, exportEscuelaEstudiantePDF, exportEscuelaEstudianteWord, exportEscuelaNominaPDF, exportEscuelaNominaWord, exportEscuelaAsistenciaPDF, exportEscuelaAsistenciaWord, formatearNombreCompleto, parseInfoPrimariaLegacy } from '../services/reports/escuelas-reports.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
@@ -20,6 +20,8 @@ import {
   parseEstudianteData, 
   parseAsistenciaRecords,
   updateNotasWithAsistencia,
+  parseNotasObservaciones,
+  setNotaObservacion,
   calcularEdad,
   type AsistenciaRecord as AsistenciaRecordType
 } from '../utils/asana-helpers';
@@ -41,6 +43,9 @@ interface InfoPrimaria {
   documentoIdentidad: string;
   identidadCultural: string;
   tipo: 'Estudiante';
+  taskGid: string;
+  rawTaskName: string;
+  rawNotes: string;
 }
 
 interface AsistenciaEstudiante {
@@ -54,6 +59,7 @@ interface NotaEstudiante {
   gid: string;
   nombre: string;
   nota: number;
+  observaciones: string;
 }
 
 // ─── Document JSON helpers ─────────────────────────────────────────────────────
@@ -119,6 +125,7 @@ const EscuelasPage: React.FC = () => {
   const [loadingNotas, setLoadingNotas] = useState(false);
   const [notasConError, setNotasConError] = useState<Set<string>>(new Set());
   const [notasOriginales, setNotasOriginales] = useState<Record<string, number>>({});
+  const [observacionesOriginales, setObservacionesOriginales] = useState<Record<string, string>>({});
   
   // Estados para modales individuales
   const [estudianteSeleccionadoNotas, setEstudianteSeleccionadoNotas] = useState<AsanaTask | null>(null);
@@ -235,58 +242,34 @@ const EscuelasPage: React.FC = () => {
 
     setLoadingDetails(true);
     try {
-      // Obtener tareas de la sección
       const sectionTasks = await asanaService.getSectionTasks(selectedEscuela.gid);
 
-      // Buscar las tareas principales
-      const tareaEstudiantes = sectionTasks.find(t => t.name === 'Estudiantes');
+      // Cargar área y número de módulos desde la tarea Resumen
+      const tareaResumen = sectionTasks.find(t => t.name.startsWith('Resumen:'));
+      let area = '';
+      let numModulos = numeroModulos;
+      let resumenTaskGid: string | undefined;
 
-      if (!tareaEstudiantes) {
-        throw new Error('No se encontró la tarea de Estudiantes');
-      }
-
-      const subtasksEstudiantes = await asanaService.getSubtasks(tareaEstudiantes.gid);
-
-      // Parsear datos de estudiantes
-      const estudiantesData = subtasksEstudiantes.map(subtask => {
-        const data = parseEstudianteData(subtask.notes);
-        return {
-          nombre: subtask.name,
-          genero: data.genero,
-          fechaNacimiento: data.fechaNacimiento || '',
-          cargo: data.especialidad || '',
-          domicilio: data.domicilio || '',
-          telefono: data.telefono || '',
-          lugarNacimiento: data.lugarNacimiento || '',
-          documentoIdentidad: data.documentoIdentidad || '',
-          identidadCultural: data.identidadCultural || '',
-          subtaskGid: subtask.gid,
-          _parseError: data._parseError
-        };
-      });
-
-      // Advertir si algún participante tiene datos corruptos
-      const participantesConError = estudiantesData.filter(p => p._parseError);
-      if (participantesConError.length > 0) {
-        const nombres = participantesConError.map(p => p.nombre).join(', ');
-        const continuar = window.confirm(
-          `⚠️ Advertencia: Los datos de los siguientes participantes no se pudieron leer correctamente:\n\n${nombres}\n\n` +
-          `Esto puede ocurrir si la tarea fue editada manualmente en Asana.\n\n` +
-          `Si continúas, los campos vacíos en el formulario sobreescribirán los datos actuales de esos participantes.\n\n` +
-          `¿Deseas continuar de todas formas?`
+      if (tareaResumen) {
+        resumenTaskGid = tareaResumen.gid;
+        const tareaResumenFull = await asanaService.getTask(tareaResumen.gid);
+        const areaField = tareaResumenFull.custom_fields?.find(
+          (f: any) => f.name === ASANA_CUSTOM_FIELDS.AREA_ESCUELA
         );
-        if (!continuar) {
-          setLoadingDetails(false);
-          return;
-        }
+        if (areaField?.enum_value?.name) area = areaField.enum_value.name;
+        const modulosField = tareaResumenFull.custom_fields?.find(
+          (f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS
+        );
+        const numMod = modulosField?.number_value ?? null;
+        if (numMod !== null) numModulos = Math.min(10, Math.max(1, Math.round(numMod)));
       }
 
-      // Preparar datos para el modal
       setEscuelaToEdit({
         gid: selectedEscuela.gid,
         nombre: selectedEscuela.name,
-        estudiantes: estudiantesData,
-        estudiantesTaskGid: tareaEstudiantes.gid
+        area,
+        numeroModulos: numModulos,
+        resumenTaskGid
       });
 
       setEditMode(true);
@@ -397,7 +380,10 @@ const EscuelasPage: React.FC = () => {
     const info: InfoPrimaria = {
       ...rawInfo,
       comunidad: rawInfo.domicilio || rawInfo.lugarNacimiento || '',
-      tipo
+      tipo,
+      taskGid: task.gid,
+      rawTaskName: task.name,
+      rawNotes: task.notes ?? '',
     };
     setSelectedInfo(info);
   };
@@ -447,9 +433,22 @@ const EscuelasPage: React.FC = () => {
       if (!soloReintentar) {
         const [year, month, day] = fechaAsistencia.split('-').map(Number);
         const fechaPreview = `${String(day).padStart(2,'0')}/${String(month).padStart(2,'0')}/${year}`;
-        if (!window.confirm(`¿Guardar asistencias del ${fechaPreview} para ${asistencias.length} estudiantes?\n\nEsta acción modificará los registros en Asana.`)) {
-          setLoadingAsistencia(false);
-          return;
+        // Verificar si ya existen registros para esta fecha
+        const fechaFormateada = `${String(day).padStart(2,'0')}/${String(month).padStart(2,'0')}/${year}`;
+        const yaExiste = estudiantes.some(est => {
+          const registros = parseAsistenciaRecords(est.notes);
+          return registros.some(r => r.fecha === fechaFormateada);
+        });
+        if (yaExiste) {
+          if (!window.confirm(`⚠️ Ya existen registros de asistencia para el ${fechaPreview}.\n\n¿Deseas sobrescribir los datos de esa fecha para los ${asistencias.length} estudiantes?`)) {
+            setLoadingAsistencia(false);
+            return;
+          }
+        } else {
+          if (!window.confirm(`¿Guardar asistencias del ${fechaPreview} para ${asistencias.length} estudiantes?\n\nEsta acción modificará los registros en Asana.`)) {
+            setLoadingAsistencia(false);
+            return;
+          }
         }
       }
 
@@ -610,15 +609,18 @@ const EscuelasPage: React.FC = () => {
     const notasIniciales: NotaEstudiante[] = estudiantes.map(est => {
       // Obtener la nota actual del módulo 1 (por defecto)
       const notaActual = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
+      const obs = parseNotasObservaciones(est.notes);
       return {
         gid: est.gid,
         nombre: formatearNombreCompleto(est.name),
-        nota: notaActual
+        nota: notaActual,
+        observaciones: obs[ASANA_CUSTOM_FIELDS.MODULO_1] || ''
       };
     });
     
     setNotasEstudiantes(notasIniciales);
     setNotasOriginales(Object.fromEntries(notasIniciales.map(n => [n.gid, n.nota])));
+    setObservacionesOriginales(Object.fromEntries(notasIniciales.map(n => [n.gid, n.observaciones])));
     setNotasConError(new Set()); // Limpiar errores previos
     setShowRegistroNotasModal(true);
   };
@@ -629,21 +631,32 @@ const EscuelasPage: React.FC = () => {
     // Actualizar las notas con los valores del nuevo módulo seleccionado
     const notasActualizadas = estudiantes.map(est => {
       const notaActual = getCustomFieldValueSafe(est, nuevoModulo, 0);
+      const obs = parseNotasObservaciones(est.notes);
       return {
         gid: est.gid,
         nombre: formatearNombreCompleto(est.name),
-        nota: notaActual
+        nota: notaActual,
+        observaciones: obs[nuevoModulo] || ''
       };
     });
     
     setNotasEstudiantes(notasActualizadas);
     setNotasOriginales(Object.fromEntries(notasActualizadas.map(n => [n.gid, n.nota])));
+    setObservacionesOriginales(Object.fromEntries(notasActualizadas.map(n => [n.gid, n.observaciones])));
   };
 
   const handleCambiarNota = (gid: string, nota: number) => {
     setNotasEstudiantes(prev => prev.map(est => 
       est.gid === gid 
         ? { ...est, nota }
+        : est
+    ));
+  };
+
+  const handleCambiarObservacionNota = (gid: string, observaciones: string) => {
+    setNotasEstudiantes(prev => prev.map(est =>
+      est.gid === gid
+        ? { ...est, observaciones }
         : est
     ));
   };
@@ -675,10 +688,13 @@ const EscuelasPage: React.FC = () => {
       // Determinar qué estudiantes procesar (solo modificados, o los que fallaron en reintento)
       const estudiantesProcesar = soloReintentar
         ? notasEstudiantes.filter(est => notasConError.has(est.gid))
-        : notasEstudiantes.filter(est => est.nota !== (notasOriginales[est.gid] ?? -1));
+        : notasEstudiantes.filter(est =>
+            est.nota !== (notasOriginales[est.gid] ?? -1) ||
+            (est.observaciones || '') !== (observacionesOriginales[est.gid] || '')
+          );
       
       if (estudiantesProcesar.length === 0) {
-        alert('⚠️ No hay notas modificadas para guardar');
+        alert('⚠️ No hay notas ni observaciones modificadas para guardar');
         setLoadingNotas(false);
         return;
       }
@@ -704,13 +720,15 @@ const EscuelasPage: React.FC = () => {
 
         console.log(`👤 Preparando actualización: ${notaEstudiante.nombre} - Nota: ${notaEstudiante.nota}`);
         
-        // Actualizar el campo personalizado
+        // Actualizar el campo personalizado y las observaciones en notes
         const custom_fields: { [key: string]: number } = {};
         custom_fields[campoModulo.gid] = notaEstudiante.nota;
+        const newNotes = setNotaObservacion(estudiante.notes ?? '', moduloSeleccionado, notaEstudiante.observaciones);
         
         try {
           const resultado = await asanaService.updateTask(notaEstudiante.gid, {
-            custom_fields
+            custom_fields,
+            notes: newNotes
           });
           
           console.log(`✅ Nota guardada para ${notaEstudiante.nombre}`);
@@ -863,6 +881,46 @@ const EscuelasPage: React.FC = () => {
     }
   };
 
+  const handleExportNominaPDF = () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
+    try {
+      exportEscuelaNominaPDF({ escuela: selectedEscuela, estudiantes });
+    } catch (error) {
+      console.error('Error al exportar nómina:', error);
+      alert('Error al generar la nómina. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const handleExportNominaWord = () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
+    try {
+      exportEscuelaNominaWord({ escuela: selectedEscuela, estudiantes });
+    } catch (error) {
+      console.error('Error al exportar nómina Word:', error);
+      alert('Error al generar la nómina Word. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const handleExportAsistenciaPDF = () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
+    try {
+      exportEscuelaAsistenciaPDF({ escuela: selectedEscuela, estudiantes });
+    } catch (error) {
+      console.error('Error al exportar asistencia PDF:', error);
+      alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const handleExportAsistenciaWord = () => {
+    if (!selectedEscuela || estudiantes.length === 0) return;
+    try {
+      exportEscuelaAsistenciaWord({ escuela: selectedEscuela, estudiantes });
+    } catch (error) {
+      console.error('Error al exportar asistencia Word:', error);
+      alert('Error al generar el documento Word. Por favor, intenta de nuevo.');
+    }
+  };
+
   const handleExportCentralizadorNotas = async () => {
     if (!selectedEscuela || estudiantes.length === 0) return;
     try {
@@ -916,6 +974,19 @@ const EscuelasPage: React.FC = () => {
     } catch (error) {
       console.error('Error al exportar reporte de estudiante:', error);
       alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const handleExportEstudianteReportWord = (estudiante: AsanaTask) => {
+    try {
+      exportEscuelaEstudianteWord({
+        estudiante,
+        escuela: selectedEscuela ?? undefined,
+        numeroModulos
+      });
+    } catch (error) {
+      console.error('Error al exportar reporte Word de estudiante:', error);
+      alert('Error al generar el Word. Por favor, intenta de nuevo.');
     }
   };
 
@@ -998,22 +1069,6 @@ const EscuelasPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAsistenciaRecord = async (estudiante: AsanaTask, fecha: string) => {
-    if (!confirm(`¿Eliminar el registro de asistencia del ${fecha}?`)) return;
-    try {
-      const registros = parseAsistenciaRecords(estudiante.notes);
-      const actualizados = registros.filter(r => r.fecha !== fecha);
-      const newNotes = updateNotasWithAsistencia(estudiante.notes ?? '', actualizados);
-      await asanaService.updateTask(estudiante.gid, { notes: newNotes });
-      const updatedTask = { ...estudiante, notes: newNotes };
-      setEstudiantes(prev => prev.map(e => e.gid === estudiante.gid ? updatedTask : e));
-      setEstudianteSeleccionadoAsistencia(updatedTask);
-      setNotification({ message: `Registro del ${fecha} eliminado`, type: 'info' });
-    } catch (err) {
-      setNotification({ message: err instanceof Error ? err.message : 'Error al eliminar registro', type: 'error' });
-    }
-  };
-
   if (loading) {
     return <LoadingOverlay message="Cargando escuelas..." />;
   }
@@ -1064,20 +1119,27 @@ const EscuelasPage: React.FC = () => {
             </span>
           )}
         </div>
-        <Dropdown
-          menu={{ items: [
-            { key: 'crear', label: '➕ Crear nueva Escuela', onClick: () => { setEditMode(false); setEscuelaToEdit(null); setShowCreateModal(true); } },
-            ...(selectedEscuela ? [{ key: 'editar', label: '✏️ Editar Escuela', onClick: handleEditEscuela }] : []),
-          ]}}
-          trigger={['click']}
+        <button
+          className="btn-export-ghost"
+          onClick={() => { setEditMode(false); setEscuelaToEdit(null); setShowCreateModal(true); }}
         >
-          <button
-            title="Configuración"
-            style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#64748b', cursor: 'pointer', fontSize: '1.05rem', flexShrink: 0 }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
-          >⚙️</button>
-        </Dropdown>
+          ➕ Nueva Escuela
+        </button>
+        {selectedEscuela && (
+          <Dropdown
+            menu={{ items: [
+              { key: 'editar', label: '✏️ Editar Escuela', onClick: handleEditEscuela },
+            ]}}
+            trigger={['click']}
+          >
+            <button
+              title="Configuración"
+              style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '7px', color: '#64748b', cursor: 'pointer', fontSize: '1.05rem', flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+            >⚙️</button>
+          </Dropdown>
+        )}
       </div>
 
 
@@ -1168,10 +1230,11 @@ const EscuelasPage: React.FC = () => {
                             <style>{`
                               .est-tbl-esc { table-layout: fixed; }
                               .est-tbl-esc col.col-num  { width: 35px; }
-                              .est-tbl-esc col.col-id   { width: 350px; }
-                              .est-tbl-esc col.col-age  { width: 200px; }
-                              .est-tbl-esc col.col-ori  { width: 200px; }
-                              .est-tbl-esc col.col-act  { width: auto; }
+                              .est-tbl-esc col.col-id   { width: 250px; }
+                              .est-tbl-esc col.col-age  { width: 150px; }
+                              .est-tbl-esc col.col-ori  { width: 140px; }
+                              .est-tbl-esc col.col-act  { width: 100px; }
+                              .est-tbl-esc col.col-rep  { width: 90px; }
                               .est-tbl-esc tbody tr { transition: background 0.1s; }
                               .est-tbl-esc tbody tr:nth-child(even) { background: #f9fafb; }
                               .est-tbl-esc tbody tr:hover { background: #eff6ff !important; }
@@ -1193,7 +1256,17 @@ const EscuelasPage: React.FC = () => {
                                   style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
-                                >＋ Inscribir</button>
+                                >＋ Inscribir Estudiante</button>
+                                <button
+                                  onClick={handleExportNominaPDF}
+                                  className="button-secondary"
+                                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                >🖨️ Nómina PDF</button>
+                                <button
+                                  onClick={handleExportNominaWord}
+                                  className="button-secondary"
+                                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                >📄 Nómina Word</button>
                               </div>
                             </div>
                             {estudiantes.length === 0 ? (
@@ -1207,6 +1280,7 @@ const EscuelasPage: React.FC = () => {
                                   <col className="col-age" />
                                   <col className="col-ori" />
                                   <col className="col-act" />
+                                  <col className="col-rep" />
                                 </colgroup>
                                 <thead>
                                   <tr>
@@ -1215,6 +1289,7 @@ const EscuelasPage: React.FC = () => {
                                     <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Edad / Género</th>
                                     <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Origen y Contacto</th>
                                     <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Acciones</th>
+                                    <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Reporte</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1241,6 +1316,12 @@ const EscuelasPage: React.FC = () => {
                                             <button onClick={() => setEstudianteSeleccionadoNotas(estudiante)} title="Ver notas" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#e0e7ff'} onMouseLeave={e => e.currentTarget.style.background='none'}>📊</button>
                                             <button onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)} title="Ver asistencia" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#dcfce7'} onMouseLeave={e => e.currentTarget.style.background='none'}>✓</button>
                                             <button onClick={() => handleShowInfo(estudiante, 'Estudiante')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                          </div>
+                                        </td>
+                                        <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
+                                          <div style={{ display: 'flex', gap: '0.1rem', justifyContent: 'center' }}>
+                                            <button onClick={() => handleExportEstudianteReport(estudiante)} title="Reporte PDF" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#dc2626', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#fee2e2'} onMouseLeave={e => e.currentTarget.style.background='none'}>🖨️</button>
+                                            <button onClick={() => handleExportEstudianteReportWord(estudiante)} title="Reporte Word" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#1d4ed8', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#eff6ff'} onMouseLeave={e => e.currentTarget.style.background='none'}>📄</button>
                                           </div>
                                         </td>
                                       </tr>
@@ -1382,7 +1463,7 @@ const EscuelasPage: React.FC = () => {
                       <div>
                         {(() => {
                           const { asistenciasPorEstudiante, fechasOrdenadas } = extraerAsistenciasEstudiantes();
-                          const MIN_SESIONES = 20;
+                          const MIN_SESIONES = 15;
                           const fechasMostradas: (string | null)[] = [
                             ...fechasOrdenadas,
                             ...Array(Math.max(0, MIN_SESIONES - fechasOrdenadas.length)).fill(null)
@@ -1425,24 +1506,38 @@ const EscuelasPage: React.FC = () => {
                                 <style>{`
                                   .asist-view-esc tbody tr { transition: background 0.1s; }
                                 .asist-view-esc tbody tr:nth-child(even) { background: #f9fafb; }
-                                .asist-view-esc tbody tr:hover { background: #eff6ff !important; }
+                                .asist-view-esc tbody tr:hover { background: #f8fafc !important; }
+                                .asist-view-esc tbody tr:hover td[data-asistio="true"] { background: #d1fae5 !important; color: #16a34a !important; }
+                                .asist-view-esc tbody tr:hover td[data-asistio="false"] { background: #fee2e2 !important; color: #dc2626 !important; }
                                 .asist-view-esc thead th { background: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
                                 .asist-view-esc .col-num-s  { position: sticky; left: 0;     z-index: 2; background: white; }
                                 .asist-view-esc .col-name-s { position: sticky; left: 46px;  z-index: 2; background: white; box-shadow: 2px 0 5px -1px rgba(0,0,0,0.08); }
                                 .asist-view-esc tbody tr:nth-child(even) .col-num-s,
                                 .asist-view-esc tbody tr:nth-child(even) .col-name-s { background: #f9fafb; }
                                 .asist-view-esc tbody tr:hover .col-num-s,
-                                .asist-view-esc tbody tr:hover .col-name-s { background: #eff6ff !important; }
+                                .asist-view-esc tbody tr:hover .col-name-s { background: #f8fafc !important; }
                                 .asist-view-esc thead .col-num-s,
                                 .asist-view-esc thead .col-name-s { z-index: 3; background: #f1f5f9; }
                               `}</style>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaAsistencia} onChange={e => setBusquedaAsistencia(e.target.value)} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
-                                <button
-                                  onClick={handleAbrirAsistencia}
-                                  className="button-primary"
-                                  style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                >✓ Registrar Asistencia</button>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                  <button
+                                    onClick={handleAbrirAsistencia}
+                                    className="button-primary"
+                                    style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                  >✓ Registrar Asistencia</button>
+                                  <button
+                                    onClick={handleExportAsistenciaPDF}
+                                    className="button-secondary"
+                                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                  >🖨️ Asistencia PDF</button>
+                                  <button
+                                    onClick={handleExportAsistenciaWord}
+                                    className="button-secondary"
+                                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                  >📄 Asistencia Word</button>
+                                </div>
                               </div>
                               <div style={{ overflowX: 'auto' }}>
                               <table className="asist-view-esc" style={{ borderCollapse: 'collapse' }}>
@@ -1480,7 +1575,7 @@ const EscuelasPage: React.FC = () => {
                                         const asistio = reg?.asistio;
                                         const obs = reg?.observaciones || '';
                                         return (
-                                          <td key={fIdx} style={{ padding: '0.7rem 0.25rem', textAlign: 'center', fontWeight: 600, fontSize: '0.875rem', borderLeft: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', color: asistio === true ? '#16a34a' : asistio === false ? '#dc2626' : '#94a3b8', backgroundColor: asistio === true ? '#d1fae5' : asistio === false ? '#fee2e2' : undefined }} title={obs !== 'Ninguna' && obs ? `Observaciones: ${obs}` : ''}>
+                                          <td key={fIdx} data-asistio={asistio === true ? 'true' : asistio === false ? 'false' : undefined} style={{ padding: '0.7rem 0.25rem', textAlign: 'center', fontWeight: 600, fontSize: '0.875rem', borderLeft: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', color: '#c4c9d1' }} title={obs !== 'Ninguna' && obs ? `Observaciones: ${obs}` : ''}>
                                             {asistio === true ? 'Sí' : asistio === false ? 'No' : '–'}
                                           </td>
                                         );
@@ -2199,7 +2294,7 @@ const EscuelasPage: React.FC = () => {
                               fontWeight: 800,
                               color: promedio >= 51 ? '#15803d' : '#be123c'
                             }}>
-                              {Math.round(promedio)}
+                              {promedio.toFixed(2)}
                             </td>
                             <td style={{ 
                               padding: '0.75rem 0.65rem', 
@@ -2381,7 +2476,9 @@ const EscuelasPage: React.FC = () => {
                       <style>{`
                         .asist-tbl-esc tbody tr { transition: background 0.1s; }
                         .asist-tbl-esc tbody tr:nth-child(even) { background: #f9fafb; }
-                        .asist-tbl-esc tbody tr:hover { background: #eff6ff !important; }
+                        .asist-tbl-esc tbody tr:hover { background: #f8fafc !important; }
+                        .asist-tbl-esc tbody tr:hover td[data-asistio="true"] { background: #d1fae5 !important; color: #16a34a !important; }
+                        .asist-tbl-esc tbody tr:hover td[data-asistio="false"] { background: #fee2e2 !important; color: #dc2626 !important; }
                         .asist-tbl-esc thead th { position: sticky; top: 0; z-index: 1; }
                       `}</style>
                       <table className="asist-tbl-esc" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2396,8 +2493,7 @@ const EscuelasPage: React.FC = () => {
                             <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0' }}>
                               Observaciones
                             </th>
-                            <th style={{ padding: '0.5rem 0.65rem', textAlign: 'center', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '2px solid #e2e8f0', width: '2.5rem' }}>
-                            </th>
+
                           </tr>
                         </thead>
                         <tbody>
@@ -2406,12 +2502,12 @@ const EscuelasPage: React.FC = () => {
                               <td style={{ padding: '0.6rem 0.65rem', fontWeight: 600, color: '#1e3a5f', fontSize: '0.875rem' }}>
                                 {registro.fecha}
                               </td>
-                              <td style={{ 
+                              <td data-asistio={registro.asistio ? 'true' : 'false'} style={{ 
                                 padding: '0.6rem 0.65rem', 
                                 textAlign: 'center',
                                 fontWeight: 600,
                                 fontSize: '0.875rem',
-                                color: registro.asistio ? '#16a34a' : '#dc2626'
+                                color: '#c4c9d1'
                               }}>
                                 {registro.asistio ? '✓ Sí' : '✗ No'}
                               </td>
@@ -2423,15 +2519,7 @@ const EscuelasPage: React.FC = () => {
                               }}>
                                 {registro.observaciones}
                               </td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
-                                <button
-                                  onClick={() => handleDeleteAsistenciaRecord(estudianteSeleccionadoAsistencia, registro.fecha)}
-                                  title={`Eliminar registro del ${registro.fecha}`}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.9rem', padding: '2px 4px', borderRadius: '4px', lineHeight: 1 }}
-                                  onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
-                                  onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'none'; }}
-                                >🗑️</button>
-                              </td>
+
                             </tr>
                           ))}
                         </tbody>
@@ -2505,6 +2593,13 @@ const EscuelasPage: React.FC = () => {
           documentoIdentidad={selectedInfo.documentoIdentidad}
           identidadCultural={selectedInfo.identidadCultural}
           tipo={selectedInfo.tipo}
+          taskGid={selectedInfo.taskGid}
+          rawTaskName={selectedInfo.rawTaskName}
+          rawNotes={selectedInfo.rawNotes}
+          onSave={(gid, newName, newNotes) => {
+            setEstudiantes(prev => prev.map(est => est.gid === gid ? { ...est, name: newName, notes: newNotes } : est));
+            setSelectedInfo(null);
+          }}
           onClose={() => setSelectedInfo(null)}
         />
       )}
@@ -2595,7 +2690,7 @@ const EscuelasPage: React.FC = () => {
                     .nota-tbl-mod thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; border-bottom: 2px solid #e2e8f0; }
                   `}</style>
                   <div style={{ overflowX: 'auto' }}>
-                    <table className="nota-tbl-mod" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
+                    <table className="nota-tbl-mod" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
                       <thead>
                         <tr>
                           <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', width: '44px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>#</th>
@@ -2603,6 +2698,7 @@ const EscuelasPage: React.FC = () => {
                           <th style={{ textAlign: 'center', padding: '0.6rem 0.75rem', width: '140px', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
                             Nota — {moduloSeleccionado} (0-100)
                           </th>
+                          <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Observaciones</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2664,6 +2760,24 @@ const EscuelasPage: React.FC = () => {
                                     textAlign: 'center',
                                     backgroundColor: 'white',
                                     color: '#374151'
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.7rem 0.75rem' }}>
+                                <textarea
+                                  value={nota.observaciones}
+                                  onChange={(e) => handleCambiarObservacionNota(nota.gid, e.target.value)}
+                                  rows={2}
+                                  placeholder="Sin observaciones"
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.35rem 0.5rem',
+                                    border: '1.5px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    fontSize: '0.82rem',
+                                    resize: 'vertical',
+                                    color: '#374151',
+                                    fontFamily: 'inherit'
                                   }}
                                 />
                               </td>

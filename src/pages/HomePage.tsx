@@ -7,6 +7,7 @@ import {
   Space,
   Spin,
   Table,
+  Tabs,
   Tooltip,
   Typography,
 } from 'antd';
@@ -16,12 +17,19 @@ import {
   BellOutlined,
   CheckCircleOutlined,
   CommentOutlined,
+  DeleteOutlined,
   EyeOutlined,
+  PrinterOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
 import { useAuth } from '../context/AuthContext';
+import {
+  exportFundsRequestToPDF,
+  exportMaterialRequestToPDF,
+  exportMaterialReturnToPDF,
+} from '../services/pdf.service';
 
 interface FundItem { id: number; descripcion: string; importeBolivianos: string; }
 interface MaterialItem { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string; }
@@ -263,6 +271,9 @@ const HomePage: React.FC = () => {
   const { user } = useAuth();
   const canApprove = user?.role === 'administrador' || user?.role === 'director';
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
+  const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
+  const [solicitudesObservadas, setSolicitudesObservadas] = useState<SolicitudRow[]>([]);
+  const [solTab, setSolTab] = useState('pendientes');
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -298,12 +309,17 @@ const HomePage: React.FC = () => {
       const today = new Date().toISOString().slice(0, 10);
       const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 
+      const allApproved: SolicitudRow[] = [];
+      const allObserved: SolicitudRow[] = [];
+
       // Procesar proyectos en chunks para no saturar la API
       for (let i = 0; i < filteredProjects.length; i += CHUNK) {
         const chunk = filteredProjects.slice(i, i + CHUNK);
         const chunkResults = await Promise.all(
           chunk.map(async project => {
             const rows: SolicitudRow[] = [];
+            const approvedRows: SolicitudRow[] = [];
+            const observedRows: SolicitudRow[] = [];
             const contRows: ContratacionRow[] = [];
             const atrasadasRows: AtrasadaRow[] = [];
             let pendingReqs = 0;
@@ -368,6 +384,26 @@ const HomePage: React.FC = () => {
                             tipo: getTipoFromPrefix(prefix),
                             fecha: extractFechaSolicitud(sub.notes),
                           });
+                        } else if (prefix && sub.completed && !isObserved) {
+                          approvedRows.push({
+                            key: sub.gid,
+                            task: sub,
+                            projectName: project.name,
+                            parentTaskName: parentTask.name,
+                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                            tipo: getTipoFromPrefix(prefix),
+                            fecha: extractFechaSolicitud(sub.notes),
+                          });
+                        } else if (prefix && isObserved) {
+                          observedRows.push({
+                            key: sub.gid,
+                            task: sub,
+                            projectName: project.name,
+                            parentTaskName: parentTask.name,
+                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                            tipo: getTipoFromPrefix(prefix),
+                            fecha: extractFechaSolicitud(sub.notes),
+                          });
                         }
                         // Collect CPER contrataciones
                         if (sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
@@ -405,18 +441,33 @@ const HomePage: React.FC = () => {
             } catch {
               // Ignorar errores de proyectos individuales
             }
-            return { rows, contRows, atrasadasRows };
+            return { rows, approvedRows, observedRows, contRows, atrasadasRows };
           })
         );
         chunkResults.forEach(r => {
           allRows.push(...r.rows);
+          allApproved.push(...r.approvedRows);
+          allObserved.push(...r.observedRows);
           allContrataciones.push(...r.contRows);
           allAtrasadas.push(...r.atrasadasRows);
         });
         if (i + CHUNK < filteredProjects.length) await delay(300);
       }
 
-      setSolicitudes(allRows);
+      const parseFechaSol = (f: string) => {
+        if (f === '-') return 0;
+        const [datePart, timePart = '00:00'] = f.split(', ');
+        const [d, m, y] = datePart.split('/');
+        return new Date(`${y}-${m}-${d}T${timePart}`).getTime();
+      };
+      const parseFechaRespuesta = (row: SolicitudRow) => {
+        const data = extractJsonData(row.task.notes);
+        const f = (data?.fechaAprobacion as string) || (data?.fechaObservacion as string) || '-';
+        return parseFechaSol(f);
+      };
+      setSolicitudes([...allRows].sort((a, b) => parseFechaSol(a.fecha) - parseFechaSol(b.fecha)));
+      setSolicitudesAprobadas([...allApproved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a)));
+      setSolicitudesObservadas([...allObserved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a)));
       setContrataciones(allContrataciones);
       setAtrasadas(allAtrasadas.sort((a, b) => b.daysLate - a.daysLate));
       setProjectStats(allStats.sort((a, b) => {
@@ -509,115 +560,235 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const columns = [
-    {
-      title: 'Solicitud / Proyecto / Actividad',
-      key: 'proyectoActividad',
-      width: 200,
-      render: (_: unknown, row: SolicitudRow) => {
-        const jsonData = extractJsonData(row.task.notes);
-        const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
-        const tipoColorMap: Record<string, { bg: string; color: string; border: string }> = {
-          'Solicitud de Fondos':    { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-          'Solicitud de Material':  { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
-          'Devolución de Material': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
-        };
-        const tc = tipoColorMap[row.tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Tooltip title={row.task.name}>
-              <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
-            </Tooltip>
-            <span style={{
-              display: 'inline-block',
-              alignSelf: 'flex-start',
-              fontSize: 11,
-              fontWeight: 600,
-              backgroundColor: tc.bg,
-              color: tc.color,
-              border: `1px solid ${tc.border}`,
-              borderRadius: 4,
-              padding: '1px 7px',
-              lineHeight: '18px',
-            }}>
-              {row.tipo}
-            </span>
-            <Tooltip title={row.projectName}>
-              <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
-            </Tooltip>
-            {row.sectionName && (
-              <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }} ellipsis>
-                📅 {row.sectionName}
-              </Typography.Text>
-            )}
-            <Tooltip title={row.parentTaskName}>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
-            </Tooltip>
-            {solicitante ? (
-              <Typography.Text style={{ fontSize: 11, color: '#6b7280' }} ellipsis>
-                👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span>
-              </Typography.Text>
-            ) : (
-              <Typography.Text style={{ fontSize: 11, color: '#d1d5db' }}>👤 Sin registro</Typography.Text>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Fecha',
-      dataIndex: 'fecha',
-      key: 'fecha',
-      width: 160,
-      render: (v: string) => <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text>,
-    },
-    {
-      title: 'Acciones',
-      key: 'acciones',
-      width: 220,
-      fixed: 'right' as const,
-      render: (_: unknown, row: SolicitudRow) => (
-        <Space size={4}>
-          <Tooltip title="Ver detalle">
-            <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
+  const handleDeleteSolicitud = async (row: SolicitudRow) => {
+    try {
+      await asanaService.deleteTask(row.task.gid);
+      setSolicitudes(prev => prev.filter(r => r.key !== row.key));
+      setSolicitudesAprobadas(prev => prev.filter(r => r.key !== row.key));
+      setSolicitudesObservadas(prev => prev.filter(r => r.key !== row.key));
+    } catch (err) {
+      console.error('Error al eliminar solicitud:', err);
+    }
+  };
+
+  const handlePrintSolicitud = (row: SolicitudRow) => {
+    const data = extractJsonData(row.task.notes);
+    const fechaGeneracion = extractFechaSolicitud(row.task.notes);
+    const fechaGeneracionOpt = fechaGeneracion !== '-' ? fechaGeneracion : undefined;
+    if (row.tipo === 'Solicitud de Fondos') {
+      exportFundsRequestToPDF({
+        taskName: (data?.titulo as string) ?? row.task.name,
+        area: (data?.area as string) ?? '',
+        lugar: (data?.lugar as string) ?? '',
+        fechaInicio: (data?.fechaInicio as string) ?? '',
+        fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
+        fondos: (data?.fondos as { id: number; descripcion: string; importeBolivianos: string }[]) ?? [],
+        fechaGeneracion: fechaGeneracionOpt,
+      });
+    } else if (row.tipo === 'Solicitud de Material') {
+      exportMaterialRequestToPDF({
+        taskName: (data?.titulo as string) ?? row.task.name,
+        area: (data?.area as string) ?? '',
+        lugar: (data?.lugar as string) ?? '',
+        fechaInicio: (data?.fechaInicio as string) ?? '',
+        fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
+        materiales: (data?.materiales as { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string }[]) ?? [],
+        fechaGeneracion: fechaGeneracionOpt,
+      });
+    } else if (row.tipo === 'Devolución de Material') {
+      exportMaterialReturnToPDF({
+        taskName: (data?.titulo as string) ?? row.task.name,
+        area: (data?.area as string) ?? '',
+        lugar: (data?.lugar as string) ?? '',
+        fechaDevolucion: (data?.fechaDevolucion as string) ?? '-',
+        materiales: (data?.materiales as { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string }[]) ?? [],
+        fechaGeneracion: fechaGeneracionOpt,
+      });
+    }
+  };
+
+  // Columna info reutilizable
+  const colSolicitudInfo = {
+    title: 'Solicitud / Proyecto / Actividad',
+    key: 'proyectoActividad',
+    width: 200,
+    render: (_: unknown, row: SolicitudRow) => {
+      const jsonData = extractJsonData(row.task.notes);
+      const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
+      const tipoColorMap: Record<string, { bg: string; color: string; border: string }> = {
+        'Solicitud de Fondos':    { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+        'Solicitud de Material':  { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
+        'Devolución de Material': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
+      };
+      const tc = tipoColorMap[row.tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Tooltip title={row.task.name}>
+            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
           </Tooltip>
-          <Tooltip title={canApprove ? 'Agregar observación' : 'Sin permiso para observar'}>
+          <span style={{
+            display: 'inline-block', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600,
+            backgroundColor: tc.bg, color: tc.color, border: `1px solid ${tc.border}`,
+            borderRadius: 4, padding: '1px 7px', lineHeight: '18px',
+          }}>{row.tipo}</span>
+          <Tooltip title={row.projectName}>
+            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
+          </Tooltip>
+          {row.sectionName && (
+            <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }} ellipsis>
+              📅 {row.sectionName}
+            </Typography.Text>
+          )}
+          <Tooltip title={row.parentTaskName}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
+          </Tooltip>
+          {solicitante ? (
+            <Typography.Text style={{ fontSize: 11, color: '#6b7280' }} ellipsis>
+              👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span>
+            </Typography.Text>
+          ) : (
+            <Typography.Text style={{ fontSize: 11, color: '#d1d5db' }}>👤 Sin registro</Typography.Text>
+          )}
+        </div>
+      );
+    },
+  };
+
+  const colFechaSolicitud = {
+    title: 'Fecha Solicitud',
+    dataIndex: 'fecha',
+    key: 'fecha',
+    width: 160,
+    render: (v: string) => <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text>,
+  };
+
+  const colAccionesPendientes = {
+    title: 'Acciones',
+    key: 'acciones',
+    width: 220,
+    fixed: 'right' as const,
+    render: (_: unknown, row: SolicitudRow) => (
+      <Space size={4}>
+        <Tooltip title="Ver detalle">
+          <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
+        </Tooltip>
+        <Tooltip title="Imprimir PDF">
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
+        </Tooltip>
+        <Popconfirm
+          title="¿Eliminar solicitud?"
+          description="Esta acción no se puede deshacer."
+          onConfirm={() => handleDeleteSolicitud(row)}
+          okText="Eliminar"
+          cancelText="Cancelar"
+          okButtonProps={{ danger: true }}
+          disabled={user?.role !== 'director'}
+        >
+          <Tooltip title={user?.role === 'director' ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
             <Button
               size="small"
-              icon={<CommentOutlined />}
-              style={canApprove ? { color: '#b45309', borderColor: '#d97706' } : undefined}
-              disabled={!canApprove}
-              onClick={() => { setObserveModal(row); setObserveText(''); }}
-            >
-              Observar
-            </Button>
+              icon={<DeleteOutlined />}
+              danger
+              disabled={user?.role !== 'director'}
+            />
           </Tooltip>
-          <Popconfirm
-            title="¿Aprobar solicitud?"
-            description="Se marcará esta solicitud como aprobada."
-            onConfirm={() => handleApprove(row)}
-            okText="Aprobar"
-            cancelText="Cancelar"
-            okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
+        </Popconfirm>
+        <Tooltip title={canApprove ? 'Agregar observación' : 'Sin permiso para observar'}>
+          <Button
+            size="small"
+            icon={<CommentOutlined />}
+            style={canApprove ? { color: '#b45309', borderColor: '#d97706' } : undefined}
             disabled={!canApprove}
+            onClick={() => { setObserveModal(row); setObserveText(''); }}
           >
+            Observar
+          </Button>
+        </Tooltip>
+        <Popconfirm
+          title="¿Aprobar solicitud?"
+          description="Se marcará esta solicitud como aprobada."
+          onConfirm={() => handleApprove(row)}
+          okText="Aprobar"
+          cancelText="Cancelar"
+          okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
+          disabled={!canApprove}
+        >
+          <Button
+            size="small"
+            icon={<CheckCircleOutlined />}
+            style={canApprove ? { color: '#16a34a', borderColor: '#16a34a' } : undefined}
+            disabled={!canApprove}
+            loading={approvingGid === row.task.gid}
+          >
+            Aprobar
+          </Button>
+        </Popconfirm>
+      </Space>
+    ),
+  };
+
+  const colAccionesHistorico = {
+    title: 'Acciones',
+    key: 'acciones',
+    width: 100,
+    fixed: 'right' as const,
+    render: (_: unknown, row: SolicitudRow) => (
+      <Space size={4}>
+        <Tooltip title="Ver detalle">
+          <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
+        </Tooltip>
+        <Tooltip title="Imprimir PDF">
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
+        </Tooltip>
+        <Popconfirm
+          title="¿Eliminar solicitud?"
+          description="Esta acción no se puede deshacer."
+          onConfirm={() => handleDeleteSolicitud(row)}
+          okText="Eliminar"
+          cancelText="Cancelar"
+          okButtonProps={{ danger: true }}
+          disabled={user?.role !== 'director'}
+        >
+          <Tooltip title={user?.role === 'director' ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
             <Button
               size="small"
-              icon={<CheckCircleOutlined />}
-              style={canApprove ? { color: '#16a34a', borderColor: '#16a34a' } : undefined}
-              disabled={!canApprove}
-              loading={approvingGid === row.task.gid}
-            >
-              Aprobar
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+              icon={<DeleteOutlined />}
+              danger
+              disabled={user?.role !== 'director'}
+            />
+          </Tooltip>
+        </Popconfirm>
+      </Space>
+    ),
+  };
+
+  const colFechaRespuesta = {
+    title: 'Fecha Respuesta',
+    key: 'fechaRespuesta',
+    width: 160,
+    render: (_: unknown, row: SolicitudRow) => {
+      const data = extractJsonData(row.task.notes);
+      const fecha = (data?.fechaAprobacion as string) || (data?.fechaObservacion as string) || '-';
+      return <Typography.Text style={{ fontSize: 12 }}>{fecha}</Typography.Text>;
     },
-  ];
+  };
+
+  const colMotivoObservacion = {
+    title: 'Motivo observación',
+    key: 'motivo',
+    width: 200,
+    render: (_: unknown, row: SolicitudRow) => {
+      const data = extractJsonData(row.task.notes);
+      const motivo = (data?.motivoObservacion as string) || '-';
+      return <Typography.Text style={{ fontSize: 12, color: '#b45309' }}>{motivo}</Typography.Text>;
+    },
+  };
+
+  const columns = [colSolicitudInfo, colFechaSolicitud, colAccionesPendientes];
+  const columnsAprobadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colAccionesHistorico];
+  const columnsObservadas = [{ ...colSolicitudInfo, width: 100 }, colFechaSolicitud, colFechaRespuesta, colMotivoObservacion, colAccionesHistorico];
 
   const CONTRATACION_PASOS = [
-    'Requerimiento de contratación',
     'Elaboración de TDRs',
     'Lanzamiento de convocatoria',
     'Selección del consultor',
@@ -759,7 +930,7 @@ const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* Solicitudes pendientes */}
+      {/* Solicitudes */}
       <Card
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
@@ -767,14 +938,8 @@ const HomePage: React.FC = () => {
           <Space>
             <BellOutlined style={{ color: '#b45309', fontSize: 16 }} />
             <Typography.Text strong style={{ fontSize: 15 }}>
-              Solicitudes Pendientes de Aprobación
+              Solicitudes
             </Typography.Text>
-            {!loading && (
-              <Badge
-                count={solicitudes.length}
-                style={{ background: solicitudes.length > 0 ? '#b45309' : '#9ca3af' }}
-              />
-            )}
           </Space>
         }
       >
@@ -786,18 +951,76 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
-            <Table
-              columns={columns}
-              dataSource={solicitudes}
-              size="middle"
-              bordered
-              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-              scroll={{ x: 'max-content' }}
-              locale={{ emptyText: 'No hay solicitudes pendientes' }}
-              rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
-            />
-          </div>
+          <Tabs
+            activeKey={solTab}
+            onChange={setSolTab}
+            style={{ padding: '0 1.25rem' }}
+            items={[
+              {
+                key: 'pendientes',
+                label: (
+                  <Space size={6}>
+                    <span>⏳ Pendientes</span>
+                    <Badge count={solicitudes.length} style={{ background: solicitudes.length > 0 ? '#b45309' : '#9ca3af' }} />
+                  </Space>
+                ),
+                children: (
+                  <Table
+                    columns={columns}
+                    dataSource={solicitudes}
+                    size="middle"
+                    bordered
+                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'No hay solicitudes pendientes' }}
+                    rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+                  />
+                ),
+              },
+              {
+                key: 'aprobadas',
+                label: (
+                  <Space size={6}>
+                    <span>✅ Aprobadas</span>
+                    <Badge count={solicitudesAprobadas.length} style={{ background: solicitudesAprobadas.length > 0 ? '#16a34a' : '#9ca3af' }} />
+                  </Space>
+                ),
+                children: (
+                  <Table
+                    columns={columnsAprobadas}
+                    dataSource={solicitudesAprobadas}
+                    size="middle"
+                    bordered
+                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'No hay solicitudes aprobadas' }}
+                    rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+                  />
+                ),
+              },
+              {
+                key: 'observadas',
+                label: (
+                  <Space size={6}>
+                    <span>💬 Observadas</span>
+                    <Badge count={solicitudesObservadas.length} style={{ background: solicitudesObservadas.length > 0 ? '#6366f1' : '#9ca3af' }} />
+                  </Space>
+                ),
+                children: (
+                  <Table
+                    columns={columnsObservadas}
+                    dataSource={solicitudesObservadas}
+                    size="middle"
+                    bordered
+                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'No hay solicitudes observadas' }}
+                    rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+                  />
+                ),
+              },
+            ]}
+          />
         )}
       </Card>
 

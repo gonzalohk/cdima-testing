@@ -116,7 +116,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         fechaSolicitud,
         fechaAprobacion: '',
         totalBolivianos: parseFloat(totalBolivianos.toFixed(2)),
-        usuario: user ? { nombre: user.name, email: user.email } : undefined,
+        usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
         fondos: fondosValidos.map(({ id, descripcion, importeBolivianos }) => ({
           id, descripcion,
           importeBolivianos: importeBolivianos || '0',
@@ -175,6 +175,7 @@ ${JSON.stringify(jsonData, null, 2)}
         name: subtaskName,
         notes: notes,
         due_on: fechaFinalizacion,
+        completed: true,
         custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 

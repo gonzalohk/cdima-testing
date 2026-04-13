@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { asanaService } from '../services/asana.service';
 import { exportTaskReportToPDF } from '../services/reports/report-reports.service';
 import { exportTaskReportToWord } from '../services/reports/report-word.service';
+import { useAuth } from '../context/AuthContext';
 import {
   AsanaWorkspace,
   AsanaProject,
@@ -13,6 +14,7 @@ import {
 
 export const useReportPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // Estado para datos de Asana
   const [workspaces, setWorkspaces] = useState<AsanaWorkspace[]>([]);
@@ -94,8 +96,35 @@ export const useReportPage = () => {
         const nombreLower = project.name.toLowerCase();
         return !nombreLower.includes('cdima');
       });
-      
-      setProjects(proyectosFiltrados);
+
+      // Filtrado por área según rol
+      const ROLE_AREA_MAP: Record<string, string> = {
+        'tecnico ev': 'Erradicación de Violencia',
+        'tecnico ep': 'Empoderamiento Político',
+      };
+      const requiredAreaLower = user ? ROLE_AREA_MAP[user.role.toLowerCase()] : undefined;
+
+      if (requiredAreaLower) {
+        const areaResults = await Promise.allSettled(
+          proyectosFiltrados.map(async (project) => {
+            const resumen = await asanaService.getProjectResumenTask(project.gid);
+            if (!resumen) return { gid: project.gid, area: '' };
+            // Area stored as custom field on the Resumen task
+            const areaField = resumen.custom_fields?.find(
+              f => f.name.toLowerCase().replace(/á/g, 'a') === 'area'
+            );
+            const area = (areaField?.enum_value?.name ?? areaField?.display_value ?? '').toLowerCase();
+            return { gid: project.gid, area };
+          })
+        );
+        const areaMap: Record<string, string> = {};
+        areaResults.forEach((result) => {
+          if (result.status === 'fulfilled') areaMap[result.value.gid] = result.value.area;
+        });
+        setProjects(proyectosFiltrados.filter(p => (areaMap[p.gid] ?? '').includes(requiredAreaLower.toLowerCase())));
+      } else {
+        setProjects(proyectosFiltrados);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar proyectos');
     } finally {

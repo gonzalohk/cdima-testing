@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { asanaService } from '../services/asana.service';
 import Notification from './Notification';
-import { serializeEstudianteData, parseAsistenciaRecords, updateNotasWithAsistencia } from '../utils/asana-helpers';
-import { validateData, EstudianteDataSchema } from '../schemas/diplomado.schemas';
 import { HtmlModalHeader } from './ModalShared';
 import { ASANA_CUSTOM_FIELDS } from '../constants/asana-fields';
 
 interface EscuelaEditData {
   gid: string;
   nombre: string;
-  tipoEscuela?: string;
-  estudiantes: Array<PersonaData & { subtaskGid: string }>;
-  estudiantesTaskGid: string;
+  area?: string;
+  numeroModulos?: number;
+  resumenTaskGid?: string;
 }
 
 interface CreateEscuelaModalProps {
@@ -20,24 +18,6 @@ interface CreateEscuelaModalProps {
   onSuccess: () => void;
   editMode?: boolean;
   escuelaData?: EscuelaEditData;
-}
-
-interface PersonaData {
-  nombre: string;
-  apellidoPaterno: string;
-  apellidoMaterno: string;
-  genero: string;
-  fechaNacimiento: string;
-  cargo: string;
-  domicilio: string;
-  telefono: string;
-  lugarNacimiento: string;
-  documentoIdentidad: string;
-  identidadCultural: string;
-}
-
-interface PersonaDataWithGid extends PersonaData {
-  subtaskGid?: string;
 }
 
 const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
@@ -50,7 +30,6 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   const [nombreEscuela, setNombreEscuela] = useState('');
   const [areaEscuela, setAreaEscuela] = useState('');
   const [numeroModulos, setNumeroModulos] = useState(7);
-  const [estudiantes, setEstudiantes] = useState<PersonaDataWithGid[]>([{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -59,53 +38,10 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
   useEffect(() => {
     if (editMode && escuelaData) {
       setNombreEscuela(escuelaData.nombre);
-      
-      // Parsear nombres que vienen en formato "Nombre, Apellido Paterno, Apellido Materno"
-      const parseNombreCompleto = (nombreCompleto: string) => {
-        const partes = nombreCompleto.split(',').map(p => p.trim());
-        return {
-          nombre: partes[0] || '',
-          apellidoPaterno: partes[1] || '',
-          apellidoMaterno: partes[2] || ''
-        };
-      };
-      
-      const estudiantesParseados = escuelaData.estudiantes.map(e => {
-        const nombreParts = parseNombreCompleto(e.nombre);
-        return { ...e, ...nombreParts };
-      });
-
-      setEstudiantes(estudiantesParseados.length > 0 ? estudiantesParseados : [{ nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
+      if (escuelaData.area) setAreaEscuela(escuelaData.area);
+      if (escuelaData.numeroModulos !== undefined) setNumeroModulos(escuelaData.numeroModulos);
     }
   }, [editMode, escuelaData]);
-
-  const handleAddEstudiante = () => {
-    setEstudiantes([...estudiantes, { nombre: '', apellidoPaterno: '', apellidoMaterno: '', genero: '', fechaNacimiento: '', cargo: '', domicilio: '', telefono: '', lugarNacimiento: '', documentoIdentidad: '', identidadCultural: '' }]);
-  };
-
-  const handleRemoveEstudiante = (index: number) => {
-    if (estudiantes.length <= 1) return;
-
-    const estudiante = estudiantes[index];
-    const nombre = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno]
-      .filter(Boolean)
-      .join(' ')
-      .trim() || `Estudiante ${index + 1}`;
-
-    const mensaje = estudiante.subtaskGid
-      ? `⚠️ Esta acción eliminará permanentemente a "${nombre}" de Asana.\n\n¿Deseas continuar?`
-      : `¿Deseas eliminar a "${nombre}" de la lista?`;
-
-    if (!window.confirm(mensaje)) return;
-
-    setEstudiantes(estudiantes.filter((_, i) => i !== index));
-  };
-
-  const handleEstudianteChange = (index: number, field: keyof PersonaData, value: string) => {
-    const newEstudiantes = [...estudiantes];
-    newEstudiantes[index][field] = value;
-    setEstudiantes(newEstudiantes);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,109 +62,31 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         throw new Error('El número de módulos debe estar entre 5 y 10');
       }
 
-      const estudiantesValidos = editMode
-        ? estudiantes.filter(e => e.nombre.trim() && e.apellidoPaterno.trim() && e.genero.trim())
-        : [];
-
-      if (editMode && estudiantesValidos.length === 0) {
-        throw new Error('Debe agregar al menos un estudiante con nombre completo (nombre y apellido paterno) y género');
-      }
-
-      if (editMode) {
-        const estudianteSinGenero = estudiantesValidos.find(e => !e.genero.trim());
-        if (estudianteSinGenero) {
-          throw new Error('El género es obligatorio para todos los estudiantes');
-        }
-      }
-
-      // Obtener workspace
-      const workspaces = await asanaService.getWorkspaces();
-      const cdima = workspaces.find(ws => ws.name === 'CDIMA');
-      
-      if (!cdima) {
-        throw new Error('No se encontró el workspace CDIMA');
-      }
-
       if (editMode && escuelaData) {
-        // MODO EDICIÓN
-        // 1. Actualizar nombre de la escuela (sección)
+        // MODO EDICIÓN - solo nombre, área y número de módulos
         if (nombreEscuela !== escuelaData.nombre) {
           await asanaService.updateSection(escuelaData.gid, nombreEscuela);
         }
 
-        // 2. Actualizar estudiantes
-        const estudiantesOriginales = escuelaData.estudiantes;
-        const estudiantesActuales = estudiantesValidos;
-
-        // Actualizar o crear estudiantes en lotes de 12
-        const BATCH_SIZE = 12;
-        const estudiantesActualesFns = estudiantesActuales.map(estudiante => async () => {
-          const validationResult = validateData(EstudianteDataSchema, {
-            genero: estudiante.genero,
-            telefono: estudiante.telefono,
-            lugarNacimiento: estudiante.lugarNacimiento,
-            fechaNacimiento: estudiante.fechaNacimiento,
-            domicilio: estudiante.domicilio,
-            especialidad: estudiante.cargo,
-            documentoIdentidad: estudiante.documentoIdentidad,
-            identidadCultural: estudiante.identidadCultural
-          });
-
-          if (!validationResult.success) {
-            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(' ');
-            throw new Error(`Datos inválidos para estudiante ${nombreCompleto}: ${validationResult.error}`);
+        if (escuelaData.resumenTaskGid) {
+          const resumenTaskFull = await asanaService.getTask(escuelaData.resumenTaskGid);
+          const customFieldsUpdate: { [gid: string]: string | number | null } = {};
+          const areaField = resumenTaskFull.custom_fields?.find((f: any) => f.name === ASANA_CUSTOM_FIELDS.AREA_ESCUELA);
+          if (areaField) {
+            if (areaField.type === 'enum' && areaField.enum_options) {
+              const opt = areaField.enum_options.find((o: any) => o.name === areaEscuela);
+              if (opt) customFieldsUpdate[areaField.gid] = opt.gid;
+            } else {
+              customFieldsUpdate[areaField.gid] = areaEscuela;
+            }
           }
-
-          const notasEstudiante = serializeEstudianteData({
-            genero: estudiante.genero,
-            fechaNacimiento: estudiante.fechaNacimiento || '',
-            especialidad: estudiante.cargo || '',
-            domicilio: estudiante.domicilio || '',
-            telefono: estudiante.telefono || '',
-            lugarNacimiento: estudiante.lugarNacimiento || '',
-            documentoIdentidad: estudiante.documentoIdentidad || '',
-            identidadCultural: estudiante.identidadCultural || ''
-          });
-
-          if (estudiante.subtaskGid) {
-            // Actualizar existente - PRESERVAR REGISTROS DE ASISTENCIA
-            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
-            
-            // Obtener la tarea actual para preservar los registros de asistencia
-            const tareaActual = await asanaService.getTask(estudiante.subtaskGid);
-            const registrosAsistenciaExistentes = parseAsistenciaRecords(tareaActual.notes);
-            
-            // Combinar nueva información primaria con registros de asistencia existentes
-            const notasActualizadas = registrosAsistenciaExistentes.length > 0
-              ? updateNotasWithAsistencia(notasEstudiante, registrosAsistenciaExistentes)
-              : notasEstudiante;
-            
-            await asanaService.updateTask(estudiante.subtaskGid, {
-              name: nombreCompleto,
-              notes: notasActualizadas
-            });
-          } else {
-            // Crear nuevo
-            const nombreCompleto = [estudiante.nombre, estudiante.apellidoPaterno, estudiante.apellidoMaterno].filter(Boolean).join(', ');
-            await asanaService.createSubtask(escuelaData.estudiantesTaskGid, cdima.gid, {
-              name: nombreCompleto,
-              notes: notasEstudiante
-            });
+          const modulosField = resumenTaskFull.custom_fields?.find((f: any) => f.name === ASANA_CUSTOM_FIELDS.NUMERO_MODULOS);
+          if (modulosField) {
+            customFieldsUpdate[modulosField.gid] = numeroModulos;
           }
-        });
-        for (let i = 0; i < estudiantesActualesFns.length; i += BATCH_SIZE) {
-          await Promise.all(estudiantesActualesFns.slice(i, i + BATCH_SIZE).map(fn => fn()));
-        }
-
-        // Eliminar estudiantes que ya no están en lotes de 12
-        const gidasActualesEstudiantes = new Set(estudiantesActuales.map(e => e.subtaskGid).filter(Boolean));
-        const estudiantesEliminadosFns = estudiantesOriginales.map(original => async () => {
-          if (original.subtaskGid && !gidasActualesEstudiantes.has(original.subtaskGid)) {
-            await asanaService.deleteTask(original.subtaskGid);
+          if (Object.keys(customFieldsUpdate).length > 0) {
+            await asanaService.updateTask(escuelaData.resumenTaskGid, { custom_fields: customFieldsUpdate });
           }
-        });
-        for (let i = 0; i < estudiantesEliminadosFns.length; i += BATCH_SIZE) {
-          await Promise.all(estudiantesEliminadosFns.slice(i, i + BATCH_SIZE).map(fn => fn()));
         }
 
         setNotification({
@@ -237,6 +95,9 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
         });
       } else {
         // MODO CREACIÓN
+        const workspaces = await asanaService.getWorkspaces();
+        const cdima = workspaces.find(ws => ws.name === 'CDIMA');
+        if (!cdima) throw new Error('No se encontró el workspace CDIMA');
         // 0. Verificar duplicados antes de crear
         const seccionesExistentes = await asanaService.getSections(projectGid);
         const nombreNormalizado = nombreEscuela.trim().toLowerCase();
@@ -394,205 +255,10 @@ const CreateEscuelaModal: React.FC<CreateEscuelaModalProps> = ({
                 <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>Mínimo 5, máximo 10</span>
               </div>
 
-              {/* Estudiantes - solo en modo edición */}
-              {editMode && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  Estudiantes <span style={{ color: 'red' }}>*</span>
-                </label>
-                {estudiantes.map((estudiante, index) => (
-                  <div key={index} style={{ 
-                    padding: '1rem', 
-                    marginBottom: '1rem', 
-                    border: '1px solid #ddd', 
-                    borderRadius: '8px',
-                    backgroundColor: '#fafafa'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#666' }}>
-                        Estudiante {index + 1}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEstudiante(index)}
-                        disabled={estudiantes.length === 1}
-                        className="button-secondary"
-                        style={{ marginLeft: 'auto', padding: '0.5rem', minWidth: '35px', fontSize: '0.9rem' }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Nombre <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.nombre}
-                          onChange={(e) => handleEstudianteChange(index, 'nombre', e.target.value)}
-                          placeholder="Ej: Gonzalo"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Paterno <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.apellidoPaterno}
-                          onChange={(e) => handleEstudianteChange(index, 'apellidoPaterno', e.target.value)}
-                          placeholder="Ej: Osco"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Apellido Materno <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.apellidoMaterno}
-                          onChange={(e) => handleEstudianteChange(index, 'apellidoMaterno', e.target.value)}
-                          placeholder="Ej: Hernandez"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Documento de Identidad <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.documentoIdentidad}
-                          onChange={(e) => handleEstudianteChange(index, 'documentoIdentidad', e.target.value)}
-                          placeholder="Ej: 12345678 SC"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                          maxLength={20}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Género <span style={{ color: 'red' }}>*</span>
-                        </label>
-                        <select
-                          value={estudiante.genero}
-                          onChange={(e) => handleEstudianteChange(index, 'genero', e.target.value)}
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          required
-                        >
-                          <option value="">Seleccione...</option>
-                          <option value="Masculino">Masculino</option>
-                          <option value="Femenino">Femenino</option>
-                          <option value="Otro">Otro</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Cargo
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.cargo}
-                          onChange={(e) => handleEstudianteChange(index, 'cargo', e.target.value)}
-                          placeholder="Cargo del participante"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Lugar de Nacimiento
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.lugarNacimiento}
-                          onChange={(e) => handleEstudianteChange(index, 'lugarNacimiento', e.target.value)}
-                          placeholder="Ciudad, País"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Fecha de Nacimiento
-                        </label>
-                        <input
-                          type="date"
-                          value={estudiante.fechaNacimiento}
-                          onChange={(e) => handleEstudianteChange(index, 'fechaNacimiento', e.target.value)}
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Identidad Cultural
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.identidadCultural}
-                          onChange={(e) => handleEstudianteChange(index, 'identidadCultural', e.target.value)}
-                          placeholder="Ej: Quechua, Aymara, Guaraní, Mestizo, etc."
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Teléfono
-                        </label>
-                        <input
-                          type="tel"
-                          value={estudiante.telefono}
-                          onChange={(e) => handleEstudianteChange(index, 'telefono', e.target.value)}
-                          placeholder="Ej: 71234567"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                          maxLength={15}
-                        />
-                      </div>
-
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                          Comunidad
-                        </label>
-                        <input
-                          type="text"
-                          value={estudiante.domicilio}
-                          onChange={(e) => handleEstudianteChange(index, 'domicilio', e.target.value)}
-                          placeholder="Nombre de comunidad"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                        />
-                      </div>
-                      
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={handleAddEstudiante}
-                  className="button-secondary"
-                  style={{ fontSize: '0.9rem' }}
-                >
-                  + Agregar Estudiante
-                </button>
-              </div>
-              )}
-
               <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#4f4f4f', marginBottom: '0.5rem' }}>
                   <strong>ℹ️ Nota:</strong> {editMode
-                    ? 'Se actualizarán los datos de la escuela y sus estudiantes.'
+                    ? 'Se actualizará el nombre, área y número de módulos de la escuela.'
                     : 'Se crearán automáticamente las tareas "Estudiantes" y "Documentos". Podrás agregar estudiantes individualmente desde la vista de detalle.'}
                 </p>
                 

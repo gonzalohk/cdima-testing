@@ -138,7 +138,7 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
                     type="text"
                     value={apellidoPaterno}
                     onChange={e => setApellidoPaterno(e.target.value)}
-                    placeholder="Ej: Osco"
+                    placeholder="Ej: Mamani"
                     style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                     required
                   />
@@ -152,7 +152,7 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
                     type="text"
                     value={apellidoMaterno}
                     onChange={e => setApellidoMaterno(e.target.value)}
-                    placeholder="Ej: Hernandez"
+                    placeholder="Ej: Mamani"
                     style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                   />
                 </div>
@@ -196,7 +196,7 @@ const AgregarPersonaModal: React.FC<AgregarPersonaModalProps> = ({
                     type="text"
                     value={especialidad}
                     onChange={e => setEspecialidad(e.target.value)}
-                    placeholder={useCargoLabel ? 'Cargo del participante' : 'Especialidad del docente'}
+                    placeholder={useCargoLabel ? 'Cargo del participante' : 'Especialidad'}
                     style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                   />
                 </div>

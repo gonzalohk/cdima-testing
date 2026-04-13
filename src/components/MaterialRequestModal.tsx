@@ -118,7 +118,7 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
         fechaFinalizacion: fechaFinalizacionStr,
         fechaSolicitud,
         fechaAprobacion: '',
-        usuario: user ? { nombre: user.name, email: user.email } : undefined,
+        usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
         materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
           id, detalle,
           cantidad: cantidad || '-',
@@ -177,6 +177,7 @@ ${JSON.stringify(jsonData, null, 2)}
         name: subtaskName,
         notes: notes,
         due_on: fechaFinalizacion,
+        completed: true,
         custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 

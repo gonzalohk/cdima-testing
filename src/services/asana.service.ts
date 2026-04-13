@@ -83,6 +83,13 @@ class AsanaService {
     );
   }
 
+  async getProjectResumenTask(projectGid: string): Promise<{ gid: string; name: string; notes: string; custom_fields?: { name: string; display_value?: string; enum_value?: { name: string } }[] } | null> {
+    const tasks = await this.fetchAsana<{ gid: string; name: string; notes: string; custom_fields?: { name: string; display_value?: string; enum_value?: { name: string } }[] }[]>(
+      `/projects/${projectGid}/tasks?opt_fields=name,notes,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.enum_value,custom_fields.enum_value.name`
+    );
+    return tasks.find(t => t.name.startsWith('Resumen:')) ?? null;
+  }
+
   async getTask(taskGid: string): Promise<AsanaTask> {
     return this.fetchAsana<AsanaTask>(
       `/tasks/${taskGid}?opt_fields=name,notes,completed,due_on,assignee.name,parent.name,num_subtasks,workspace.gid,projects.gid,projects.name,projects.workspace.gid,memberships,memberships.section,memberships.section.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
@@ -121,6 +128,7 @@ class AsanaService {
     name: string;
     notes?: string;
     due_on?: string;
+    completed?: boolean;
     custom_fields?: Record<string, string>;
   }): Promise<AsanaTask> {
     return this.fetchAsana<AsanaTask>('/tasks', {

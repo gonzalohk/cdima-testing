@@ -376,11 +376,61 @@ export function updateNotasWithAsistencia(
   newRecords: AsistenciaRecord[]
 ): string {
   // Extraer datos de estudiante si existen
-  const datosMatch = existingNotes.match(/(=== DATOS ESTUDIANTE ===[\s\S]*?)(?==== REGISTRO|$)/);
+  const datosMatch = existingNotes.match(/(=== DATOS ESTUDIANTE ===[\s\S]*?)(?==== OBSERVACIONES|=== REGISTRO|$)/);
   const datosSection = datosMatch ? datosMatch[1].trim() : '';
-  
+
+  // Preservar sección de observaciones de notas si existe
+  const obsMatch = existingNotes.match(/(=== OBSERVACIONES NOTAS ===[\s\S]*?)(?==== REGISTRO|$)/);
+  const obsSection = obsMatch ? obsMatch[1].trim() : '';
+
   // Combinar secciones
-  const parts = [datosSection, serializeAsistenciaRecords(newRecords)].filter(Boolean);
-  
+  const parts = [datosSection, obsSection, serializeAsistenciaRecords(newRecords)].filter(Boolean);
+
+  return parts.join('\n\n');
+}
+
+/**
+ * Parsea las observaciones de notas por módulo desde las notas del task.
+ * Returns a map of module name → observation text.
+ */
+export function parseNotasObservaciones(notes: string | undefined | null): Record<string, string> {
+  if (!notes) return {};
+  try {
+    const jsonMatch = notes.match(/=== OBSERVACIONES NOTAS ===\s*\n```json\s*\n([\s\S]*?)\n```/);
+    if (jsonMatch && jsonMatch[1]) {
+      const parsed = JSON.parse(jsonMatch[1]);
+      return typeof parsed === 'object' && !Array.isArray(parsed) && parsed !== null ? parsed : {};
+    }
+  } catch {}
+  return {};
+}
+
+/**
+ * Updates (or creates) the observaciones for a specific module in task notes,
+ * preserving all other sections (DATOS ESTUDIANTE, REGISTRO DE ASISTENCIA).
+ */
+export function setNotaObservacion(
+  existingNotes: string,
+  moduloNombre: string,
+  observacion: string
+): string {
+  const datosMatch = existingNotes.match(/(=== DATOS ESTUDIANTE ===[\s\S]*?)(?==== OBSERVACIONES|=== REGISTRO|$)/);
+  const datosSection = datosMatch ? datosMatch[1].trim() : '';
+
+  const asistenciaMatch = existingNotes.match(/(=== REGISTRO DE ASISTENCIA ===[\s\S]*?)$/);
+  const asistenciaSection = asistenciaMatch ? asistenciaMatch[1].trim() : '';
+
+  const obsActuales = parseNotasObservaciones(existingNotes);
+  if (observacion.trim()) {
+    obsActuales[moduloNombre] = observacion.trim();
+  } else {
+    delete obsActuales[moduloNombre];
+  }
+
+  const obsSection = Object.keys(obsActuales).length > 0
+    ? `=== OBSERVACIONES NOTAS ===\n\`\`\`json\n${JSON.stringify(obsActuales, null, 2)}\n\`\`\``
+    : '';
+
+  const parts = [datosSection, obsSection, asistenciaSection].filter(Boolean);
   return parts.join('\n\n');
 }

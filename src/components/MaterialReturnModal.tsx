@@ -102,7 +102,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
         fechaSolicitud,
         fechaAprobacion: '',
-        usuario: user ? { nombre: user.name, email: user.email } : undefined,
+        usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
         materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
           id, detalle,
           cantidad: cantidad || '-',
@@ -159,6 +159,7 @@ ${JSON.stringify(jsonData, null, 2)}
       await asanaService.createSubtask(task.gid, workspaceGid, {
         name: subtaskName,
         notes: notes,
+        completed: true,
         custom_fields: Object.keys(customFields).length > 0 ? customFields : undefined
       });
 
