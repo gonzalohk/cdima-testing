@@ -270,6 +270,8 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const canApprove = user?.role === 'administrador' || user?.role === 'director';
+  const isTecnico = user?.role === 'tecnico ev' || user?.role === 'tecnico ep';
+  const tecnicoArea = user?.role === 'tecnico ev' ? 'Erradicación de Violencia' : user?.role === 'tecnico ep' ? 'Empoderamiento Político' : null;
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
   const [solicitudesObservadas, setSolicitudesObservadas] = useState<SolicitudRow[]>([]);
@@ -298,9 +300,7 @@ const HomePage: React.FC = () => {
 
       const projects = await asanaService.getProjects(cdima.gid);
       // Excluir proyectos cuyo nombre contenga "CDIMA"
-      const filteredProjects = projects.filter(
-        p => !p.name.toUpperCase().includes('CDIMA')
-      );
+      const filteredProjects = projects.filter(p => !p.name.toUpperCase().includes('CDIMA'));
 
       const allRows: SolicitudRow[] = [];
       const allContrataciones: ContratacionRow[] = [];
@@ -324,6 +324,17 @@ const HomePage: React.FC = () => {
             const atrasadasRows: AtrasadaRow[] = [];
             let pendingReqs = 0;
             try {
+              // For técnico roles, check project area before fetching all tasks
+              if (isTecnico && tecnicoArea) {
+                const resumenTask = await asanaService.getProjectResumenTask(project.gid);
+                const areaField = resumenTask?.custom_fields?.find(
+                  f => f.name.toLowerCase().replace(/á/g, 'a') === 'area'
+                );
+                const areaVal = (areaField?.enum_value?.name ?? areaField?.display_value ?? '').toLowerCase();
+                if (!areaVal.includes(tecnicoArea.toLowerCase())) {
+                  return { rows: [], approvedRows: [], observedRows: [], contRows: [], atrasadasRows: [] };
+                }
+              }
               const tasks = await asanaService.getProjectTasks(project.gid);
               const topLevel = tasks.filter(t => !t.parent && !t.name.startsWith('Resumen:'));
               const parentTasks = topLevel.filter(t => t.num_subtasks && t.num_subtasks > 0);
@@ -338,20 +349,22 @@ const HomePage: React.FC = () => {
 
               // Collect overdue top-level activities and build a lookup map
               const atrasadasMap = new Map<string, number>();
-              topLevel
-                .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
-                .forEach(t => {
-                  const idx = atrasadasRows.length;
-                  atrasadasMap.set(t.gid, idx);
-                  atrasadasRows.push({
-                    key: t.gid,
-                    task: t,
-                    projectName: project.name,
-                    sectionName: t.memberships?.[0]?.section?.name ?? '',
-                    daysLate: Math.floor((new Date(today).getTime() - new Date(t.due_on!).getTime()) / 86400000),
-                    subActividades: [],
+              if (!isTecnico) {
+                topLevel
+                  .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
+                  .forEach(t => {
+                    const idx = atrasadasRows.length;
+                    atrasadasMap.set(t.gid, idx);
+                    atrasadasRows.push({
+                      key: t.gid,
+                      task: t,
+                      projectName: project.name,
+                      sectionName: t.memberships?.[0]?.section?.name ?? '',
+                      daysLate: Math.floor((new Date(today).getTime() - new Date(t.due_on!).getTime()) / 86400000),
+                      subActividades: [],
+                    });
                   });
-                });
+              }
 
               // Fetch subtasks of tasks que tienen subtareas
               for (let j = 0; j < parentTasks.length; j += CHUNK) {
@@ -361,13 +374,15 @@ const HomePage: React.FC = () => {
                     try {
                       const subtasks = await asanaService.getSubtasks(parentTask.gid);
                       // Populate sub-activities for overdue parent tasks
-                      const atrasadaIdx = atrasadasMap.get(parentTask.gid);
-                      if (atrasadaIdx !== undefined) {
-                        atrasadasRows[atrasadaIdx].subActividades = subtasks.filter(
-                          s => !s.name.startsWith('SFON') && !s.name.startsWith('SMAT') &&
-                               !s.name.startsWith('DMAT') && !s.name.startsWith('CPER') &&
-                               !s.name.startsWith('FUENTES DE VERIFICACION') && !s.name.startsWith('Resumen:')
-                        );
+                      if (!isTecnico) {
+                        const atrasadaIdx = atrasadasMap.get(parentTask.gid);
+                        if (atrasadaIdx !== undefined) {
+                          atrasadasRows[atrasadaIdx].subActividades = subtasks.filter(
+                            s => !s.name.startsWith('SFON') && !s.name.startsWith('SMAT') &&
+                                 !s.name.startsWith('DMAT') && !s.name.startsWith('CPER') &&
+                                 !s.name.startsWith('FUENTES DE VERIFICACION') && !s.name.startsWith('Resumen:')
+                          );
+                        }
                       }
                       for (const sub of subtasks) {
                         const prefix = getSolicitudPrefix(sub.name);
@@ -407,7 +422,7 @@ const HomePage: React.FC = () => {
                           });
                         }
                         // Collect CPER contrataciones
-                        if (sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
+                        if (!isTecnico && sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
                           contRows.push({
                             key: sub.gid,
                             task: sub,
@@ -426,19 +441,21 @@ const HomePage: React.FC = () => {
               }
 
               // Build stats for this project
-              const completed = topLevel.filter(isEjecutado).length;
-              const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
-              const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
-              allStats.push({
-                gid: project.gid,
-                name: project.name,
-                color: getProjectColor(project.gid),
-                totalTasks: topLevel.length,
-                completedTasks: completed,
-                overdueTasks: overdue,
-                dueSoon,
-                pendingRequests: pendingReqs,
-              });
+              if (!isTecnico) {
+                const completed = topLevel.filter(isEjecutado).length;
+                const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
+                const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
+                allStats.push({
+                  gid: project.gid,
+                  name: project.name,
+                  color: getProjectColor(project.gid),
+                  totalTasks: topLevel.length,
+                  completedTasks: completed,
+                  overdueTasks: overdue,
+                  dueSoon,
+                  pendingRequests: pendingReqs,
+                });
+              }
             } catch {
               // Ignorar errores de proyectos individuales
             }
@@ -481,7 +498,7 @@ const HomePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isTecnico, tecnicoArea]);
 
   useEffect(() => {
     const token = asanaService.getToken();
@@ -676,54 +693,63 @@ const HomePage: React.FC = () => {
         <Tooltip title="Imprimir PDF">
           <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
         </Tooltip>
-        <Popconfirm
-          title="¿Eliminar solicitud?"
-          description="Esta acción no se puede deshacer."
-          onConfirm={() => handleDeleteSolicitud(row)}
-          okText="Eliminar"
-          cancelText="Cancelar"
-          okButtonProps={{ danger: true }}
-          disabled={user?.role !== 'director'}
-        >
-          <Tooltip title={user?.role === 'director' ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
+        {(() => {
+          const canDelPending = user?.role === 'director' || isTecnico;
+          return (
+            <Popconfirm
+              title="¿Eliminar solicitud?"
+              description="Esta acción no se puede deshacer."
+              onConfirm={() => handleDeleteSolicitud(row)}
+              okText="Eliminar"
+              cancelText="Cancelar"
+              okButtonProps={{ danger: true }}
+              disabled={!canDelPending}
+            >
+              <Tooltip title={canDelPending ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
+                <Button
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  danger
+                  disabled={!canDelPending}
+                />
+              </Tooltip>
+            </Popconfirm>
+          );
+        })()}
+        {!isTecnico && (
+          <Tooltip title={canApprove ? 'Agregar observación' : 'Sin permiso para observar'}>
             <Button
               size="small"
-              icon={<DeleteOutlined />}
-              danger
-              disabled={user?.role !== 'director'}
-            />
+              icon={<CommentOutlined />}
+              style={canApprove ? { color: '#b45309', borderColor: '#d97706' } : undefined}
+              disabled={!canApprove}
+              onClick={() => { setObserveModal(row); setObserveText(''); }}
+            >
+              Observar
+            </Button>
           </Tooltip>
-        </Popconfirm>
-        <Tooltip title={canApprove ? 'Agregar observación' : 'Sin permiso para observar'}>
-          <Button
-            size="small"
-            icon={<CommentOutlined />}
-            style={canApprove ? { color: '#b45309', borderColor: '#d97706' } : undefined}
+        )}
+        {!isTecnico && (
+          <Popconfirm
+            title="¿Aprobar solicitud?"
+            description="Se marcará esta solicitud como aprobada."
+            onConfirm={() => handleApprove(row)}
+            okText="Aprobar"
+            cancelText="Cancelar"
+            okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
             disabled={!canApprove}
-            onClick={() => { setObserveModal(row); setObserveText(''); }}
           >
-            Observar
-          </Button>
-        </Tooltip>
-        <Popconfirm
-          title="¿Aprobar solicitud?"
-          description="Se marcará esta solicitud como aprobada."
-          onConfirm={() => handleApprove(row)}
-          okText="Aprobar"
-          cancelText="Cancelar"
-          okButtonProps={{ style: { background: '#16a34a', borderColor: '#16a34a' } }}
-          disabled={!canApprove}
-        >
-          <Button
-            size="small"
-            icon={<CheckCircleOutlined />}
-            style={canApprove ? { color: '#16a34a', borderColor: '#16a34a' } : undefined}
-            disabled={!canApprove}
-            loading={approvingGid === row.task.gid}
-          >
-            Aprobar
-          </Button>
-        </Popconfirm>
+            <Button
+              size="small"
+              icon={<CheckCircleOutlined />}
+              style={canApprove ? { color: '#16a34a', borderColor: '#16a34a' } : undefined}
+              disabled={!canApprove}
+              loading={approvingGid === row.task.gid}
+            >
+              Aprobar
+            </Button>
+          </Popconfirm>
+        )}
       </Space>
     ),
   };
@@ -1026,7 +1052,7 @@ const HomePage: React.FC = () => {
       </Card>
 
       {/* ── Contrataciones Activas ──────────────────────────────────────── */}
-      <Card
+      {!isTecnico && <Card
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
@@ -1221,10 +1247,10 @@ const HomePage: React.FC = () => {
             })}
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* ── Actividades Atrasadas ───────────────────────────────────────── */}
-      <Card
+      {!isTecnico && <Card
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
@@ -1256,10 +1282,10 @@ const HomePage: React.FC = () => {
             />
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* ── KPI Strip ───────────────────────────────────────────────────── */}
-      {(projectStats.length > 0 || loading) && (() => {
+      {!isTecnico && (projectStats.length > 0 || loading) && (() => {
         const totalTasks = projectStats.reduce((s, p) => s + p.totalTasks, 0);
         const totalCompleted = projectStats.reduce((s, p) => s + p.completedTasks, 0);
         const totalOverdue = projectStats.reduce((s, p) => s + p.overdueTasks, 0);
@@ -1289,7 +1315,7 @@ const HomePage: React.FC = () => {
       })()}
 
       {/* ── Project Progress Grid ────────────────────────────────────────── */}
-      {(projectStats.length > 0 || loading) && (
+      {!isTecnico && (projectStats.length > 0 || loading) && (
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.875rem' }}>
             <span style={{ fontSize: 16 }}>📊</span>

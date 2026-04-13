@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Form, Input, Typography, Alert } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { ROLE_PAGES } from '../context/permissions';
 import logoCdima from '../assets/logocdima.png';
 
 const { Title, Text } = Typography;
@@ -18,10 +19,11 @@ const LoginPage: React.FC = () => {
     setError(false);
     // Small delay to avoid instant flash
     await new Promise((r) => setTimeout(r, 300));
-    const ok = login(values.email.trim(), values.password);
+    const loggedUser = login(values.email.trim(), values.password);
     setLoading(false);
-    if (ok) {
-      navigate('/', { replace: true });
+    if (loggedUser) {
+      const pages = ROLE_PAGES[loggedUser.role as keyof typeof ROLE_PAGES];
+      navigate(pages?.[0] ?? '/', { replace: true });
     } else {
       setError(true);
     }

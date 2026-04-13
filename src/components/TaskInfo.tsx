@@ -184,10 +184,12 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   // Extraer estado de observación de las notas
   const extractObservacion = (notes: string | undefined): { observado: boolean; motivo: string; fecha: string } => {
     const data = extractJsonData(notes);
+    const motivo = (data?.motivoObservacion as string) ?? '';
+    const fecha = (data?.fechaObservacion as string) ?? '';
     return {
-      observado: !!(data?.observado),
-      motivo: (data?.motivoObservacion as string) ?? '',
-      fecha: (data?.fechaObservacion as string) ?? '',
+      observado: !!(motivo && fecha),
+      motivo,
+      fecha,
     };
   };
 
@@ -315,7 +317,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
     const isCreator = !!user?.email && user.email === creatorEmail;
     const isObservada = extractObservacion(solicitud.notes).observado;
-    const isAprobada = !!solicitud.completed;
+    const isAprobada = !!extractFechaAprobacion(solicitud.notes);
 
     if (!isAdminOrDirector && !isCreator) {
       alert('No tienes permiso para eliminar esta solicitud.');
@@ -1041,13 +1043,14 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
               pagination={false}
               rowClassName={(record) => {
                 const obs = extractObservacion(record.notes);
+                const isAprobada = !!extractFechaAprobacion(record.notes);
                 if (obs.observado) return 'ant-table-row--observed';
-                if (record.completed) return 'ant-table-row--completed';
+                if (isAprobada) return 'ant-table-row--completed';
                 return '';
               }}
               dataSource={[...solicitudes].sort((a, b) => {
                 const statusOrder = (t: AsanaTask) => {
-                  if (t.completed) return 1;
+                  if (extractFechaAprobacion(t.notes)) return 1;
                   const obs = extractObservacion(t.notes);
                   if (obs.observado) return 2;
                   return 0;
@@ -1134,7 +1137,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   align: 'center' as const,
                   render: (_: unknown, record: AsanaTask) => {
                     const obs = extractObservacion(record.notes);
-                    if (record.completed) return <Tag color="success">Aprobada</Tag>;
+                    const isAprobada = !!extractFechaAprobacion(record.notes);
+                    if (isAprobada) return <Tag color="success">Aprobada</Tag>;
                     if (obs.observado) return <Tag color="error">Observada</Tag>;
                     return <Tag color="warning">Pendiente</Tag>;
                   },
@@ -1145,9 +1149,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   align: 'center' as const,
                   render: (_: unknown, record: AsanaTask) => {
                     const obs = extractObservacion(record.notes);
+                    const isAprobada = !!extractFechaAprobacion(record.notes);
                     return (
                       <Space size={4}>
-                        {!record.completed && !obs.observado && (
+                        {!isAprobada && !obs.observado && (
                           <Tooltip title={canApprove ? 'Aprobar' : 'Sin permiso para aprobar'}>
                             <Button
                               type="primary"
@@ -1159,7 +1164,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                             />
                           </Tooltip>
                         )}
-                        {!record.completed && (
+                        {!isAprobada && (
                           <Tooltip title={canApprove ? (obs.observado ? 'Actualizar observación' : 'Observar solicitud') : 'Sin permiso para observar'}>
                             <Button
                               size="small"
@@ -1207,7 +1212,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                             const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
                             const isCreator = !!user?.email && user.email === creatorEmail;
                             const isObservada = extractObservacion(record.notes).observado;
-                            const isAprobada = !!record.completed;
+                            const isAprobada = !!extractFechaAprobacion(record.notes);
                             if (isAdminOrDirector) return false;
                             if (isCreator && !isObservada && !isAprobada) return false;
                             return true;
@@ -1219,7 +1224,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                             const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
                             const isCreator = !!user?.email && user.email === creatorEmail;
                             const isObservada = extractObservacion(record.notes).observado;
-                            const isAprobada = !!record.completed;
+                            const isAprobada = !!extractFechaAprobacion(record.notes);
                             if (!isAdminOrDirector && !isCreator) return 'Sin permiso para eliminar';
                             if (!isAdminOrDirector && isCreator && (isObservada || isAprobada)) return 'No se puede eliminar una solicitud aprobada u observada';
                             return 'Eliminar';
@@ -1234,7 +1239,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                                 const isAdminOrDirector = user?.role === 'director' || user?.role === 'administrador';
                                 const isCreator = !!user?.email && user.email === creatorEmail;
                                 const isObservada = extractObservacion(record.notes).observado;
-                                const isAprobada = !!record.completed;
+                                const isAprobada = !!extractFechaAprobacion(record.notes);
                                 if (isAdminOrDirector) return false;
                                 if (isCreator && !isObservada && !isAprobada) return false;
                                 return true;

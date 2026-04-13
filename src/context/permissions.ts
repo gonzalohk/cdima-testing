@@ -153,8 +153,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 export const ROLE_PAGES: Record<UserRole, string[]> = {
   director:      ['/', '/report', '/planificacion', '/biblioteca', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
   administrador: ['/', '/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
-  'tecnico ev':  ['/report', '/biblioteca', '/planificacion', '/escuelas','/investigacion-e-incidencia'],
-  'tecnico ep':  ['/report', '/biblioteca', '/planificacion', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
+  'tecnico ev':  ['/report', '/', '/biblioteca', '/planificacion', '/escuelas','/investigacion-e-incidencia'],
+  'tecnico ep':  ['/report', '/', '/biblioteca', '/planificacion', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia'],
   comunicacion:   ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia'],
   planificador:   ['/biblioteca', '/planificacion'],
 };

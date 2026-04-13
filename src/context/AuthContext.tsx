@@ -9,7 +9,7 @@ export interface AuthUser {
 
 interface AuthContextType {
   user: AuthUser | null;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => AuthUser | null;
   logout: () => void;
 }
 
@@ -84,15 +84,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const login = (email: string, password: string): boolean => {
+  const login = (email: string, password: string): AuthUser | null => {
     const found = USERS.find(
       (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
     );
-    if (!found) return false;
+    if (!found) return null;
     const authUser: AuthUser = { email: found.email, role: found.role, name: found.name };
     setUser(authUser);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
-    return true;
+    return authUser;
   };
 
   const logout = () => {
