@@ -16,7 +16,7 @@ import { exportDistributionReportToWord } from '../services/reports/report-word.
 
 const ReportPage: React.FC = () => {
   const { user } = useAuth();
-  const canApprove = user?.role === 'administrador' || user?.role === 'director';
+  const canApprove = user?.role === 'administrador' || user?.role === 'director' || user?.role === 'tecnico ev' || user?.role === 'tecnico ep';
 
   const [createProjectModal, setCreateProjectModal] = useState(false);
   const [createProjectName, setCreateProjectName] = useState('');
