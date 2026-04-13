@@ -372,8 +372,9 @@ const HomePage: React.FC = () => {
                       for (const sub of subtasks) {
                         const prefix = getSolicitudPrefix(sub.name);
                         const jsonData = extractJsonData(sub.notes);
-                        const isObserved = !!(jsonData?.observado);
-                        if (prefix && !sub.completed && !isObserved) {
+                        const isApproved = !!(jsonData?.fechaAprobacion);
+                        const isObserved = !!(jsonData?.motivoObservacion && jsonData?.fechaObservacion);
+                        if (prefix && !isApproved && !isObserved) {
                           pendingReqs++;
                           rows.push({
                             key: sub.gid,
@@ -384,7 +385,7 @@ const HomePage: React.FC = () => {
                             tipo: getTipoFromPrefix(prefix),
                             fecha: extractFechaSolicitud(sub.notes),
                           });
-                        } else if (prefix && sub.completed && !isObserved) {
+                        } else if (prefix && isApproved) {
                           approvedRows.push({
                             key: sub.gid,
                             task: sub,
@@ -994,7 +995,7 @@ const HomePage: React.FC = () => {
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No hay solicitudes aprobadas' }}
-                    rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+                    rowClassName={() => 'ant-table-row-aprobada'}
                   />
                 ),
               },
@@ -1015,7 +1016,7 @@ const HomePage: React.FC = () => {
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No hay solicitudes observadas' }}
-                    rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
+                    rowClassName={() => 'ant-table-row-observada'}
                   />
                 ),
               },
@@ -1378,6 +1379,15 @@ const HomePage: React.FC = () => {
         const total = parsed.total;
         const materiales = parsed.materiales;
 
+        const detailJsonData = extractJsonData(detailModal.task.notes);
+        const isDetailApproved = !!(detailJsonData?.fechaAprobacion);
+        const isDetailObserved = !!(detailJsonData?.motivoObservacion && detailJsonData?.fechaObservacion);
+        const estadoPill = isDetailApproved
+          ? { icon: '✅', label: 'Aprobado', bg: '#dcfce7', color: '#15803d', border: '#86efac' }
+          : isDetailObserved
+          ? { icon: '💬', label: 'Observado', bg: '#fef3c7', color: '#b45309', border: '#fcd34d' }
+          : { icon: '⏳', label: 'En Proceso', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' };
+
         const fieldStyle: React.CSSProperties = { margin: 0, fontSize: '0.9rem', color: '#374151', padding: '0.4rem 0.6rem', backgroundColor: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' };
         const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.5px' };
 
@@ -1390,6 +1400,8 @@ const HomePage: React.FC = () => {
           ...(parsed.fechaInicio ? [{ icon: '▶️', label: 'Inicio', value: parsed.fechaInicio }] : []),
           ...(parsed.fechaFinalizacion ? [{ icon: '⏹️', label: 'Finalización', value: parsed.fechaFinalizacion }] : []),
           ...(parsed.fechaDevolucion ? [{ icon: '📅', label: 'Fecha devolución', value: parsed.fechaDevolucion }] : []),
+          ...(isDetailApproved ? [{ icon: '✅', label: 'Fecha aprobación', value: detailJsonData?.fechaAprobacion as string }] : []),
+          ...(isDetailObserved ? [{ icon: '💬', label: 'Fecha observación', value: detailJsonData?.fechaObservacion as string }] : []),
         ];
 
         return (
@@ -1405,7 +1417,7 @@ const HomePage: React.FC = () => {
               <div className="modal-body" style={{ padding: '1.5rem 1.75rem', overflowY: 'auto' }}>
                 {/* Estado pill */}
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, backgroundColor: '#fef3c7', color: '#92400e', padding: '0.2rem 0.75rem', borderRadius: '999px', border: '1px solid #fcd34d' }}>⏳ En Proceso</span>
+                  <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, backgroundColor: estadoPill.bg, color: estadoPill.color, padding: '0.2rem 0.75rem', borderRadius: '999px', border: `1px solid ${estadoPill.border}` }}>{estadoPill.icon} {estadoPill.label}</span>
                 </div>
 
                 {/* Info fields grid */}
@@ -1417,6 +1429,14 @@ const HomePage: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Motivo observación */}
+                {isDetailObserved && detailJsonData?.motivoObservacion && (
+                  <div style={{ marginBottom: '1.25rem', padding: '0.6rem 0.85rem', backgroundColor: '#fffbeb', borderRadius: 6, border: '1px solid #fcd34d', borderLeft: '3px solid #b45309' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>💬 Motivo de observación</div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f' }}>{detailJsonData.motivoObservacion as string}</p>
+                  </div>
+                )}
 
                 {/* Fondos */}
                 {isFondos && fondos && fondos.length > 0 && (

@@ -3616,6 +3616,22 @@ select.form-input {
 .ant-table-row-stripe > .ant-table-cell {
   background-color: #f7fafc !important;
 }
+/* ── Aprobadas: verde ───────────────────────────────────────────── */
+.ant-table-row-aprobada > .ant-table-cell {
+  background-color: #f0fdf4 !important;
+  color: #15803d !important;
+}
+.ant-table-row-aprobada > .ant-table-cell * {
+  color: #15803d !important;
+}
+/* ── Observadas: gris ───────────────────────────────────────────── */
+.ant-table-row-observada > .ant-table-cell {
+  background-color: #f9fafb !important;
+  color: #9ca3af !important;
+}
+.ant-table-row-observada > .ant-table-cell * {
+  color: #9ca3af !important;
+}
 .section-card__table tbody tr:nth-child(even) {
   background-color: #f7fafc;
 }
