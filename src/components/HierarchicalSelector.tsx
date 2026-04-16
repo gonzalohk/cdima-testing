@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Col, Row, Select, Tooltip } from 'antd';
+import { Card, Col, Row, Select } from 'antd';
 import { FolderOutlined, CalendarOutlined, ApartmentOutlined, RightOutlined } from '@ant-design/icons';
 import { AsanaProject, AsanaTask, AsanaSection } from '../types/asana.types';
 
@@ -96,22 +96,45 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
         }
         .hierarchical-selector .ant-select-lg .ant-select-selector {
           border-radius: 8px !important;
+          height: auto !important;
+          min-height: 40px !important;
+        }
+        .hierarchical-selector .ant-select-selection-item {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+          line-height: 1.4 !important;
+          padding-top: 4px !important;
+          padding-bottom: 4px !important;
         }
         .hierarchical-selector .ant-select-disabled .ant-select-selector {
           background: #f5f5f5 !important;
           cursor: not-allowed !important;
         }
-        .hierarchical-selector .task-option-label {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+        .hierarchical-selector .option-label {
+          white-space: normal;
+          word-break: break-word;
+          line-height: 1.4;
+          padding: 2px 0;
+        }
+        .hierarchical-selector-popup .ant-select-item {
+          height: auto !important;
+          min-height: 32px !important;
+          white-space: normal !important;
+        }
+        .hierarchical-selector-popup .ant-select-item-option-content {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+          word-break: break-word !important;
+          line-height: 1.4 !important;
         }
       `}</style>
       <Card className="hierarchical-selector" style={{ marginBottom: '1.5rem' }} size="small">
         <Row gutter={0} align="middle" wrap={false} style={{ gap: 0 }}>
 
           {/* ── PASO 1: PROYECTO ── */}
-          <Col flex="28%">
+          <Col flex="1">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               {stepBadge(1, true)}
               <FolderOutlined style={{ color: CDIMA_BLUE, fontSize: 13 }} />
@@ -120,6 +143,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
             <Select
               className="project-select"
               size="large"
+              popupClassName="hierarchical-selector-popup"
               value={selectedProject || undefined}
               onChange={(value) => onProjectChange(value || '')}
               options={projectOptions}
@@ -129,6 +153,9 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
               showSearch
               optionFilterProp="label"
               style={{ width: '100%' }}
+              optionRender={(option) => (
+                <div className="option-label">{option.label}</div>
+              )}
             />
           </Col>
 
@@ -138,7 +165,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
           </Col>
 
           {/* ── PASO 2: PERIODO ── */}
-          <Col flex="16%" style={disabledColStyle(step2Active)}>
+          <Col flex="1" style={disabledColStyle(step2Active)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               {stepBadge(2, step2Active)}
               <CalendarOutlined style={{ color: step2Active ? CDIMA_BLUE : '#bdbdbd', fontSize: 13, transition: 'color 0.3s' }} />
@@ -146,6 +173,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
             </div>
             <Select
               size="large"
+              popupClassName="hierarchical-selector-popup"
               value={selectedSection || undefined}
               onChange={(value) => onSectionChange(value ?? '')}
               options={sectionOptions}
@@ -154,6 +182,9 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
               showSearch
               optionFilterProp="label"
               style={{ width: '100%' }}
+              optionRender={(option) => (
+                <div className="option-label">{option.label}</div>
+              )}
             />
           </Col>
 
@@ -163,7 +194,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
           </Col>
 
           {/* ── PASO 3: ACTIVIDAD ── */}
-          <Col flex="auto" style={disabledColStyle(step3Active)}>
+          <Col flex="1" style={disabledColStyle(step3Active)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               {stepBadge(3, step3Active)}
               <ApartmentOutlined style={{ color: step3Active ? CDIMA_BLUE : '#bdbdbd', fontSize: 13, transition: 'color 0.3s' }} />
@@ -176,6 +207,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
             </div>
             <Select
               size="large"
+              popupClassName="hierarchical-selector-popup"
               value={selectedMainTask || undefined}
               onChange={(value) => onMainTaskChange(value ?? '')}
               placeholder={getTaskPlaceholder()}
@@ -184,9 +216,7 @@ const HierarchicalSelector: React.FC<HierarchicalSelectorProps> = ({
               optionFilterProp="label"
               style={{ width: '100%' }}
               optionRender={(option) => (
-                <Tooltip title={option.label} placement="topLeft" mouseEnterDelay={0.5}>
-                  <div className="task-option-label">{option.label}</div>
-                </Tooltip>
+                <div className="option-label">{option.label}</div>
               )}
               options={taskOptions}
             />
