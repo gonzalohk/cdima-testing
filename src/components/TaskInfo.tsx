@@ -693,7 +693,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   placeholder="Ej: Informe de actividad abril 2026"
                   disabled={informeSaving}
                   autoFocus
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding:  '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
                 />
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
