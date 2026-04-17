@@ -24,10 +24,12 @@ interface MaterialRequestModalProps {
   task: AsanaTask;
   onClose: () => void;
   onSuccess: () => void;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
 
-const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClose, onSuccess }) => {
+const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClose, onSuccess, projectName }) => {
   const [area, setArea] = useState('');
   const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
@@ -191,7 +193,9 @@ ${JSON.stringify(jsonData, null, 2)}
           lugar,
           fechaInicio,
           fechaFinalizacion,
-          materiales: materialesValidos
+          materiales: materialesValidos,
+          projectName,
+          parentTaskName: task.name,
         });
       }, 500);
       

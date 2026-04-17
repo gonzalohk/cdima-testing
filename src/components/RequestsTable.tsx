@@ -8,6 +8,8 @@ import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialRetu
 interface RequestsTableProps {
   subtasks: AsanaTask[];
   onDeleted?: (taskGid: string) => void;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
 interface FundItem {
@@ -24,7 +26,7 @@ interface MaterialItem {
   observaciones: string;
 }
 
-const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) => {
+const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted, projectName, parentTaskName }) => {
   const [detailModal, setDetailModal] = useState<AsanaTask | null>(null);
   const [observeModal, setObserveModal] = useState<AsanaTask | null>(null);
   const [observeText, setObserveText] = useState('');
@@ -282,18 +284,24 @@ const RequestsTable: React.FC<RequestsTableProps> = ({ subtasks, onDeleted }) =>
       const data = parseFundsRequest(task);
       exportFundsRequestToPDF({
         ...data,
+        projectName,
+        parentTaskName,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     } else if (tipoSolicitud === 'Solicitud de Material') {
       const data = parseMaterialRequest(task);
       exportMaterialRequestToPDF({
         ...data,
+        projectName,
+        parentTaskName,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     } else if (tipoSolicitud === 'Solicitud de Devolucion') {
       const data = parseMaterialReturn(task);
       exportMaterialReturnToPDF({
         ...data,
+        projectName,
+        parentTaskName,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     }

@@ -20,9 +20,11 @@ interface MaterialReturnModalProps {
   task: AsanaTask;
   onClose: () => void;
   onSuccess: () => void;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
-const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess }) => {
+const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess, projectName }) => {
   const [area, setArea] = useState('');
   const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
@@ -172,7 +174,9 @@ ${JSON.stringify(jsonData, null, 2)}
           area,
           lugar,
           fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
-          materiales: materialesValidos
+          materiales: materialesValidos,
+          projectName,
+          parentTaskName: task.name,
         });
       }, 500);
       

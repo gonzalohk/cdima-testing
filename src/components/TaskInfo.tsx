@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, List, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, CheckOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
 import { AsanaTask, AsanaAttachment, TaskStatistics } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -27,7 +27,6 @@ interface TaskInfoProps {
 
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, statistics, projectName = 'Proyecto', onSubtaskDeleted, onSubtaskCreated }) => {
   const { user } = useAuth();
-  const canApprove = user?.role === 'administrador' || user?.role === 'director';
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -40,6 +39,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   const [observeMotivo, setObserveMotivo] = useState('');
   const [observeLoading, setObserveLoading] = useState(false);
   const [detailTarget, setDetailTarget] = useState<AsanaTask | null>(null);
+  const [informeTarget, setInformeTarget] = useState<AsanaTask | null>(null);
+  const [informeNombre, setInformeNombre] = useState('');
+  const [informeUrl, setInformeUrl] = useState('');
+  const [informeSaving, setInformeSaving] = useState(false);
 
   // Buscar la subtarea "FUENTES DE VERIFICACION"
   const verificationSubtask = subtasks.find(
@@ -193,35 +196,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     };
   };
 
-  // Aprobar solicitud: marcar como completada y guardar fechaAprobacion en JSON
-  const handleApproveRequest = async (solicitud: AsanaTask) => {
-    const confirmed = window.confirm(`¿Aprobar la solicitud "${solicitud.name}"? Se marcará como EJECUTADA.`);
-    if (!confirmed) return;
-    try {
-      const fechaAprobacion = new Date().toLocaleString('es-ES', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-        timeZone: 'America/La_Paz',
-      });
-      const data = extractJsonData(solicitud.notes) ?? {};
-      const updatedData = { ...data, fechaAprobacion };
-      const notasBase = (solicitud.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
-      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
-      await asanaService.updateTask(solicitud.gid, { completed: true, notes: newNotes });
-      onSubtaskCreated?.();
-    } catch (err) {
-      alert('Error al aprobar la solicitud.');
-      console.error(err);
-    }
-  };
-
-  // Marcar solicitud como observada/rechazada
-  const handleObserveRequest = (solicitud: AsanaTask) => {
-    const obs = extractObservacion(solicitud.notes);
-    setObserveMotivo(obs.motivo);
-    setObserveTarget(solicitud);
-  };
-
   const submitObservacion = async () => {
     if (!observeTarget) return;
     if (!observeMotivo.trim()) return;
@@ -311,6 +285,49 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     }
   };
 
+  const handleSaveInforme = async () => {
+    if (!informeTarget) return;
+    const trimmedUrl = informeUrl.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      alert('El enlace debe comenzar con http:// o https://');
+      return;
+    }
+    setInformeSaving(true);
+    try {
+      const data = extractJsonData(informeTarget.notes) ?? {};
+      const updatedData = { ...data, informe: { nombre: informeNombre.trim(), url: trimmedUrl } };
+      const notasBase = (informeTarget.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(informeTarget.gid, { notes: newNotes });
+      setInformeTarget(null);
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al guardar el informe.');
+      console.error(err);
+    } finally {
+      setInformeSaving(false);
+    }
+  };
+
+  const handleDeleteInforme = async () => {
+    if (!informeTarget) return;
+    setInformeSaving(true);
+    try {
+      const data = extractJsonData(informeTarget.notes) ?? {};
+      const { informe: _removed, ...rest } = data as Record<string, unknown> & { informe?: unknown };
+      const notasBase = (informeTarget.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(rest, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(informeTarget.gid, { notes: newNotes });
+      setInformeTarget(null);
+      onSubtaskCreated?.();
+    } catch (err) {
+      alert('Error al eliminar el informe.');
+      console.error(err);
+    } finally {
+      setInformeSaving(false);
+    }
+  };
+
   const handleDeleteRequest = async (solicitud: AsanaTask) => {
     const data = extractJsonData(solicitud.notes);
     const creatorEmail = (data?.usuario as { email?: string } | undefined)?.email;
@@ -348,18 +365,24 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       const data = parseFundsRequest(taskItem);
       exportFundsRequestToPDF({
         ...data,
+        projectName,
+        parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     } else if (tipoSolicitud === 'Solicitud de Material') {
       const data = parseMaterialRequest(taskItem);
       exportMaterialRequestToPDF({
         ...data,
+        projectName,
+        parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     } else if (tipoSolicitud === 'Solicitud de Devolucion') {
       const data = parseMaterialReturn(taskItem);
       exportMaterialReturnToPDF({
         ...data,
+        projectName,
+        parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
       });
     }
@@ -649,6 +672,84 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
           </div>
         );
       })()}
+
+      {/* Modal de informe */}
+      {informeTarget && (
+        <div className="modal-overlay" onClick={() => setInformeTarget(null)} style={{ zIndex: 1002 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="🔗"
+              title="Informe / Documento"
+              subtitle={informeTarget.name}
+              onClose={() => setInformeTarget(null)}
+            />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+              <div style={{ marginBottom: '0.875rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Nombre del documento</label>
+                <input
+                  type="text"
+                  value={informeNombre}
+                  onChange={e => setInformeNombre(e.target.value)}
+                  placeholder="Ej: Informe de actividad abril 2026"
+                  disabled={informeSaving}
+                  autoFocus
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>🔗 Enlace (URL)</label>
+                <input
+                  type="url"
+                  value={informeUrl}
+                  onChange={e => setInformeUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  disabled={informeSaving}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', gap: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {(() => {
+                  const d = extractJsonData(informeTarget.notes);
+                  const hasInforme = !!(d?.informe as { url?: string } | undefined)?.url;
+                  return hasInforme ? (
+                    <Popconfirm
+                      title="¿Borrar informe?"
+                      description="Se eliminará el enlace guardado."
+                      onConfirm={handleDeleteInforme}
+                      okText="Borrar"
+                      cancelText="Cancelar"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <button
+                        type="button"
+                        disabled={informeSaving}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fff5f5', cursor: 'pointer', fontSize: '0.9rem', color: '#dc2626' }}
+                      >🗑️ Borrar informe</button>
+                    </Popconfirm>
+                  ) : null;
+                })()}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setInformeTarget(null)}
+                  disabled={informeSaving}
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '7px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '0.9rem', color: '#374151' }}
+                >Cancelar</button>
+                <button
+                  type="button"
+                  onClick={handleSaveInforme}
+                  disabled={informeSaving}
+                  className="button-primary"
+                  style={{ padding: '0.5rem 1.25rem', opacity: informeSaving ? 0.6 : 1 }}
+                >{informeSaving ? 'Guardando...' : 'Guardar'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de observación */}
       {observeTarget && (
@@ -1144,38 +1245,41 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   },
                 },
                 {
-                  title: 'Aprobar',
-                  key: 'aprobar',
+                  title: 'Informe',
+                  key: 'informe',
+                  width: 90,
                   align: 'center' as const,
                   render: (_: unknown, record: AsanaTask) => {
-                    const obs = extractObservacion(record.notes);
-                    const isAprobada = !!extractFechaAprobacion(record.notes);
+                    const data = extractJsonData(record.notes);
+                    const informe = data?.informe as { nombre?: string; url?: string } | undefined;
                     return (
-                      <Space size={4}>
-                        {!isAprobada && !obs.observado && (
-                          <Tooltip title={canApprove ? 'Aprobar' : 'Sin permiso para aprobar'}>
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<CheckOutlined />}
-                              style={{ backgroundColor: canApprove ? '#2e7d32' : undefined, borderColor: canApprove ? '#2e7d32' : undefined }}
-                              disabled={!canApprove}
-                              onClick={() => handleApproveRequest(record)}
-                            />
-                          </Tooltip>
-                        )}
-                        {!isAprobada && (
-                          <Tooltip title={canApprove ? (obs.observado ? 'Actualizar observación' : 'Observar solicitud') : 'Sin permiso para observar'}>
-                            <Button
-                              size="small"
-                              danger={canApprove}
-                              icon={<WarningOutlined />}
-                              disabled={!canApprove}
-                              onClick={() => handleObserveRequest(record)}
-                            />
-                          </Tooltip>
-                        )}
-                      </Space>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        {informe?.url ? (
+                          <a href={informe.url} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: '#2563eb', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+                            title={informe.nombre || informe.url}>
+                            <LinkOutlined style={{ marginRight: 3 }} />{informe.nombre || 'Ver'}
+                          </a>
+                        ) : null}
+                        <Tooltip title="Agregar / editar informe">
+                          <button
+                            onClick={() => {
+                              const d = extractJsonData(record.notes);
+                              const inf = d?.informe as { nombre?: string; url?: string } | undefined;
+                              setInformeNombre(inf?.nombre ?? '');
+                              setInformeUrl(inf?.url ?? '');
+                              setInformeTarget(record);
+                            }}
+                            style={{
+                              background: 'none', border: '1px solid #d1d5db', borderRadius: 6,
+                              cursor: 'pointer', padding: '2px 6px', color: '#6b7280', fontSize: 11,
+                              display: 'flex', alignItems: 'center', gap: 3,
+                            }}
+                          >
+                            <LinkOutlined />{informe?.url ? '✎' : '+'}
+                          </button>
+                        </Tooltip>
+                      </div>
                     );
                   },
                 },
@@ -1554,6 +1658,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       {showMaterialModal && (
         <MaterialRequestModal
           task={task}
+          projectName={projectName}
           onClose={() => setShowMaterialModal(false)}
           onSuccess={() => {
             setShowMaterialModal(false);
@@ -1565,6 +1670,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       {showFundsModal && (
         <FundsRequestModal
           task={task}
+          projectName={projectName}
           onClose={() => setShowFundsModal(false)}
           onSuccess={() => {
             setShowFundsModal(false);
@@ -1576,6 +1682,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
       {showReturnModal && (
         <MaterialReturnModal
           task={task}
+          projectName={projectName}
           onClose={() => setShowReturnModal(false)}
           onSuccess={() => {
             setShowReturnModal(false);

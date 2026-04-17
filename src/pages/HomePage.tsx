@@ -19,6 +19,7 @@ import {
   CommentOutlined,
   DeleteOutlined,
   EyeOutlined,
+  LinkOutlined,
   PrinterOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -284,6 +285,10 @@ const HomePage: React.FC = () => {
   const [observeModal, setObserveModal] = useState<SolicitudRow | null>(null);
   const [observeText, setObserveText] = useState('');
   const [observeSaving, setObserveSaving] = useState(false);
+  const [informeModal, setInformeModal] = useState<SolicitudRow | null>(null);
+  const [informeNombre, setInformeNombre] = useState('');
+  const [informeUrl, setInformeUrl] = useState('');
+  const [informeSaving, setInformeSaving] = useState(false);
 
   const [contrataciones, setContrataciones] = useState<ContratacionRow[]>([]);
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
@@ -578,6 +583,57 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleSaveInforme = async () => {
+    if (!informeModal) return;
+    const trimmedUrl = informeUrl.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      alert('El enlace debe comenzar con http:// o https://');
+      return;
+    }
+    setInformeSaving(true);
+    try {
+      const data = extractJsonData(informeModal.task.notes) ?? {};
+      const updatedData = { ...data, informe: { nombre: informeNombre.trim(), url: trimmedUrl } };
+      const notasBase = (informeModal.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      const updated = await asanaService.updateTask(informeModal.task.gid, { notes: newNotes });
+      const updateRow = (prev: SolicitudRow[]) =>
+        prev.map(r => r.key === informeModal.key ? { ...r, task: { ...r.task, notes: updated.notes ?? newNotes } } : r);
+      setSolicitudes(updateRow);
+      setSolicitudesAprobadas(updateRow);
+      setSolicitudesObservadas(updateRow);
+      setInformeModal(null);
+    } catch (err) {
+      alert('Error al guardar el informe.');
+      console.error(err);
+    } finally {
+      setInformeSaving(false);
+    }
+  };
+
+  const handleDeleteInforme = async () => {
+    if (!informeModal) return;
+    setInformeSaving(true);
+    try {
+      const data = extractJsonData(informeModal.task.notes) ?? {};
+      const { informe: _removed, ...rest } = data as Record<string, unknown> & { informe?: unknown };
+      const notasBase = (informeModal.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(rest, null, 2)}\n===FIN_DATOS_JSON===`;
+      const updated = await asanaService.updateTask(informeModal.task.gid, { notes: newNotes });
+      const updateRow = (prev: SolicitudRow[]) =>
+        prev.map(r => r.key === informeModal.key ? { ...r, task: { ...r.task, notes: updated.notes ?? newNotes } } : r);
+      setSolicitudes(updateRow);
+      setSolicitudesAprobadas(updateRow);
+      setSolicitudesObservadas(updateRow);
+      setInformeModal(null);
+    } catch (err) {
+      alert('Error al eliminar el informe.');
+      console.error(err);
+    } finally {
+      setInformeSaving(false);
+    }
+  };
+
   const handleDeleteSolicitud = async (row: SolicitudRow) => {
     try {
       await asanaService.deleteTask(row.task.gid);
@@ -601,6 +657,8 @@ const HomePage: React.FC = () => {
         fechaInicio: (data?.fechaInicio as string) ?? '',
         fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
         fondos: (data?.fondos as { id: number; descripcion: string; importeBolivianos: string }[]) ?? [],
+        projectName: row.projectName,
+        parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
       });
     } else if (row.tipo === 'Solicitud de Material') {
@@ -611,6 +669,8 @@ const HomePage: React.FC = () => {
         fechaInicio: (data?.fechaInicio as string) ?? '',
         fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
         materiales: (data?.materiales as { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string }[]) ?? [],
+        projectName: row.projectName,
+        parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
       });
     } else if (row.tipo === 'Devolución de Material') {
@@ -620,6 +680,8 @@ const HomePage: React.FC = () => {
         lugar: (data?.lugar as string) ?? '',
         fechaDevolucion: (data?.fechaDevolucion as string) ?? '-',
         materiales: (data?.materiales as { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string }[]) ?? [],
+        projectName: row.projectName,
+        parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
       });
     }
@@ -811,9 +873,48 @@ const HomePage: React.FC = () => {
     },
   };
 
-  const columns = [colSolicitudInfo, colFechaSolicitud, colAccionesPendientes];
-  const columnsAprobadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colAccionesHistorico];
-  const columnsObservadas = [{ ...colSolicitudInfo, width: 100 }, colFechaSolicitud, colFechaRespuesta, colMotivoObservacion, colAccionesHistorico];
+  const colInforme = {
+    title: 'Informe',
+    key: 'informe',
+    width: 90,
+    render: (_: unknown, row: SolicitudRow) => {
+      const data = extractJsonData(row.task.notes);
+      const informe = data?.informe as { nombre?: string; url?: string } | undefined;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          {informe?.url ? (
+            <a href={informe.url} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, color: '#2563eb', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+              title={informe.nombre || informe.url}>
+              <LinkOutlined style={{ marginRight: 3 }} />{informe.nombre || 'Ver'}
+            </a>
+          ) : null}
+          <Tooltip title="Agregar / editar informe">
+            <button
+              onClick={() => {
+                const d = extractJsonData(row.task.notes);
+                const inf = d?.informe as { nombre?: string; url?: string } | undefined;
+                setInformeNombre(inf?.nombre ?? '');
+                setInformeUrl(inf?.url ?? '');
+                setInformeModal(row);
+              }}
+              style={{
+                background: 'none', border: '1px solid #d1d5db', borderRadius: 6,
+                cursor: 'pointer', padding: '2px 6px', color: '#6b7280', fontSize: 11,
+                display: 'flex', alignItems: 'center', gap: 3,
+              }}
+            >
+              <LinkOutlined />{informe?.url ? '✎' : '+'}
+            </button>
+          </Tooltip>
+        </div>
+      );
+    },
+  };
+
+  const columns = [colSolicitudInfo, colFechaSolicitud, colInforme, colAccionesPendientes];
+  const columnsAprobadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colAccionesHistorico];
+  const columnsObservadas = [{ ...colSolicitudInfo, width: 100 }, colFechaSolicitud, colFechaRespuesta, colInforme, colMotivoObservacion, colAccionesHistorico];
 
   const CONTRATACION_PASOS = [
     'Elaboración de TDRs',
@@ -1525,6 +1626,83 @@ const HomePage: React.FC = () => {
       })()}
 
       {/* Modal: Observar */}
+      {informeModal && (
+        <div className="modal-overlay" onClick={() => setInformeModal(null)} style={{ zIndex: 1002 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="🔗"
+              title="Informe / Documento"
+              subtitle={informeModal.task.name}
+              onClose={() => setInformeModal(null)}
+            />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+              <div style={{ marginBottom: '0.875rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Nombre del documento</label>
+                <input
+                  type="text"
+                  value={informeNombre}
+                  onChange={e => setInformeNombre(e.target.value)}
+                  placeholder="Ej: Informe de actividad abril 2026"
+                  disabled={informeSaving}
+                  autoFocus
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>🔗 Enlace (URL)</label>
+                <input
+                  type="url"
+                  value={informeUrl}
+                  onChange={e => setInformeUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  disabled={informeSaving}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', gap: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {(() => {
+                  const d = extractJsonData(informeModal.task.notes);
+                  const hasInforme = !!(d?.informe as { url?: string } | undefined)?.url;
+                  return hasInforme ? (
+                    <Popconfirm
+                      title="¿Borrar informe?"
+                      description="Se eliminará el enlace guardado."
+                      onConfirm={handleDeleteInforme}
+                      okText="Borrar"
+                      cancelText="Cancelar"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <button
+                        type="button"
+                        disabled={informeSaving}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fff5f5', cursor: 'pointer', fontSize: '0.9rem', color: '#dc2626' }}
+                      >🗑️ Borrar informe</button>
+                    </Popconfirm>
+                  ) : null;
+                })()}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setInformeModal(null)}
+                  disabled={informeSaving}
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '7px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '0.9rem', color: '#374151' }}
+                >Cancelar</button>
+                <button
+                  type="button"
+                  onClick={handleSaveInforme}
+                  disabled={informeSaving}
+                  className="button-primary"
+                  style={{ padding: '0.5rem 1.25rem', opacity: informeSaving ? 0.6 : 1 }}
+                >{informeSaving ? 'Guardando...' : 'Guardar'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {observeModal && (        <div className="modal-overlay" onClick={() => { setObserveModal(null); setObserveText(''); }} style={{ zIndex: 1001 }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', padding: 0 }}>
             <HtmlModalHeader

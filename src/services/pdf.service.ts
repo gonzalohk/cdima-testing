@@ -1033,6 +1033,8 @@ interface MaterialRequestData {
   fechaFinalizacion: string;
   materiales: MaterialItem[];
   fechaGeneracion?: string;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
 export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
@@ -1052,27 +1054,40 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  if (data.projectName) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
+  }
+  if (data.parentTaskName) {
+    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+  }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX1 = pageWidth - margins.right;
-  let metaY1 = margins.top + 12;
+  const hasExtra1 = !!(data.projectName || data.parentTaskName);
+  const hasBoth1 = !!(data.projectName && data.parentTaskName);
+  let metaY1 = margins.top + (hasBoth1 ? 19 : hasExtra1 ? 16 : 12);
 
-  const actividadLabel1 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
-  doc.text(`ACTIVIDAD: ${actividadLabel1}`, metaX1, metaY1, { align: 'right' });
+  const solicitudLabel1 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`SOLICITUD: ${solicitudLabel1}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
+  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
+  metaY1 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX1, metaY1, { align: 'right' });
-  metaY1 += 5;
-  doc.text(`FECHA DE INICIO: ${data.fechaInicio}`, metaX1, metaY1, { align: 'right' });
-  metaY1 += 5;
-  doc.text(`FECHA DE FINALIZACIÓN: ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1081,7 +1096,7 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   // ============ FIN ENCABEZADO ============
 
   // ---- MATERIALES SOLICITADOS ----
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('MATERIALES SOLICITADOS', margins.left, yPos1);
@@ -1127,14 +1142,10 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   // ---- FIRMAS Y AUTORIZACIONES ----
   if (signaturesY1 > pageHeight - 75) { doc.addPage(); signaturesY1 = margins.top + 10; }
 
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY1);
-  signaturesY1 += 2;
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY1, pageWidth - margins.right, signaturesY1);
   signaturesY1 += 10;
 
   const colW1 = (pageWidth - margins.left - margins.right) / 3;
@@ -1194,6 +1205,8 @@ interface MaterialReturnData {
   fechaDevolucion: string;
   materiales: MaterialItem[];
   fechaGeneracion?: string;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
 export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
@@ -1213,25 +1226,40 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('DEVOLUCIÓN DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  if (data.projectName) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
+  }
+  if (data.parentTaskName) {
+    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+  }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX2 = pageWidth - margins.right;
-  let metaY2 = margins.top + 12;
+  const hasExtra2 = !!(data.projectName || data.parentTaskName);
+  const hasBoth2 = !!(data.projectName && data.parentTaskName);
+  let metaY2 = margins.top + (hasBoth2 ? 19 : hasExtra2 ? 16 : 12);
 
-  const actividadLabel2 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
-  doc.text(`ACTIVIDAD: ${actividadLabel2}`, metaX2, metaY2, { align: 'right' });
+  const solicitudLabel2 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`SOLICITUD: ${solicitudLabel2}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
-  doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
-  metaY2 += 5;
   doc.text(`FECHA DE DEVOLUCIÓN: ${data.fechaDevolucion}`, metaX2, metaY2, { align: 'right' });
+  metaY2 += 5;
+  doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1240,7 +1268,7 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   // ============ FIN ENCABEZADO ============
 
   // ---- MATERIALES A DEVOLVER ----
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('MATERIALES A DEVOLVER', margins.left, yPos2);
@@ -1286,14 +1314,10 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   // ---- FIRMAS Y AUTORIZACIONES ----
   if (signaturesY2 > pageHeight - 75) { doc.addPage(); signaturesY2 = margins.top + 10; }
 
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY2);
-  signaturesY2 += 2;
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY2, pageWidth - margins.right, signaturesY2);
   signaturesY2 += 10;
 
   const colW2 = (pageWidth - margins.left - margins.right) / 3;
@@ -1359,6 +1383,8 @@ interface FundsRequestData {
   fechaFinalizacion: string;
   fondos: FundItem[];
   fechaGeneracion?: string;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
 export const exportFundsRequestToPDF = (data: FundsRequestData) => {
@@ -1378,27 +1404,40 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
     doc.text('CDIMA', margins.left, margins.top + 8);
   }
 
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('SOLICITUD DE FONDOS', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  if (data.projectName) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
+  }
+  if (data.parentTaskName) {
+    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+  }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX3 = pageWidth - margins.right;
-  let metaY3 = margins.top + 12;
+  const hasExtra3 = !!(data.projectName || data.parentTaskName);
+  const hasBoth3 = !!(data.projectName && data.parentTaskName);
+  let metaY3 = margins.top + (hasBoth3 ? 19 : hasExtra3 ? 16 : 12);
 
-  const actividadLabel3 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
-  doc.text(`ACTIVIDAD: ${actividadLabel3}`, metaX3, metaY3, { align: 'right' });
+  const solicitudLabel3 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  doc.text(`SOLICITUD: ${solicitudLabel3}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
+  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
+  metaY3 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX3, metaY3, { align: 'right' });
-  metaY3 += 5;
-  doc.text(`FECHA DE INICIO: ${data.fechaInicio}`, metaX3, metaY3, { align: 'right' });
-  metaY3 += 5;
-  doc.text(`FECHA DE FINALIZACIÓN: ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1407,7 +1446,7 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   // ============ FIN ENCABEZADO ============
 
   // ---- FONDOS SOLICITADOS ----
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('FONDOS SOLICITADOS', margins.left, yPos3);
@@ -1461,14 +1500,10 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   // ---- FIRMAS Y AUTORIZACIONES ----
   if (signaturesY3 > pageHeight - 75) { doc.addPage(); signaturesY3 = margins.top + 10; }
 
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('FIRMAS Y AUTORIZACIONES', margins.left, signaturesY3);
-  signaturesY3 += 2;
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, signaturesY3, pageWidth - margins.right, signaturesY3);
   signaturesY3 += 10;
 
   const colW3 = (pageWidth - margins.left - margins.right) / 3;

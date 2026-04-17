@@ -18,9 +18,11 @@ interface FundsRequestModalProps {
   task: AsanaTask;
   onClose: () => void;
   onSuccess: () => void;
+  projectName?: string;
+  parentTaskName?: string;
 }
 
-const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess }) => {
+const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess, projectName }) => {
   const [area, setArea] = useState('');
   const [titulo, setTitulo] = useState('');
   const [lugar, setLugar] = useState('');
@@ -189,7 +191,9 @@ ${JSON.stringify(jsonData, null, 2)}
           lugar,
           fechaInicio,
           fechaFinalizacion,
-          fondos: fondosValidos
+          fondos: fondosValidos,
+          projectName,
+          parentTaskName: task.name,
         });
       }, 500);
       
