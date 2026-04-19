@@ -1529,14 +1529,22 @@ const ProduccionAltoNivelPage: React.FC = () => {
                         {estudiantes.length === 0 ? (
                           <p style={{ color: '#999' }}>No hay estudiantes registrados todavía.</p>
                         ) : (() => {
+                          const MODULO_KEYS_C = [
+                            ASANA_CUSTOM_FIELDS.MODULO_1,
+                            ASANA_CUSTOM_FIELDS.MODULO_2,
+                            ASANA_CUSTOM_FIELDS.MODULO_3,
+                            ASANA_CUSTOM_FIELDS.MODULO_4,
+                            ASANA_CUSTOM_FIELDS.MODULO_5,
+                            ASANA_CUSTOM_FIELDS.MODULO_6,
+                            ASANA_CUSTOM_FIELDS.MODULO_7,
+                            ASANA_CUSTOM_FIELDS.MODULO_8,
+                            ASANA_CUSTOM_FIELDS.MODULO_9,
+                            ASANA_CUSTOM_FIELDS.MODULO_10,
+                          ].slice(0, numeroModulos);
                           const notasData = estudiantes.map(est => {
-                            const m1 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_1, 0);
-                            const m2 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_2, 0);
-                            const m3 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_3, 0);
-                            const m4 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_4, 0);
-                            const m5 = getCustomFieldValueSafe(est, ASANA_CUSTOM_FIELDS.MODULO_5, 0);
-                            const total = parseFloat(((m1 + m2 + m3 + m4 + m5) / 5).toFixed(2));
-                            return { gid: est.gid, nombre: formatearNombreCompleto(est.name), m1, m2, m3, m4, m5, total };
+                            const modulos = MODULO_KEYS_C.map(key => getCustomFieldValueSafe(est, key, 0));
+                            const total = parseFloat((modulos.reduce((s, v) => s + v, 0) / numeroModulos).toFixed(2));
+                            return { gid: est.gid, nombre: formatearNombreCompleto(est.name), modulos, total };
                           });
                           const promG = notasData.length > 0 ? parseFloat((notasData.reduce((s, e) => s + e.total, 0) / notasData.length).toFixed(2)) : 0;
                           const aprobados = notasData.filter(e => e.total >= 61).length;
@@ -1586,11 +1594,9 @@ const ProduccionAltoNivelPage: React.FC = () => {
                                     <tr>
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', width: '46px' }}>#</th>
                                       <th style={{ textAlign: 'left', padding: '0.6rem 0.75rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: '200px', position: 'sticky', left: 0, zIndex: 2, background: '#f1f5f9' }}>Estudiante</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 1</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 2</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 3</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 4</th>
-                                      <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. 5</th>
+                                      {MODULO_KEYS_C.map((_, i) => (
+                                        <th key={i} style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mód. {i + 1}</th>
+                                      ))}
                                       <th style={{ textAlign: 'center', padding: '0.6rem 0.5rem', fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#1e3a5f', color: '#ffffff', minWidth: '80px', borderLeft: '3px solid #3b82f6', letterSpacing: '0.04em' }}>FINAL</th>
                                     </tr>
                                   </thead>
@@ -1599,15 +1605,15 @@ const ProduccionAltoNivelPage: React.FC = () => {
                                       <tr key={index}>
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem', color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>{index + 1}</td>
                                         <td className="col-name-s" style={{ padding: '0.7rem 0.75rem', fontWeight: 700, color: '#1e3a5f', fontSize: '0.9rem', position: 'sticky', left: 0, zIndex: 1 }}>{est.nombre}</td>
-                                        {[est.m1, est.m2, est.m3, est.m4, est.m5].map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
+                                        {est.modulos.map((nota, i) => { const isRed = nota > 0 && nota < 61; const isGreen = nota > 90; return <td key={i} className={isRed || isGreen ? 'nota-semantica' : undefined} style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: isRed || isGreen ? 700 : 500, color: colorNota(nota), backgroundColor: isRed ? '#fef2f2' : isGreen ? '#f0fdf4' : undefined }}>{nota === 0 ? '–' : nota}</td>; })}
                                         <td className="nota-semantica" style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontWeight: 800, fontSize: '1.1rem', backgroundColor: est.total >= 61 ? '#d1fae5' : '#fee2e2', color: est.total >= 61 ? '#065f46' : '#991b1b', borderLeft: '3px solid #3b82f6' }}>{est.total || '–'}</td>
                                       </tr>
                                     ))}
                                     <tr style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f1f5f9', fontWeight: 700 }}>
                                       <td style={{ textAlign: 'center', padding: '0.6rem 0.5rem', color: '#94a3b8', fontSize: '0.75rem' }}></td>
                                       <td className="col-name-s" style={{ padding: '0.6rem 0.75rem', textAlign: 'left', position: 'sticky', left: 0, zIndex: 1, background: '#f1f5f9', color: '#374151', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Promedio General</td>
-                                      {[calcProm(notasData.map(e=>e.m1)),calcProm(notasData.map(e=>e.m2)),calcProm(notasData.map(e=>e.m3)),calcProm(notasData.map(e=>e.m4)),calcProm(notasData.map(e=>e.m5))].map((v,i) => (
-                                        <td key={i} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', color: '#374151', fontWeight: 600 }}>{v}</td>
+                                      {MODULO_KEYS_C.map((_, i) => (
+                                        <td key={i} style={{ textAlign: 'center', padding: '0.6rem 0.75rem', color: '#374151', fontWeight: 600 }}>{calcProm(notasData.map(e => e.modulos[i]))}</td>
                                       ))}
                                       <td style={{ textAlign: 'center', padding: '0.6rem 0.75rem', backgroundColor: '#1e3a5f', color: '#ffffff', fontSize: '1rem', fontWeight: 800, borderLeft: '3px solid #3b82f6' }}>{calcProm(notasData.map(e=>e.total))}</td>
                                     </tr>
@@ -2759,11 +2765,20 @@ const ProduccionAltoNivelPage: React.FC = () => {
                       minWidth: '150px'
                     }}
                   >
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_1}>Módulo 1</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_2}>Módulo 2</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_3}>Módulo 3</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_4}>Módulo 4</option>
-                    <option value={ASANA_CUSTOM_FIELDS.MODULO_5}>Módulo 5</option>
+                    {[
+                      ASANA_CUSTOM_FIELDS.MODULO_1,
+                      ASANA_CUSTOM_FIELDS.MODULO_2,
+                      ASANA_CUSTOM_FIELDS.MODULO_3,
+                      ASANA_CUSTOM_FIELDS.MODULO_4,
+                      ASANA_CUSTOM_FIELDS.MODULO_5,
+                      ASANA_CUSTOM_FIELDS.MODULO_6,
+                      ASANA_CUSTOM_FIELDS.MODULO_7,
+                      ASANA_CUSTOM_FIELDS.MODULO_8,
+                      ASANA_CUSTOM_FIELDS.MODULO_9,
+                      ASANA_CUSTOM_FIELDS.MODULO_10,
+                    ].slice(0, numeroModulos).map((field, i) => (
+                      <option key={field} value={field}>Módulo {i + 1}</option>
+                    ))}
                   </select>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#424242' }}>

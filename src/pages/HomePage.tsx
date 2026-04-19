@@ -13,6 +13,10 @@ import {
 } from 'antd';
 import { HtmlModalHeader } from '../components/ModalShared';
 import ContratacionUpdateModal, { ContratacionJsonData } from '../components/ContratacionUpdateModal';
+import NuevaSolicitudModal, { SolicitudType } from '../components/NuevaSolicitudModal';
+import MaterialRequestModal from '../components/MaterialRequestModal';
+import FundsRequestModal from '../components/FundsRequestModal';
+import MaterialReturnModal from '../components/MaterialReturnModal';
 import {
   BellOutlined,
   CheckCircleOutlined,
@@ -20,6 +24,7 @@ import {
   DeleteOutlined,
   EyeOutlined,
   LinkOutlined,
+  PlusOutlined,
   PrinterOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -294,6 +299,28 @@ const HomePage: React.FC = () => {
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
+
+  // ── Nueva Solicitud desde HomePage ──────────────────────────────────────
+  const [showNuevaSolModal, setShowNuevaSolModal] = useState(false);
+  const [nuevaSolTask, setNuevaSolTask]           = useState<AsanaTask | null>(null);
+  const [nuevaSolType, setNuevaSolType]           = useState<SolicitudType | ''>('');
+
+  const handleNuevaSolConfirm = (task: AsanaTask, type: SolicitudType) => {
+    setShowNuevaSolModal(false);
+    setNuevaSolTask(task);
+    setNuevaSolType(type);
+  };
+
+  const handleNuevaSolClose = () => {
+    setNuevaSolTask(null);
+    setNuevaSolType('');
+  };
+
+  const handleNuevaSolSuccess = () => {
+    setNuevaSolTask(null);
+    setNuevaSolType('');
+    loadSolicitudes();
+  };
 
   const loadSolicitudes = useCallback(async () => {
     setLoading(true);
@@ -691,7 +718,7 @@ const HomePage: React.FC = () => {
   const colSolicitudInfo = {
     title: 'Solicitud / Proyecto / Actividad',
     key: 'proyectoActividad',
-    width: 200,
+    width: 360,
     render: (_: unknown, row: SolicitudRow) => {
       const jsonData = extractJsonData(row.task.notes);
       const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
@@ -702,28 +729,22 @@ const HomePage: React.FC = () => {
       };
       const tc = tipoColorMap[row.tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <Tooltip title={row.task.name}>
-            <Typography.Text strong style={{ fontSize: 12 }} ellipsis>{row.task.name}</Typography.Text>
-          </Tooltip>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, wordBreak: 'break-word', whiteSpace: 'normal' }}>
+          <Typography.Text strong style={{ fontSize: 12 }}>{row.task.name}</Typography.Text>
           <span style={{
             display: 'inline-block', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600,
             backgroundColor: tc.bg, color: tc.color, border: `1px solid ${tc.border}`,
             borderRadius: 4, padding: '1px 7px', lineHeight: '18px',
           }}>{row.tipo}</span>
-          <Tooltip title={row.projectName}>
-            <Typography.Text style={{ fontSize: 12 }} ellipsis>{row.projectName}</Typography.Text>
-          </Tooltip>
+          <Typography.Text style={{ fontSize: 12 }}>{row.projectName}</Typography.Text>
           {row.sectionName && (
-            <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }} ellipsis>
+            <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>
               📅 {row.sectionName}
             </Typography.Text>
           )}
-          <Tooltip title={row.parentTaskName}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{row.parentTaskName}</Typography.Text>
-          </Tooltip>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{row.parentTaskName}</Typography.Text>
           {solicitante ? (
-            <Typography.Text style={{ fontSize: 11, color: '#6b7280' }} ellipsis>
+            <Typography.Text style={{ fontSize: 11, color: '#6b7280' }}>
               👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span>
             </Typography.Text>
           ) : (
@@ -874,7 +895,7 @@ const HomePage: React.FC = () => {
   };
 
   const colInforme = {
-    title: 'Informe',
+    title: 'Plan',
     key: 'informe',
     width: 90,
     render: (_: unknown, row: SolicitudRow) => {
@@ -914,7 +935,7 @@ const HomePage: React.FC = () => {
 
   const columns = [colSolicitudInfo, colFechaSolicitud, colInforme, colAccionesPendientes];
   const columnsAprobadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colAccionesHistorico];
-  const columnsObservadas = [{ ...colSolicitudInfo, width: 100 }, colFechaSolicitud, colFechaRespuesta, colInforme, colMotivoObservacion, colAccionesHistorico];
+  const columnsObservadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colMotivoObservacion, colAccionesHistorico];
 
   const CONTRATACION_PASOS = [
     'Elaboración de TDRs',
@@ -1070,6 +1091,17 @@ const HomePage: React.FC = () => {
             </Typography.Text>
           </Space>
         }
+        extra={
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => setShowNuevaSolModal(true)}
+            style={{ background: '#b45309', borderColor: '#b45309' }}
+          >
+            Nueva Solicitud
+          </Button>
+        }
       >
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}>
@@ -1099,7 +1131,6 @@ const HomePage: React.FC = () => {
                     size="middle"
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No hay solicitudes pendientes' }}
                     rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
                   />
@@ -1120,7 +1151,6 @@ const HomePage: React.FC = () => {
                     size="middle"
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No hay solicitudes aprobadas' }}
                     rowClassName={() => 'ant-table-row-aprobada'}
                   />
@@ -1141,7 +1171,6 @@ const HomePage: React.FC = () => {
                     size="middle"
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No hay solicitudes observadas' }}
                     rowClassName={() => 'ant-table-row-observada'}
                   />
@@ -1741,6 +1770,40 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      <NuevaSolicitudModal
+        open={showNuevaSolModal}
+        onClose={() => setShowNuevaSolModal(false)}
+        onConfirm={handleNuevaSolConfirm}
+        tecnicoArea={tecnicoArea}
+      />
+
+      {nuevaSolTask && nuevaSolType === 'material' && (
+        <MaterialRequestModal
+          task={nuevaSolTask}
+          projectName={nuevaSolTask.projects?.[0]?.name}
+          onClose={handleNuevaSolClose}
+          onSuccess={handleNuevaSolSuccess}
+        />
+      )}
+
+      {nuevaSolTask && nuevaSolType === 'fondos' && (
+        <FundsRequestModal
+          task={nuevaSolTask}
+          projectName={nuevaSolTask.projects?.[0]?.name}
+          onClose={handleNuevaSolClose}
+          onSuccess={handleNuevaSolSuccess}
+        />
+      )}
+
+      {nuevaSolTask && nuevaSolType === 'devolucion' && (
+        <MaterialReturnModal
+          task={nuevaSolTask}
+          projectName={nuevaSolTask.projects?.[0]?.name}
+          onClose={handleNuevaSolClose}
+          onSuccess={handleNuevaSolSuccess}
+        />
       )}
 
       {updateContratacion && (

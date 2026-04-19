@@ -292,7 +292,7 @@ const Layout: React.FC = () => {
                 to="/produccion-alto-nivel"
                 className={`nav-link ${location.pathname === '/produccion-alto-nivel' ? 'active' : ''}`}
               >
-                🚀 Alto Nivel
+                🚀 Curso de Alto Nivel
               </Link>
             </li>
             )}

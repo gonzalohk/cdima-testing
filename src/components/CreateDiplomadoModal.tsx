@@ -84,8 +84,8 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
           throw new Error(`Ya existe un diplomado con el nombre "${duplicado.name}". Por favor usa un nombre diferente.`);
         }
 
-        if (numeroModulos < 1 || numeroModulos > 10) {
-          throw new Error('El número de módulos debe estar entre 1 y 10');
+        if (numeroModulos < 5 || numeroModulos > 5) {
+          throw new Error('El número de módulos debe ser 5');
         }
 
         // 1. Crear la sección (diplomado)
@@ -206,13 +206,13 @@ const CreateDiplomadoModal: React.FC<CreateDiplomadoModalProps> = ({
                 <input
                   type="number"
                   value={numeroModulos}
-                  onChange={(e) => setNumeroModulos(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
-                  min={1}
-                  max={10}
+                  onChange={(e) => setNumeroModulos(Math.min(5, Math.max(5, parseInt(e.target.value) || 5)))}
+                  min={5}
+                  max={5}
                   style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
                   required
                 />
-                <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>Mínimo 1, máximo 10 (por defecto: 5)</span>
+                <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>Mínimo 5, máximo 5 (por defecto: 5)</span>
               </div>
 
               <div style={{ padding: '1rem', backgroundColor: '#f2f2f2', borderRadius: '4px' }}>

@@ -234,7 +234,6 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 {([
                   { label: 'Doc. Identidad', icon: '📑', value: fDocIdentidad, setter: setFDocIdentidad },
-                  { label: 'Género', icon: '👤', value: fGenero, setter: setFGenero },
                   { label: labelEspec, icon: labelEspec === 'Cargo' ? '💼' : '🎓', value: fEspecialidad, setter: setFEspecialidad },
                   { label: 'Lugar Nacimiento', icon: '📍', value: fLugarNacimiento, setter: setFLugarNacimiento },
                   { label: 'Teléfono', icon: '📞', value: fTelefono, setter: setFTelefono },
@@ -250,6 +249,21 @@ const InfoPrimariaModal: React.FC<InfoPrimariaModalProps> = ({
                     />
                   </div>
                 ))}
+
+                {/* Género – dropdown */}
+                <div>
+                  <label style={labelStyle}>👤 Género</label>
+                  <select
+                    value={fGenero}
+                    onChange={e => setFGenero(e.target.value)}
+                    style={inputStyle}
+                  >
+                    <option value="">– Seleccionar –</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
 
                 {/* Fecha Nacimiento – native date picker */}
                 <div>

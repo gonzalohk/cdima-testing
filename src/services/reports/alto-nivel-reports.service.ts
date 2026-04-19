@@ -750,14 +750,14 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes, numer
       modulo8,
       modulo9,
       modulo10,
-      total: Math.round(adjustedTotal)
+      total: parseFloat(adjustedTotal.toFixed(2))
     };
   });
 
   const calcularPromedioModulo = (moduloKey: string): number => {
     if (notasEstudiantes.length === 0) return 0;
     const suma = notasEstudiantes.reduce((acc: number, est: any) => acc + est[moduloKey], 0);
-    return Math.round(suma / notasEstudiantes.length);
+    return parseFloat((suma / notasEstudiantes.length).toFixed(2));
   };
   
   // Contar aprobados (>= 51)
@@ -772,7 +772,7 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes, numer
     est.ci, // C.I
     est.nombreFormateado, // Nombres en formato Apellido Paterno, Apellido Materno, Nombre
     ...allModuloKeys.slice(0, n).map(k => (est as any)[k].toString()),
-    est.total.toString()
+    est.total.toFixed(2)
   ]);
 
   // Agregar fila de promedios
@@ -781,8 +781,8 @@ export const exportAltoNivelCentralizadorNotasPDF = ({ curso, estudiantes, numer
       '',
       '',
       'PROMEDIO GENERAL',
-      ...allModuloKeys.slice(0, n).map(k => calcularPromedioModulo(k).toString()),
-      calcularPromedioModulo('total').toString()
+      ...allModuloKeys.slice(0, n).map(k => calcularPromedioModulo(k).toFixed(2)),
+      calcularPromedioModulo('total').toFixed(2)
     ]);
 
     autoTable(pdf, {
@@ -941,7 +941,7 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes, nume
     return (suma / notasEstudiantes.length).toFixed(1);
   };
 
-  const modulosHeaders = Array.from({ length: 5 }, (_, i) => `
+  const modulosHeaders = Array.from({ length: n }, (_, i) => `
     <td>MODULO ${i + 1}</td>
   `).join('');
 
@@ -975,49 +975,47 @@ export const exportAltoNivelCentralizadorNotasWord = ({ curso, estudiantes, nume
       <head>
         <meta charset="UTF-8" />
         <style>
-          @page { size: letter portrait; margin: 12.7mm; }
+          @page { size: ${n > 8 ? '11in 8.5in' : 'letter'}; ${n > 8 ? 'mso-page-orientation: landscape;' : ''} margin: 12.7mm; }
           body { font-family: Arial, sans-serif; margin: 0; color: #000; }
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
-          tr.header-row td { font-weight: 800; text-align: center; border-width: 1.4px; }
-          .doc-header-cell { padding: 8px; border-width: 1.4px; }
+          .header-section { width: 100%; margin-bottom: 10px; }
           .header-grid { display: table; width: 100%; }
           .logo-block { display: table-cell; text-align: center; font-size: 10px; font-weight: 700; width: 150px; vertical-align: top; }
           .logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 4px auto; }
-          .title-wrap { display: table-cell; text-align: center; vertical-align: top; }
+          .title-wrap { display: table-cell; text-align: center; vertical-align: middle; }
           .title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
           .subtitle { margin: 6px 0 0 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
-          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.4; text-align: left; }
+          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.4; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
+          tr.header-row td { font-weight: 800; text-align: center; border-width: 1.4px; }
           .num-cell { text-align: center; }
           .name-cell { text-align: left; }
           .avg-row td { font-weight: 800; }
         </style>
       </head>
       <body>
+        <div class="header-section">
+          <div class="header-grid">
+            <div class="logo-block">
+              <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
+              UNIVERSIDAD [Espacio para Editar]
+            </div>
+            <div class="title-wrap">
+              <h1 class="title">NOMINA OFICIAL DE APROBADAS/OS</h1>
+              <div class="subtitle">${escapeHtml(curso.name)}</div>
+            </div>
+            <div class="logo-block">
+              <img class="logo" src="${logoCdima}" alt="Logo CDIMA" />
+              CDIMA
+            </div>
+          </div>
+          <div class="meta">
+            <div>GESTION: [Espacio para editar]</div>
+            <div>PERIODO: [Espacio para editar]</div>
+          </div>
+        </div>
         <table>
           <tbody>
-            <tr>
-              <td colspan="${n + 4}" class="doc-header-cell">
-                <div class="header-grid">
-                  <div class="logo-block">
-                    <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
-                    UNIVERSIDAD [Espacio para Editar]
-                  </div>
-                  <div class="title-wrap">
-                    <h1 class="title">NOMINA OFICIAL DE APROBADAS/OS</h1>
-                    <div class="subtitle">${escapeHtml(curso.name)}</div>
-                  </div>
-                  <div class="logo-block">
-                    <img class="logo" src="${logoCdima}" alt="Logo CDIMA" />
-                    CDIMA
-                  </div>
-                </div>
-                <div class="meta">
-                  <div>GESTION: [Espacio para editar]</div>
-                  <div>PERIODO: [Espacio para editar]</div>
-                </div>
-              </td>
-            </tr>
             <tr class="header-row">
               <td style="width: 30px;">No.</td>
               <td style="width: 92px;">C.I.</td>

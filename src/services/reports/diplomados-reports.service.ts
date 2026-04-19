@@ -970,47 +970,36 @@ export const exportDiplomadoCentralizadorNotasWord = ({ diplomado, estudiantes }
         <style>
           @page { size: letter portrait; margin: 12.7mm; }
           body { font-family: Arial, sans-serif; margin: 0; color: #000; }
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
-          tr.header-row td { font-weight: 800; text-align: center; border-width: 1.4px; }
-          .doc-header-cell { padding: 8px; border-width: 1.4px; }
-          .header-grid { display: table; width: 100%; }
-          .logo-block { display: table-cell; text-align: center; font-size: 10px; font-weight: 700; width: 150px; vertical-align: top; }
-          .logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 4px auto; }
-          .title-wrap { display: table-cell; text-align: center; vertical-align: top; }
-          .title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
-          .subtitle { margin: 6px 0 0 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
-          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.4; text-align: left; }
+          .meta { margin-top: 8px; font-size: 11px; font-weight: 700; line-height: 1.4; margin-bottom: 10px; }
+          .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          .data-table td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; }
+          .data-table tr.header-row td { font-weight: 800; text-align: center; border-width: 1.4px; }
           .num-cell { text-align: center; }
           .name-cell { text-align: left; }
           .avg-row td { font-weight: 800; }
         </style>
       </head>
       <body>
-        <table>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+          <tr>
+            <td style="border: none; text-align: center; width: 100px; vertical-align: top; padding: 0;">
+              <img style="width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto;" src="${logoInicial}" alt="Logo Universidad" />
+            </td>
+            <td style="border: none; text-align: center; vertical-align: middle; padding: 0;">
+              <h1 style="margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.4px;">NOMINA OFICIAL DE APROBADAS/OS</h1>
+              <div style="margin: 6px 0 0 0; font-size: 14px; font-weight: 700; text-transform: uppercase;">${escapeHtml(diplomado.name)}</div>
+            </td>
+            <td style="border: none; text-align: center; width: 100px; vertical-align: top; padding: 0;">
+              <img style="width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto;" src="${logoCdima}" alt="Logo CDIMA" />
+            </td>
+          </tr>
+        </table>
+        <div class="meta">
+          <div>GESTION: [Espacio para editar]</div>
+          <div>PERIODO: [Espacio para editar]</div>
+        </div>
+        <table class="data-table">
           <tbody>
-            <tr>
-              <td colspan="11" class="doc-header-cell">
-                <div class="header-grid">
-                  <div class="logo-block">
-                    <img class="logo" src="${logoInicial}" alt="Logo Universidad" />
-                    UNIVERSIDAD [Espacio para Editar]
-                  </div>
-                  <div class="title-wrap">
-                    <h1 class="title">NOMINA OFICIAL DE APROBADAS/OS</h1>
-                    <div class="subtitle">${escapeHtml(diplomado.name)}</div>
-                  </div>
-                  <div class="logo-block">
-                    <img class="logo" src="${logoCdima}" alt="Logo CDIMA" />
-                    CDIMA
-                  </div>
-                </div>
-                <div class="meta">
-                  <div>GESTION: [Espacio para editar]</div>
-                  <div>PERIODO: [Espacio para editar]</div>
-                </div>
-              </td>
-            </tr>
             <tr class="header-row">
               <td style="width: 30px;">No.</td>
               <td style="width: 92px;">C.I.</td>
@@ -1018,7 +1007,7 @@ export const exportDiplomadoCentralizadorNotasWord = ({ diplomado, estudiantes }
               ${modulosHeaders}
               <td>PROMEDIO APROBADOS</td>
             </tr>
-            ${filas || '<tr><td colspan="11" class="num-cell">No hay actividades programadas en este período</td></tr>'}
+            ${filas || '<tr><td colspan="9" class="num-cell">No hay actividades programadas en este período</td></tr>'}
             ${filaPromedio}
           </tbody>
         </table>

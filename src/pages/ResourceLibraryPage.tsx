@@ -270,7 +270,7 @@ const SubSubtaskRow: React.FC<{
           fontSize: 9, color: accentColor,
           transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s',
         }} />
-        <FileTextOutlined style={{ color: accentColor, fontSize: 12 }} />
+        <FolderOutlined style={{ color: accentColor, fontSize: 12 }} />
         <Text style={{ fontSize: 12, flex: 1 }}>{subsubtask.name}</Text>
         {hasLinks && <Badge count={subsubtask.links.length} style={{ background: accentColor, fontSize: 10 }} />}
         {onAddLink && (
@@ -466,7 +466,7 @@ const TaskRow: React.FC<{
       >
         <Avatar
           size={38}
-          icon={getAntIcon(domType)}
+          icon={<FolderOutlined />}
           style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0 }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
