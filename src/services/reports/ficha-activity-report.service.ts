@@ -333,12 +333,14 @@ export const exportFichaActividadToPDF = ({
       head: [['Nombre', 'Tipo', 'Fecha Solicitud', 'Estado']],
       body: solicitudes.map(t => {
         const d = extractJsonData(t.notes);
-        const obs = (d?.observado as boolean) ? 'Observada' : undefined;
+        const isAprobada  = !!(d?.fechaAprobacion as string);
+        const isObservada = !!(d?.motivoObservacion as string) && !!(d?.fechaObservacion as string);
+        const estLabel    = isAprobada ? 'Aprobada' : isObservada ? 'Observada' : 'Pendiente';
         return [
           t.name,
           getField(t, 'Tipo de Solicitud'),
           (d?.fechaSolicitud as string) || '-',
-          obs ?? (t.completed ? 'Aprobada' : 'En Proceso'),
+          estLabel,
         ];
       }),
       theme: 'plain',
@@ -627,8 +629,9 @@ export const exportFichaActividadToWord = async ({
           }),
           ...solicitudes.map((t, i) => {
             const d = extractJsonData(t.notes);
-            const obs = (d?.observado as boolean) ? 'Observada' : undefined;
-            const estLabel = obs ?? (t.completed ? 'Aprobada' : 'En Proceso');
+            const isAprobada  = !!(d?.fechaAprobacion as string);
+            const isObservada = !!(d?.motivoObservacion as string) && !!(d?.fechaObservacion as string);
+            const estLabel    = isAprobada ? 'Aprobada' : isObservada ? 'Observada' : 'Pendiente';
             const bg = i % 2 ? WC.lightGray : WC.white;
             return new TableRow({ children: [
               wCell(t.name,                               40, { bg }),

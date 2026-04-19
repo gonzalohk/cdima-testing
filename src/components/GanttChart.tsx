@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { Card, Tag, Tooltip, Typography, Space } from 'antd';
-import { CalendarOutlined } from '@ant-design/icons';
+import { Button, Card, Tag, Tooltip, Typography, Space } from 'antd';
+import { CalendarOutlined, FileWordOutlined, PrinterOutlined } from '@ant-design/icons';
 import { AsanaTask } from '../types/asana.types';
+import { exportGanttToPDF, exportGanttToWord } from '../services/reports/gantt-report.service';
 import {
   parseISO,
   differenceInDays,
@@ -9,14 +10,13 @@ import {
   addMonths,
   format,
   isBefore,
-  min as dateMin,
-  max as dateMax,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface GanttChartProps {
   task: AsanaTask;
   subtasks: AsanaTask[];
+  projectName?: string;
 }
 
 type StatusKey = 'Ejecutado' | 'En Proceso' | 'Pendiente';
@@ -181,7 +181,7 @@ function GanttBar({ task, h, rangeStart, totalDays, isMain }: {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
+const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks, projectName = 'Proyecto' }) => {
 
   // Filter subtasks: exclude requests, fund/material/return/hiring tasks and verification sources
   const ganttSubtasks = useMemo(() => subtasks.filter(t => {
@@ -200,23 +200,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
 
   const allTasks = useMemo(() => [task, ...ganttSubtasks], [task, ganttSubtasks]);
 
-  // Date range
+  // Date range — always 12 months starting from the main task's start_on (or due_on as fallback)
   const { rangeStart, rangeEnd, totalDays, months } = useMemo(() => {
-    const dates = allTasks
-      .flatMap(t => [
-        t.start_on ? parseISO(t.start_on) : null,
-        t.due_on   ? parseISO(t.due_on)   : null,
-      ])
-      .filter((d): d is Date => d !== null);
-
-    let rStart: Date, rEnd: Date;
-    if (dates.length === 0) {
-      rStart = startOfMonth(new Date());
-      rEnd   = addMonths(rStart, 3);
-    } else {
-      rStart = startOfMonth(dateMin(dates));
-      rEnd   = addMonths(startOfMonth(dateMax(dates)), 1);
-    }
+    const anchor = task.start_on ?? task.due_on;
+    const rStart = startOfMonth(anchor ? parseISO(anchor) : new Date());
+    const rEnd   = addMonths(rStart, 12);
 
     const td = differenceInDays(rEnd, rStart) || 1;
     const ms: Date[] = [];
@@ -226,7 +214,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
       cur = addMonths(cur, 1);
     }
     return { rangeStart: rStart, rangeEnd: rEnd, totalDays: td, months: ms };
-  }, [allTasks]);
+  }, [task]);
 
   // Today marker
   const todayPct = useMemo(() => {
@@ -277,6 +265,33 @@ const GanttChart: React.FC<GanttChartProps> = ({ task, subtasks }) => {
       style={{ marginBottom: '1.5rem', borderRadius: 8 }}
       styles={{ body: { padding: 0, overflow: 'hidden' } }}
     >
+      {/* ── Export toolbar ────────────────────────────────────── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 16px',
+        background: '#fafafa',
+        borderBottom: '1px solid #e5e7eb',
+      }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12, flex: 1 }}>Exportar cronograma</Typography.Text>
+        <Tooltip title="Exportar a Word" placement="bottom">
+          <Button
+            size="small"
+            icon={<FileWordOutlined />}
+            style={{ color: '#2563eb', borderColor: '#bfdbfe' }}
+            onClick={() => exportGanttToWord({ task, ganttSubtasks, projectName })}
+          />
+        </Tooltip>
+        <Tooltip title="Exportar a PDF" placement="bottom">
+          <Button
+            size="small"
+            icon={<PrinterOutlined />}
+            onClick={() => exportGanttToPDF({ task, ganttSubtasks, projectName })}
+          />
+        </Tooltip>
+      </div>
+
       <div style={{ display: 'flex', width: '100%' }}>
         <div style={{
           display: 'flex',

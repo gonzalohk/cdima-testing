@@ -256,7 +256,7 @@ const ReportPage: React.FC = () => {
             onExportResponsablesWord={handleExportResponsablesWord}
           />
 
-          <GanttChart task={selectedTask} subtasks={subtasks} />
+          <GanttChart task={selectedTask} subtasks={subtasks} projectName={projects.find(p => p.gid === selectedProject)?.name} />
         </>
       )}
 

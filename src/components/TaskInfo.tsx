@@ -814,10 +814,14 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                 <Tag className={`task-ficha-pro__status-tag task-ficha-pro__status-tag--${estadoClass}`}>
                   {estadoLabel}
                 </Tag>
-                {task.due_on && (
+                {(task.start_on || task.due_on) && (
                   <Typography.Text className="task-ficha-pro__due-date">
                     <CalendarOutlined style={{ marginRight: 4, fontSize: 11 }} />
-                    Vence: {task.due_on}
+                    {task.start_on && task.due_on
+                      ? `${task.start_on} → ${task.due_on}`
+                      : task.start_on
+                        ? `Inicio: ${task.start_on}`
+                        : `Vence: ${task.due_on}`}
                   </Typography.Text>
                 )}
               </div>
@@ -1074,7 +1078,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   <div className="task-ficha-pro__meta-item">
                     <DeploymentUnitOutlined className="task-ficha-pro__meta-icon" />
                     <div>
-                      <Typography.Text className="task-ficha-pro__label">Sub Actividades</Typography.Text>
+                      <Typography.Text className="task-ficha-pro__label">Sub Actividades: </Typography.Text>
                       <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">{subtasksCount}</Typography.Text>
                     </div>
                   </div>
@@ -1084,7 +1088,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                     <div className="task-ficha-pro__meta-item">
                       <FileSearchOutlined className="task-ficha-pro__meta-icon" />
                       <div>
-                        <Typography.Text className="task-ficha-pro__label">Población Meta</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__label">Población Meta: </Typography.Text>
                         <Typography.Text className="task-ficha-pro__value task-ficha-pro__value-lg">{aggregatedValues.poblacionMeta}</Typography.Text>
                       </div>
                     </div>
@@ -1095,22 +1099,22 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                     <div className="task-ficha-pro__meta-item">
                       <EnvironmentOutlined className="task-ficha-pro__meta-icon" />
                       <div>
-                        <Typography.Text className="task-ficha-pro__label">Lugar</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__label">Lugar: </Typography.Text>
                         <Typography.Text className="task-ficha-pro__value">{getMainTaskFieldValue('Lugar')}</Typography.Text>
                       </div>
                     </div>
                   )}
 
                   {/* Cronograma */}
-                  {(fechaInicio !== '-' || fechaFin !== '-' || task.due_on) && (
+                  {(task.start_on || task.due_on || fechaInicio !== '-' || fechaFin !== '-') && (
                     <div className="task-ficha-pro__meta-item">
                       <CalendarOutlined className="task-ficha-pro__meta-icon" />
                       <div>
-                        <Typography.Text className="task-ficha-pro__label">Cronograma</Typography.Text>
+                        <Typography.Text className="task-ficha-pro__label">Cronograma: </Typography.Text>
                         <Typography.Text className="task-ficha-pro__value">
-                          {fechaInicio !== '-' ? fechaInicio : '—'}
+                          {task.start_on || (fechaInicio !== '-' ? fechaInicio : '—')}
                           {' → '}
-                          {fechaFin !== '-' ? fechaFin : task.due_on || '—'}
+                          {task.due_on || (fechaFin !== '-' ? fechaFin : '—')}
                         </Typography.Text>
                       </div>
                     </div>
