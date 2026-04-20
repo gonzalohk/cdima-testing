@@ -307,6 +307,18 @@ const Layout: React.FC = () => {
               </Link>
             </li>
             )}
+
+            <li className="sidebar-group-label">Ayuda</li>
+            <li>
+              <a
+                href="/manual-administrador.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nav-link"
+              >
+                📖 Manual de usuario
+              </a>
+            </li>
           </ul>
         </nav>
 

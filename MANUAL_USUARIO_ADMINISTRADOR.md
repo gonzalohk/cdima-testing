@@ -1,7 +1,7 @@
 # Manual de Usuario — Rol Administrador
 ## Sistema CDIMA Amuyt'a
 
-**Versión:** 1.0  
+**Versión:** 2.0  
 **Fecha:** Abril 2026  
 **Dirigido a:** Usuarios con rol **Administrador**
 
@@ -13,42 +13,58 @@
    1.1 [Ingreso a Asana](#11-ingreso-a-asana)  
    1.2 [Ingreso a CDIMA Amuyt'a](#12-ingreso-a-cdima-amuyta)  
    1.3 [Ingreso a Google Drive](#13-ingreso-a-google-drive)  
-2. [Menú: PLANIFICACIÓN](#2-menú-planificación)  
-   2.1 [Cargado de información en Asana](#21-cargado-de-información-en-asana)  
-   2.2 [Visualización del calendario desde CDIMA Amuyt'a](#22-visualización-del-calendario-desde-cdima-amuyta)  
-   2.3 [Indicadores de impacto del mes](#23-indicadores-de-impacto-del-mes)  
-   2.4 [Lista de actividades y filtros](#24-lista-de-actividades-y-filtros)  
-   2.5 [Cambiar el estado de una actividad](#25-cambiar-el-estado-de-una-actividad)  
-   2.6 [Agregar fuentes de verificación](#26-agregar-fuentes-de-verificación)  
-   2.7 [Generación de reportes](#27-generación-de-reportes)  
-3. [Menú: COMUNICACIÓN](#3-menú-comunicación)  
-   3.1 [Navegación por proyectos y carpetas](#31-navegación-por-proyectos-y-carpetas)  
-   3.2 [Descarga de archivos](#32-descarga-de-archivos)  
+2. [Roles y Permisos](#2-roles-y-permisos)  
+   2.1 [Tabla de roles del sistema](#21-tabla-de-roles-del-sistema)  
+   2.2 [Permisos del rol Administrador](#22-permisos-del-rol-administrador)  
+   2.3 [Menú disponible según rol](#23-menú-disponible-según-rol)  
+3. [Menú: INICIO](#3-menú-inicio)  
+   3.1 [Solicitudes pendientes de aprobación](#31-solicitudes-pendientes-de-aprobación)  
+   3.2 [Aprobar una solicitud](#32-aprobar-una-solicitud)  
+   3.3 [Observar una solicitud](#33-observar-una-solicitud)  
+   3.4 [Contrataciones activas](#34-contrataciones-activas)  
+   3.5 [Actividades con retraso](#35-actividades-con-retraso)  
+   3.6 [Indicadores de avance global](#36-indicadores-de-avance-global)  
 4. [Menú: PROYECTOS](#4-menú-proyectos)  
    4.1 [Selección de proyecto, período y actividad](#41-selección-de-proyecto-período-y-actividad)  
    4.2 [Visualización del detalle de avance](#42-visualización-del-detalle-de-avance)  
-5. [Inicio — Resumen Ejecutivo](#5-inicio--resumen-ejecutivo)  
-   5.1 [Solicitudes pendientes de aprobación](#51-solicitudes-pendientes-de-aprobación)  
-   5.2 [Contrataciones activas](#52-contrataciones-activas)  
-   5.3 [Actividades con retraso](#53-actividades-con-retraso)  
-   5.4 [Indicadores de avance global](#54-indicadores-de-avance-global)  
+   4.3 [Cambiar estado de una sub-actividad](#43-cambiar-estado-de-una-sub-actividad)  
+   4.4 [Gestionar solicitudes desde la actividad](#44-gestionar-solicitudes-desde-la-actividad)  
+   4.5 [Agregar fuentes de verificación](#45-agregar-fuentes-de-verificación)  
+   4.6 [Actualizar estado de contratación](#46-actualizar-estado-de-contratación)  
+   4.7 [Exportar reporte de actividad](#47-exportar-reporte-de-actividad)  
+5. [Menú: COMUNICACIÓN](#5-menú-comunicación)  
+   5.1 [Navegación por proyectos y carpetas](#51-navegación-por-proyectos-y-carpetas)  
+   5.2 [Descarga de archivos](#52-descarga-de-archivos)  
+6. [Menú: PLANIFICACIÓN](#6-menú-planificación)  
+   6.1 [Cargado de información en Asana](#61-cargado-de-información-en-asana)  
+   6.2 [Visualización del calendario](#62-visualización-del-calendario)  
+   6.3 [Indicadores del mes](#63-indicadores-del-mes)  
+   6.4 [Lista de actividades y filtros](#64-lista-de-actividades-y-filtros)  
+   6.5 [Cambiar el estado de una actividad](#65-cambiar-el-estado-de-una-actividad)  
+   6.6 [Agregar fuentes de verificación desde Planificación](#66-agregar-fuentes-de-verificación-desde-planificación)  
+   6.7 [Generación de reportes de Planificación](#67-generación-de-reportes-de-planificación)  
+7. [Menú: INVESTIGACIÓN E INCIDENCIA](#7-menú-investigación-e-incidencia)  
+   7.1 [Visualización de tareas](#71-visualización-de-tareas)  
+   7.2 [Agregar un documento a una tarea](#72-agregar-un-documento-a-una-tarea)  
+   7.3 [Eliminar un documento](#73-eliminar-un-documento)  
 
 ---
 
 ## 1. INGRESO AL SISTEMA
 
-El rol **Administrador** trabaja con dos plataformas complementarias:
+El rol **Administrador** trabaja con tres plataformas complementarias:
 
 | Plataforma | Propósito |
 |---|---|
 | **Asana** | Ingreso y gestión de datos de las actividades: fechas, responsables, estados, subtareas, archivos adjuntos |
 | **CDIMA Amuyt'a** | Visualización, seguimiento, aprobación de solicitudes y generación de reportes |
+| **Google Drive** | Repositorio de archivos y documentos de respaldo |
 
 ---
 
 ### 1.1 Ingreso a Asana
 
-**URL de acceso:**  
+**URL de acceso:**
 ```
 https://app.asana.com
 ```
@@ -60,10 +76,12 @@ https://app.asana.com
 3. En la pantalla de inicio de sesión ingrese:
    - **Correo electrónico:** su cuenta de correo registrada en el workspace **CDIMA**
    - **Contraseña:** su contraseña de Asana
+4. Haga clic en **"Iniciar sesión"**.
+5. Una vez dentro, verifique que se encuentra en el **workspace CDIMA** (aparece en la barra lateral izquierda o en el selector de workspace).
 
 > **[INSERTAR CAPTURA: pantalla de login de Asana]**
 
-4. Una vez dentro, verifique que se encuentra en el **workspace CDIMA** (aparece en la barra lateral izquierda o en el selector de workspace).
+**Resultado esperado:** Ingresa al workspace CDIMA y puede ver la lista de proyectos en la barra lateral.
 
 > **[INSERTAR CAPTURA: workspace CDIMA en Asana con la lista de proyectos]**
 
@@ -82,7 +100,7 @@ Cada proyecto CDIMA contiene actividades organizadas por **períodos o secciones
 
 ### 1.2 Ingreso a CDIMA Amuyt'a
 
-**URL de acceso:**  
+**URL de acceso:**
 ```
 https://cdima-reportes.vercel.app
 ```
@@ -92,19 +110,17 @@ https://cdima-reportes.vercel.app
 
 1. Abra su navegador e ingrese la URL del sistema.
 2. En la pantalla de inicio de sesión ingrese:
-   - **Correo electrónico:** `sandraveragutierrez@gmail.com` *(u otras credenciales asignadas para su cuenta de Administrador)*
-   - **Contraseña:** la contraseña asignada para el rol Administrador
+   - **Correo electrónico:** `sandraveragutierrez@gmail.com` *(u otras credenciales asignadas por el Director)*
+   - **Contraseña:** la contraseña del rol Administrador
+3. Haga clic en el botón **"Ingresar"**.
 
 > **[INSERTAR CAPTURA: pantalla de login de CDIMA Amuyt'a]**
 
-3. Haga clic en el botón **"Ingresar"**.
-4. Si las credenciales son correctas, será redirigido automáticamente a la pantalla de **Inicio**.
+**Resultado esperado:** Es redirigido automáticamente a la pantalla de **Inicio** con el menú lateral visible.
 
-> **[INSERTAR CAPTURA: pantalla de Inicio después del login]**
+> **[INSERTAR CAPTURA: pantalla de Inicio después del login con menú lateral]**
 
 **Menú lateral disponible para el Administrador:**
-
-Una vez ingresado, verá en la barra lateral izquierda las siguientes secciones:
 
 | Ícono | Nombre | Descripción |
 |---|---|---|
@@ -112,12 +128,11 @@ Una vez ingresado, verá en la barra lateral izquierda las siguientes secciones:
 | 📊 | **Proyectos** | Detalle de avance por proyecto, período y actividad |
 | 📡 | **Comunicación** | Biblioteca de archivos organizados por proyecto/carpeta |
 | 📅 | **Planificación** | Calendario de actividades, estadísticas y reportes |
+| 🔬 | **Investigación e Incidencia** | Gestión de documentos del proyecto SAIH investigación |
 
 ---
 
 ### 1.3 Ingreso a Google Drive
-
-Google Drive es el repositorio de archivos utilizado por CDIMA para almacenar todos los documentos de respaldo: informes, actas, fotografías, planillas y fuentes de verificación. Desde CDIMA Amuyt'a se generan enlaces directos a documentos almacenados en Drive, por lo que es necesario tener una sesión activa.
 
 **URL de acceso:**
 ```
@@ -128,20 +143,13 @@ https://drive.google.com
 
 1. Abra su navegador e ingrese a `https://drive.google.com`.
 2. Inicie sesión con la cuenta de Google institucional asignada por CDIMA.
-   - **Correo:** la cuenta Google proporcionada por su organización
-   - **Contraseña:** la contraseña de esa cuenta Google
-
-> **[INSERTAR CAPTURA: pantalla de inicio de sesión de Google / Google Drive]**
-
-3. Una vez dentro, verifique que tiene acceso a la carpeta compartida **"CDIMA"** (debe aparecer en **"Compartidos conmigo"** o en **"Mi unidad"** según como fue compartida).
+3. Verifique que tiene acceso a la carpeta compartida **"CDIMA"** (debe aparecer en **"Compartidos conmigo"** o en **"Mi unidad"**).
 
 > **[INSERTAR CAPTURA: carpeta CDIMA visible en Google Drive]**
 
-**¿Por qué es necesario tener Drive abierto?**
+**Resultado esperado:** Tiene acceso a los documentos compartidos en Drive que se vinculan desde CDIMA Amuyt'a.
 
-Cuando haga clic en un enlace de fuente de verificación desde CDIMA Amuyt'a (en Planificación, Proyectos, Comunicación, Escuelas o Diplomados), el documento se abrirá en una nueva pestaña del navegador. Si no tiene sesión activa en Google, el navegador le pedirá que inicie sesión antes de mostrar el archivo.
-
-**Recomendación:** mantenga las tres plataformas abiertas en pestañas distintas mientras trabaja:
+> **Recomendación:** Mantenga las tres plataformas abiertas en pestañas distintas mientras trabaja:
 
 | Pestaña | URL |
 |---|---|
@@ -149,36 +157,487 @@ Cuando haga clic en un enlace de fuente de verificación desde CDIMA Amuyt'a (en
 | **CDIMA Amuyt'a** | `https://cdima-reportes.vercel.app` |
 | **Google Drive** | `https://drive.google.com` |
 
-Una vez ingresado, verá en la barra lateral izquierda las siguientes secciones:
+---
 
-| Ícono | Nombre | Descripción |
-|---|---|---|
-| 🏠 | **Inicio** | Resumen ejecutivo: solicitudes, contrataciones, retrasos e indicadores |
-| 📊 | **Proyectos** | Detalle de avance por proyecto, período y actividad |
-| 📡 | **Comunicación** | Biblioteca de archivos organizados por proyecto/carpeta |
-| 📅 | **Planificación** | Calendario de actividades, estadísticas y reportes |
+## 2. ROLES Y PERMISOS
 
-
+CDIMA Amuyt'a gestiona el acceso mediante **roles de usuario**. Cada rol define qué menús puede ver y qué acciones puede realizar dentro del sistema.
 
 ---
 
-## 2. MENÚ: PLANIFICACIÓN
+### 2.1 Tabla de roles del sistema
 
-El menú **Planificación** permite visualizar y gestionar las actividades del proyecto de planificación CDIMA en un calendario interactivo. La información se obtiene directamente de Asana.
+| Rol | Descripción |
+|---|---|
+| **Director** | Acceso total a todos los módulos y funciones |
+| **Administrador** | Gestión administrativa: aprueba solicitudes, supervisa proyectos y planificación, gestiona documentos |
+| **Técnico EV** | Técnico de Erradicación de Violencia: gestiona proyectos y escuelas del área EV |
+| **Técnico EP** | Técnico de Empoderamiento Político: gestiona proyectos, escuelas, diplomados y cursos de alto nivel |
+| **Comunicación** | Acceso a reportes, biblioteca y planificación; sin aprobación de solicitudes |
+| **Planificador** | Solo puede ver la biblioteca y planificación |
+
+---
+
+### 2.2 Permisos del rol Administrador
+
+El rol **Administrador** tiene los siguientes permisos habilitados:
+
+**Módulo Inicio:**
+| Permiso | ¿Tiene acceso? |
+|---|---|
+| Ver detalle de solicitudes | ✅ Sí |
+| Aprobar solicitudes | ✅ Sí |
+| Observar / devolver solicitudes | ✅ Sí |
+
+**Módulo Proyectos:**
+| Permiso | ¿Tiene acceso? |
+|---|---|
+| Crear solicitudes de fondos/materiales | ✅ Sí |
+| Aprobar y observar solicitudes | ✅ Sí |
+| Eliminar solicitudes | ✅ Sí |
+| Cambiar estado de sub-actividades | ✅ Sí |
+| Registrar beneficiarios | ✅ Sí |
+| Agregar fuentes de verificación | ✅ Sí |
+| Actualizar estado de contrataciones | ✅ Sí |
+| Exportar reportes | ✅ Sí |
+
+**Módulo Escuelas / Diplomados / Alto Nivel:**
+| Permiso | ¿Tiene acceso? |
+|---|---|
+| Crear, editar, gestionar | ❌ No (exclusivo de Director y Técnico EP) |
+
+**Módulo Investigación e Incidencia:**
+| Permiso | ¿Tiene acceso? |
+|---|---|
+| Gestionar documentos | ✅ Sí |
+
+> **Nota:** Solo los roles **Administrador** y **Director** pueden aprobar u observar solicitudes. Los demás roles solo pueden ver el detalle.
+
+---
+
+### 2.3 Menú disponible según rol
+
+| Menú | Administrador | Director | Técnico EV | Técnico EP | Comunicación | Planificador |
+|---|---|---|---|---|---|---|
+| 🏠 Inicio | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| 📊 Proyectos | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| 📡 Comunicación | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 📅 Planificación | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🏫 Escuelas | ❌ | ✅ | ✅ (solo área EV) | ✅ (solo área EP) | ❌ | ❌ |
+| 🎓 Diplomados | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| 🏆 Prod. Alto Nivel | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| 🔬 Investigación | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+---
+
+## 3. MENÚ: INICIO
+
+La pantalla de **Inicio** (🏠) es el panel de control principal del Administrador. Muestra en tiempo real el estado de solicitudes pendientes, contrataciones activas, actividades con retraso e indicadores de avance global.
+
+**Acción:** Acceder al panel de control.
+
+**Pasos:**
+1. Haga clic en **🏠 Inicio** en el menú lateral izquierdo.
+2. Si ya está en Inicio, haga clic en el botón **🔄 Actualizar** para recargar todos los datos desde Asana.
+
+> **[INSERTAR CAPTURA: pantalla completa de Inicio con todas las secciones visibles]**
+
+**Resultado esperado:** El sistema carga todas las solicitudes, contrataciones e indicadores desde Asana y los muestra en las secciones correspondientes.
+
+---
+
+### 3.1 Solicitudes pendientes de aprobación
+
+Esta sección muestra todas las solicitudes que los técnicos han generado y que requieren una acción del Administrador.
+
+**Tipos de solicitudes:**
+
+| Tipo | Color | Prefijo en Asana | Descripción |
+|---|---|---|---|
+| **Solicitud de Fondos** | 🔵 Azul | `SFON` | Solicitudes de dinero para actividades |
+| **Solicitud de Material** | 🟠 Naranja | `SMAT` | Pedidos de materiales o insumos |
+| **Devolución de Material** | 🟣 Morado | `DMAT` | Registro de devolución de materiales |
+
+**Información en la tabla:**
+
+| Columna | Descripción |
+|---|---|
+| **Nombre** | Nombre de la solicitud (sin prefijo) |
+| **Tipo** | Etiqueta de color según el tipo |
+| **Proyecto** | Proyecto al que pertenece |
+| **Período** | Sección del proyecto |
+| **Actividad** | Nombre de la actividad padre |
+| **Solicitante** | Nombre y correo del técnico que generó la solicitud |
+| **Fecha** | Fecha de creación de la solicitud |
+| **Acciones** | Botones de Ver detalle, Observar y Aprobar |
+
+**Acción:** Ver el detalle de una solicitud.
+
+**Pasos:**
+1. Ubique la solicitud en la tabla de pendientes.
+2. Haga clic en el botón **👁️** en la columna **Acciones**.
+3. Revise la ventana emergente: lista de ítems, cantidades, importes, lugar de entrega, fechas y datos del solicitante.
+4. Cierre la ventana cuando termine la revisión.
+
+> **[INSERTAR CAPTURA: modal de detalle de una solicitud de fondos con ítems y montos]**
+
+**Resultado esperado:** Se abre un modal con toda la información de la solicitud sin realizar ningún cambio.
+
+---
+
+### 3.2 Aprobar una solicitud
+
+**Acción:** Marcar una solicitud como aprobada.
+
+**Pasos:**
+1. Revise el detalle de la solicitud (recomendado antes de aprobar).
+2. Haga clic en el botón **✅ Aprobar** en la fila de la solicitud.
+3. Aparecerá una ventana de confirmación: *"¿Aprobar solicitud? Se marcará esta solicitud como aprobada."*
+4. Haga clic en **"Aprobar"** para confirmar.
+
+> **[INSERTAR CAPTURA: ventana de confirmación de aprobación]**
+
+**Resultado esperado:** La solicitud desaparece de la lista de pendientes y queda registrada en Asana con la fecha y hora de aprobación.
+
+> **Importante:** Solo los roles **Administrador** y **Director** pueden aprobar solicitudes.
+
+---
+
+### 3.3 Observar una solicitud
+
+**Acción:** Devolver una solicitud al técnico con un comentario de corrección.
+
+**Pasos:**
+1. Ubique la solicitud en la tabla de pendientes.
+2. Haga clic en el botón **💬 Observar**.
+3. Escriba el motivo de la observación en el campo de texto (ej.: "Falta adjuntar cotización").
+4. Haga clic en **"Guardar observación"**.
+
+> **[INSERTAR CAPTURA: modal de observación con campo de texto y botón guardar]**
+
+**Resultado esperado:** La solicitud se marca como observada, desaparece de la lista de pendientes y el técnico puede ver el motivo desde su sesión para proceder a la corrección.
+
+---
+
+### 3.4 Contrataciones activas
+
+Esta sección muestra todas las contrataciones de personal (tareas con prefijo `CPER`) activas en cualquier proyecto.
+
+Cada contratación se presenta como una **tarjeta** con:
+- **Nombre** de la contratación
+- **Proyecto, Período y Actividad** padre
+- **Barra de progreso** con las 5 etapas del proceso
+- **Historial de estados** expandible
+
+**Etapas del proceso de contratación:**
+
+```
+1. Requerimiento de contratación
+        ↓
+2. Elaboración de TDRs
+        ↓
+3. Lanzamiento de convocatoria
+        ↓
+4. Selección del consultor
+        ↓
+5. Informe final del consultor
+```
+
+> **[INSERTAR CAPTURA: tarjeta de contratación con el stepper de 5 etapas y barra de progreso]**
+
+**Acción:** Actualizar el estado de una contratación.
+
+**Pasos:**
+1. Ubique la tarjeta de la contratación que desea actualizar.
+2. Haga clic en el botón **✏️ Actualizar estado**.
+3. En el formulario emergente, complete:
+   - **Estado actual:** seleccione la etapa del proceso
+   - **Observaciones / comentario:** detalle del avance o nota relevante
+   - **Archivos de respaldo:** enlace o URL de documentos de soporte
+4. Haga clic en **"Guardar"** para confirmar.
+
+> **[INSERTAR CAPTURA: modal de actualización de estado de contratación con los campos]**
+
+**Resultado esperado:** El stepper visual se actualiza, el historial registra la nueva entrada con fecha y usuario, y los cambios se guardan en Asana.
+
+**Acción:** Ver el historial de estados de una contratación.
+
+**Pasos:**
+1. En la tarjeta de la contratación, haga clic en **▶ Historial (N registros)**.
+2. Se despliega la lista de todos los cambios: estado, observaciones, fecha, usuario y enlaces de respaldo.
+
+> **[INSERTAR CAPTURA: historial expandido de una contratación con entradas de cambio]**
+
+**Resultado esperado:** Se muestran todos los registros de cambio en orden cronológico con sus datos completos.
+
+---
+
+### 3.5 Actividades con retraso
+
+Esta sección lista las actividades de todos los proyectos cuya fecha de vencimiento ya pasó y que aún están en estado **"En Proceso"**.
+
+> **[INSERTAR CAPTURA: sección de actividades con retraso en el panel de Inicio]**
+
+Cada fila muestra: nombre de la actividad, proyecto, período, fecha de vencimiento y días de retraso.
+
+---
+
+### 3.6 Indicadores de avance global
+
+En la parte inferior del Inicio se presentan los **indicadores generales** de todos los proyectos activos:
+
+| Indicador | Descripción |
+|---|---|
+| **Total de actividades** | Conteo total de actividades en todos los proyectos |
+| **Ejecutadas** | Actividades con estado "Ejecutado" o "Reprogramado" |
+| **En Proceso** | Actividades que aún no han sido completadas |
+| **% de avance** | Porcentaje de actividades ejecutadas sobre el total |
+
+> **[INSERTAR CAPTURA: panel de indicadores de avance global]**
+
+---
+
+## 4. MENÚ: PROYECTOS
+
+El menú **Proyectos** (📊) permite acceder al **detalle de avance** de cada actividad dentro de los diferentes proyectos CDIMA. Permite gestionar sub-actividades, solicitudes, contrataciones, beneficiarios y fuentes de verificación.
+
+Para ingresar haga clic en **📊 Proyectos** en el menú lateral.
+
+---
+
+### 4.1 Selección de proyecto, período y actividad
+
+**Acción:** Navegar hasta una actividad específica.
+
+**Pasos:**
+1. En la primera columna del **selector jerárquico**, haga clic sobre el **nombre del proyecto** (ej.: "Proyecto EV 2026"). El sistema carga sus períodos.
+2. En la segunda columna, haga clic sobre el **período o sección** (ej.: "Enero 2026"). El sistema carga sus actividades.
+3. En la tercera columna, haga clic sobre la **actividad** que desea revisar.
+
+> **[INSERTAR CAPTURA: selector jerárquico de tres columnas con proyecto, período y actividad]**
+
+**Resultado esperado:** El panel de detalle de la actividad se despliega a la derecha con toda su información.
+
+> **Tip:** Use la **barra de búsqueda** y el **filtro de estado** en la parte superior del selector para encontrar actividades más rápido.
+
+---
+
+### 4.2 Visualización del detalle de avance
+
+Al seleccionar una actividad se muestra su información completa en pestañas:
+
+**Información general:**
+
+| Dato | Descripción |
+|---|---|
+| **Nombre** | Nombre completo de la actividad |
+| **Estado** | Estado actual (En Proceso, Ejecutado, Reprogramado) |
+| **Fechas** | Fecha de inicio y fecha de vencimiento |
+| **Área** | Área responsable |
+| **Responsables** | Nombre(s) del responsable |
+| **Notas** | Descripción o notas adicionales |
+
+**Pestañas disponibles:**
+
+| Pestaña | Contenido |
+|---|---|
+| **Sub-actividades** | Lista de subtareas con estado, barras de progreso, fechas y diagrama Gantt |
+| **Solicitudes** | Historial de solicitudes de fondos, materiales y devoluciones |
+| **Contrataciones** | Estado de contrataciones paso a paso con historial |
+| **Distribución** | Distribución de responsabilidades |
+| **Beneficiarios** | Registro de beneficiarios cuando aplica |
+
+> **[INSERTAR CAPTURA: vista de detalle de actividad con pestañas y barra de progreso]**
+
+**Resultado esperado:** Visualiza el estado completo de la actividad con todos sus datos y sub-elementos.
+
+---
+
+### 4.3 Cambiar estado de una sub-actividad
+
+**Acción:** Actualizar el estado de una sub-actividad (subtarea).
+
+**Pasos:**
+1. Seleccione la actividad padre en el selector.
+2. Haga clic en la pestaña **Sub-actividades**.
+3. Ubique la sub-actividad en la lista.
+4. En la columna **Estado**, haga clic en el **dropdown** de estado.
+5. Seleccione el nuevo estado: *"Ejecutado"*, *"Reprogramado"* o *"En Proceso"*.
+
+> **[INSERTAR CAPTURA: dropdown de estado de una sub-actividad abierto con las opciones]**
+
+**Resultado esperado:** El estado se actualiza en Asana inmediatamente. La barra de progreso de la actividad padre se recalcula automáticamente.
+
+---
+
+### 4.4 Gestionar solicitudes desde la actividad
+
+**Acción:** Crear una nueva solicitud de fondos o materiales.
+
+**Pasos:**
+1. Seleccione la actividad y vaya a la pestaña **Solicitudes**.
+2. Haga clic en **"+ Nueva solicitud"** (o el botón correspondiente según el tipo).
+3. Complete el formulario: tipo de solicitud, ítems, cantidades, importes, lugar de entrega y fecha.
+4. Haga clic en **"Guardar"**.
+
+> **[INSERTAR CAPTURA: formulario de nueva solicitud de fondos con los campos]**
+
+**Resultado esperado:** La solicitud queda registrada en Asana con el prefijo correspondiente (`SFON`, `SMAT`, `DMAT`) y aparece en la lista de pendientes del Inicio para su aprobación.
+
+**Acción:** Aprobar o eliminar una solicitud desde la actividad.
+
+**Pasos:**
+1. En la pestaña **Solicitudes**, ubique la solicitud.
+2. Haga clic en **✅ Aprobar** o en el ícono de eliminar según corresponda.
+3. Confirme la acción en la ventana emergente.
+
+> **[INSERTAR CAPTURA: tabla de solicitudes dentro de la actividad con botones de acción]**
+
+**Resultado esperado:** La solicitud cambia de estado o se elimina, y el registro en Asana se actualiza.
+
+---
+
+### 4.5 Agregar fuentes de verificación
+
+**Acción:** Vincular un documento de respaldo a una actividad.
+
+**Pasos:**
+1. En la columna **"Fuente"** de cualquier tabla de actividades, haga clic en **"+ fuente"** (primera vez) o en **✏️** (para editar una existente).
+2. En el formulario emergente complete:
+   - **Nombre:** nombre descriptivo del documento (ej.: "Informe Febrero 2026")
+   - **URL:** enlace de Google Drive u otra URL válida
+3. Haga clic en **"Guardar"**.
+
+> **[INSERTAR CAPTURA: formulario de fuente de verificación con los campos nombre y URL]**
+
+**Resultado esperado:** El enlace queda guardado en Asana y la columna Fuente muestra el botón **🔗 Ver fuente** como hipervínculo clicable.
+
+> **[INSERTAR CAPTURA: columna Fuente con enlace activo "Ver fuente"]**
+
+---
+
+### 4.6 Actualizar estado de contratación
+
+**Acción:** Avanzar el proceso de contratación al siguiente paso.
+
+**Pasos:**
+1. Seleccione la actividad y vaya a la pestaña **Contrataciones**.
+2. Ubique la contratación (tarjeta CPER) que desea actualizar.
+3. Haga clic en **✏️ Actualizar estado**.
+4. Seleccione la etapa actual del proceso, agregue observaciones y un enlace de respaldo si corresponde.
+5. Haga clic en **"Guardar"**.
+
+> **[INSERTAR CAPTURA: modal de actualización de estado de contratación desde la pestaña]**
+
+**Resultado esperado:** El stepper avanza a la nueva etapa y el historial registra el cambio con fecha y usuario.
+
+---
+
+### 4.7 Exportar reporte de actividad
+
+**Acción:** Generar un informe PDF o Word de una actividad específica.
+
+**Pasos:**
+1. Seleccione la actividad cuyo reporte desea generar.
+2. En la barra superior del panel de detalle, haga clic en el botón de exportación:
+   - **📄 Exportar PDF** — genera un informe completo en formato PDF
+   - **📝 Exportar Word** — genera el mismo informe en formato editable Word
+3. El archivo se descarga automáticamente.
+
+> **[INSERTAR CAPTURA: botones de exportación PDF y Word en la vista de detalle de actividad]**
+
+**Resultado esperado:** Se descarga un archivo con el nombre del proyecto y la actividad, conteniendo sub-actividades, estados, fechas, distribución de responsables y solicitudes.
+
+---
+
+## 5. MENÚ: COMUNICACIÓN
+
+El menú **Comunicación** (📡) funciona como una **biblioteca digital** de archivos organizados por proyecto y carpeta. Permite navegar y descargar documentos de respaldo de todos los proyectos.
+
+Para ingresar haga clic en **📡 Comunicación** en el menú lateral.
+
+> **[INSERTAR CAPTURA: vista general de la página de Comunicación con lista de proyectos]**
+
+---
+
+### 5.1 Navegación por proyectos y carpetas
+
+La pantalla de Comunicación está organizada en tres niveles de navegación:
+
+**Acción:** Navegar hasta los archivos de un proyecto.
+
+**Pasos:**
+1. **Nivel 1 — Proyectos:** Al ingresar verá la lista de todos los proyectos del workspace CDIMA como tarjetas. Haga clic sobre el proyecto que le interesa.
+
+> **[INSERTAR CAPTURA: lista de proyectos en la página de Comunicación como tarjetas]**
+
+2. **Nivel 2 — Secciones:** Las secciones del proyecto se muestran como carpetas. Haga clic sobre la sección/carpeta de interés.
+
+> **[INSERTAR CAPTURA: secciones del proyecto mostradas como carpetas con ícono]**
+
+3. **Nivel 3 — Tareas y archivos:** Dentro de cada sección verá las tareas y sus archivos adjuntos.
+
+> **[INSERTAR CAPTURA: archivos y enlaces dentro de una tarea en Comunicación]**
+
+**Resultado esperado:** Accede al nivel deseado y puede ver los archivos disponibles.
+
+**Barra de navegación (breadcrumb):**  
+`Proyectos > [Nombre Proyecto] > [Nombre Sección] > [Nombre Tarea]`
+
+Haga clic en cualquier nivel del breadcrumb para regresar a ese punto.
+
+**Búsqueda:** Use el campo 🔍 para filtrar por nombre de archivo, carpeta o tarea dentro del nivel actual.
+
+---
+
+### 5.2 Descarga de archivos
+
+Los archivos se identifican visualmente por tipo:
+
+| Tipo | Color | Ícono |
+|---|---|---|
+| Carpeta (Google Drive) | Naranja/Café | 📁 |
+| PDF | Rojo | 📕 |
+| Word / Documento | Azul | 📘 |
+| Excel / Hoja de cálculo | Verde | 📗 |
+| PowerPoint | Naranja | 📙 |
+| Imagen | Morado | 🖼️ |
+| Video | Azul claro | 🎬 |
+| Enlace / Otro | Gris | 🔗 |
+
+**Acción:** Abrir o descargar un archivo.
+
+**Pasos:**
+1. Ubique el archivo dentro de la tarea.
+2. Haga clic en el botón **⬇ Descargar** o en el ícono de descarga de la tarjeta.
+
+> **[INSERTAR CAPTURA: tarjetas de archivos con distintos tipos de íconos y botón descargar]**
+
+**Resultado esperado:** El archivo se abre en una nueva pestaña del navegador (para enlaces de Google Drive) o se descarga directamente a su computadora.
+
+> **Nota:** El rol Administrador puede **ver y descargar** todos los archivos disponibles. Solo el rol **Comunicación** puede agregar o eliminar archivos desde este módulo.
+
+---
+
+## 6. MENÚ: PLANIFICACIÓN
+
+El menú **Planificación** (📅) permite visualizar y gestionar las actividades del proyecto de planificación CDIMA en un calendario interactivo. La información se obtiene directamente de Asana.
 
 Para ingresar haga clic en **📅 Planificación** en el menú lateral.
 
 ---
 
-### 2.1 Cargado de información en Asana
+### 6.1 Cargado de información en Asana
 
-Antes de visualizar las actividades en CDIMA Amuyt'a, es necesario que la información esté correctamente ingresada en Asana. A continuación se describe cómo se carga cada dato relevante:
+Antes de visualizar las actividades en CDIMA Amuyt'a, la información debe estar ingresada en Asana.
 
-**Acceda al proyecto "Planificacion CDIMA" en Asana.**
+**Acción:** Ingresar o completar una actividad en Asana para que aparezca en el calendario.
 
-> **[INSERTAR CAPTURA: proyecto Planificacion CDIMA en Asana]**
-
-**Campos que deben completarse por cada actividad:**
+**Pasos:**
+1. Acceda al proyecto **"Planificacion CDIMA"** en Asana.
+2. Seleccione la **sección** (período) correspondiente.
+3. Haga clic en **"+ Agregar tarea"** e ingrese el nombre de la actividad.
+4. Abra la tarea y complete los siguientes campos:
 
 | Campo en Asana | Descripción | Dónde se ingresa |
 |---|---|---|
@@ -186,70 +645,49 @@ Antes de visualizar las actividades en CDIMA Amuyt'a, es necesario que la inform
 | **Fecha de inicio** | Cuándo comienza la actividad | Sección "Fechas" → "Fecha de inicio" |
 | **Fecha de vencimiento** | Fecha límite de la actividad | Sección "Fechas" → "Fecha de vencimiento" |
 | **Estado** | Estado actual (En Proceso, Ejecutado, Reprogramado) | Campo personalizado "Estado" |
-| **Área** | Área responsable de la actividad | Campo personalizado "Área" |
-| **Responsables de actividad** | Nombre(s) del o los responsables | Campo personalizado "Responsables de actividad" |
+| **Área** | Área responsable | Campo personalizado "Área" |
+| **Responsables de actividad** | Nombre(s) del responsable | Campo personalizado "Responsables de actividad" |
 | **Fuente** | Nombre del documento de respaldo | Campo personalizado "Fuente" |
-| **Fuente URL** | Enlace de Google Drive u otra fuente | Campo personalizado "Fuente URL" |
+| **Fuente URL** | Enlace de Google Drive | Campo personalizado "Fuente URL" |
 
-> **[INSERTAR CAPTURA: ficha de tarea en Asana mostrando los campos personalizados]**
+5. Guarde los cambios.
 
-**Pasos para ingresar una actividad en Asana:**
+> **[INSERTAR CAPTURA: ficha de tarea en Asana con los campos personalizados completados]**
 
-1. Dentro del proyecto "Planificacion CDIMA", seleccione la **sección** (período) correspondiente.
-2. Haga clic en **"+ Agregar tarea"**.
-3. Ingrese el nombre de la actividad.
-4. Abra la tarea y complete:
-   - Las fechas de inicio y vencimiento.
-   - El campo "Estado" seleccionando la opción correspondiente.
-   - El campo "Área".
-   - El campo "Responsables de actividad".
-5. Guarde los cambios. La actividad aparecerá automáticamente en el calendario de CDIMA Amuyt'a.
-
-> **[INSERTAR CAPTURA: completando campos personalizados de una tarea en Asana]**
+**Resultado esperado:** La actividad aparece automáticamente en el calendario de CDIMA Amuyt'a en el rango de fechas indicado.
 
 ---
 
-### 2.2 Visualización del calendario desde CDIMA Amuyt'a
+### 6.2 Visualización del calendario
 
-Al ingresar a **Planificación**, el sistema carga automáticamente todas las actividades del proyecto **"Planificacion CDIMA"** y las muestra en un **calendario interactivo**.
+**Acción:** Ver el calendario de actividades del mes.
 
-> **[INSERTAR CAPTURA: vista general de la página de Planificación con el calendario]**
+**Pasos:**
+1. Ingrese a **📅 Planificación**. El sistema carga automáticamente el mes actual.
+2. Use los botones **◀ Anterior** y **Siguiente ▶** para navegar entre meses.
+3. Use el botón **"Hoy"** para regresar al mes actual.
+4. Use los botones de vista para cambiar entre **Mes**, **Semana** o **Día**.
+5. Haga clic sobre cualquier bloque del calendario para ver el detalle de una actividad.
 
-**Características del calendario:**
+> **[INSERTAR CAPTURA: vista general del calendario con actividades en distintos colores]**
 
-- **Vista por mes** (predeterminada), semana o día — use los botones en la esquina superior del calendario para cambiar la vista.
-- **Navegación temporal** — use los botones **◀ Anterior** y **Siguiente ▶** para moverse entre meses.
-- **Botón "Hoy"** — regresa inmediatamente al mes actual.
-- Cada actividad se muestra como un **bloque de color** en el rango de fechas de inicio a fecha de vencimiento.
-- El nombre entre paréntesis dentro del bloque indica el **responsable** de la actividad.
+**Resultado esperado:** Se muestra el calendario con todas las actividades del período como bloques de color. Al hacer clic en un bloque aparece el detalle: nombre, fecha de vencimiento, estado, área y responsable.
+
+> **[INSERTAR CAPTURA: modal de detalle de actividad al hacer clic en el calendario]**
 
 **Leyenda de colores:**
 
 | Color / Estilo | Significado |
 |---|---|
-| Colores variados | Cada actividad tiene un color único para diferenciarlas |
+| Colores variados | Cada actividad tiene un color único |
 | Fondo rojo con borde rojo | Actividad **atrasada** (En Proceso y fecha vencida) |
 | Opacidad reducida (grisado) | Actividad **Ejecutada** o **Reprogramada** |
 
-> **[INSERTAR CAPTURA: leyenda de colores debajo del encabezado del calendario]**
-
-**Ver detalle de una actividad:**
-
-Haga clic sobre cualquier bloque del calendario para ver una ventana emergente con:
-- Nombre de la actividad
-- Fecha de vencimiento
-- Estado actual
-- Área y responsable
-
-> **[INSERTAR CAPTURA: modal de detalle de actividad al hacer clic en el calendario]**
-
 ---
 
-### 2.3 Indicadores de impacto del mes
+### 6.3 Indicadores del mes
 
-Debajo del calendario, el sistema muestra automáticamente los **indicadores estadísticos del mes visualizado**:
-
-> **[INSERTAR CAPTURA: sección de estadísticas con indicadores del mes]**
+Debajo del calendario se muestran automáticamente los **indicadores estadísticos del mes visualizado**:
 
 | Indicador | Descripción |
 |---|---|
@@ -258,935 +696,159 @@ Debajo del calendario, el sistema muestra automáticamente los **indicadores est
 | **En Proceso** | Actividades que aún no han sido completadas |
 | **% de avance** | Porcentaje de actividades ejecutadas sobre el total |
 
-Estos indicadores se **actualizan automáticamente** al navegar entre meses con los botones del calendario.
+> **[INSERTAR CAPTURA: sección de estadísticas con indicadores numéricos del mes]**
+
+**Resultado esperado:** Los indicadores se actualizan automáticamente al navegar entre meses.
 
 ---
 
-### 2.4 Lista de actividades y filtros
+### 6.4 Lista de actividades y filtros
 
-Debajo de los indicadores, el sistema muestra **tres tablas** con el detalle de las actividades del mes:
+Debajo de los indicadores se muestran **tres tablas** con el detalle de actividades del mes:
 
-1. **⚠️ Actividades En Proceso (Atrasadas)** — Actividades cuya fecha de vencimiento ya pasó y que aún están "En Proceso".
-2. **🔄 Actividades En Proceso** — Actividades que están en curso y aún dentro de su plazo.
-3. **✅ Actividades Ejecutadas** — Actividades completadas en el mes visualizado.
-
-> **[INSERTAR CAPTURA: tabla de actividades atrasadas con columnas visibles]**
+1. **⚠️ Actividades En Proceso (Atrasadas)** — Fecha vencida y aún "En Proceso".
+2. **🔄 Actividades En Proceso** — En curso y dentro de su plazo.
+3. **✅ Actividades Ejecutadas** — Completadas en el mes visualizado.
 
 **Columnas de cada tabla:**
 
 | Columna | Descripción |
 |---|---|
-| **Actividad** | Nombre de la actividad, área y responsable |
+| **Actividad** | Nombre, área y responsable |
 | **Fecha** | Rango de fechas (inicio - vencimiento) |
-| **Fuente** | Enlace a la fuente de verificación en Google Drive |
+| **Fuente** | Enlace a la fuente de verificación |
 | **Estado** | Dropdown para cambiar el estado directamente |
 
-**Filtrar por área:**
-
-En la barra de herramientas sobre las tablas, encontrará el selector **"Filtrar por área"**:
-
-1. Haga clic en el selector desplegable.
-2. Elija el área que desea filtrar (ej.: "Comunicación", "Planificación").
-3. Las tres tablas se actualizarán mostrando solo las actividades de esa área.
-4. Para quitar el filtro, haga clic en **"✕ Limpiar"**.
-
-> **[INSERTAR CAPTURA: selector de filtro por área con opciones visibles]**
-
----
-
-### 2.5 Cambiar el estado de una actividad
-
-En la columna **"Estado"** de cualquier tabla de actividades, se muestra un **menú desplegable (dropdown)** con las opciones de estado disponibles.
+**Acción:** Filtrar actividades por área.
 
 **Pasos:**
+1. En la barra de herramientas sobre las tablas, haga clic en el selector **"Filtrar por área"**.
+2. Elija el área deseada (ej.: "Comunicación", "Planificación").
+3. Las tres tablas se actualizan mostrando solo las actividades de esa área.
+4. Para quitar el filtro, haga clic en **"✕ Limpiar"**.
 
-1. Ubique la actividad cuyo estado desea actualizar.
-2. Haga clic en el **dropdown de estado** en la columna correspondiente.
-3. Seleccione el nuevo estado (ej.: "Ejecutado", "Reprogramado", "En Proceso").
-4. El sistema actualizará automáticamente el estado en **Asana** y el dropdown mostrará la fecha y hora del último cambio.
+> **[INSERTAR CAPTURA: selector de filtro por área con opciones desplegadas]**
 
-> **[INSERTAR CAPTURA: dropdown de estado abierto con las opciones visibles]**
-
-> **Nota:** Debajo del dropdown aparece la fecha y usuario del último cambio de estado para trazabilidad.
+**Resultado esperado:** Las tablas muestran únicamente las actividades del área seleccionada.
 
 ---
 
-### 2.6 Agregar fuentes de verificación
+### 6.5 Cambiar el estado de una actividad
 
-Las **fuentes de verificación** son enlaces de Google Drive u otras plataformas que respaldan la ejecución de una actividad.
+**Acción:** Actualizar el estado de una actividad directamente desde la tabla.
 
-**Pasos para agregar o editar una fuente:**
+**Pasos:**
+1. Ubique la actividad en cualquiera de las tres tablas.
+2. Haga clic en el **dropdown de estado** en la columna correspondiente.
+3. Seleccione el nuevo estado: *"Ejecutado"*, *"Reprogramado"* o *"En Proceso"*.
 
-1. En la columna **"Fuente"** de la tabla, haga clic en el botón **"+ fuente"** (si no hay fuente) o en el ícono **✏️** (si ya existe una).
-2. Se abrirá un pequeño formulario emergente con dos campos:
-   - **Nombre:** nombre descriptivo del documento o evidencia (ej.: "Informe Febrero 2026")
-   - **URL:** enlace directo de Google Drive o cualquier URL válida
-3. Complete ambos campos y haga clic en **"Guardar"**.
-4. La fuente se almacenará directamente en Asana como campo de la tarea.
-5. El botón cambiará a un enlace **🔗 Ver fuente** que permite acceder directamente al documento.
+> **[INSERTAR CAPTURA: dropdown de estado abierto en la columna de la tabla]**
+
+**Resultado esperado:** El sistema actualiza el estado en Asana inmediatamente. El dropdown muestra la fecha y hora del último cambio. La actividad se mueve a la tabla correspondiente.
+
+---
+
+### 6.6 Agregar fuentes de verificación desde Planificación
+
+**Acción:** Vincular un documento de respaldo a una actividad del calendario.
+
+**Pasos:**
+1. En la columna **"Fuente"** de la tabla, haga clic en **"+ fuente"** (si no hay fuente) o en **✏️** (si ya existe una).
+2. En el formulario emergente complete:
+   - **Nombre:** nombre descriptivo del documento (ej.: "Acta reunión Febrero")
+   - **URL:** enlace de Google Drive o cualquier URL válida
+3. Haga clic en **"Guardar"**.
 
 > **[INSERTAR CAPTURA: formulario de fuente de verificación con los campos nombre y URL]**
 
-> **[INSERTAR CAPTURA: enlace de fuente activo en la columna de la tabla]**
+**Resultado esperado:** La fuente queda vinculada en Asana. La columna Fuente muestra el enlace **🔗 Ver fuente** para acceder directamente al documento.
 
 ---
 
-### 2.7 Generación de reportes
+### 6.7 Generación de reportes de Planificación
 
-CDIMA Amuyt'a ofrece múltiples opciones de exportación para el módulo de planificación. Los botones se encuentran en la parte superior del área del calendario y en la barra sobre las tablas.
+**Acción:** Exportar el calendario o las tablas de actividades como reporte.
 
 **Reportes disponibles:**
 
 | Botón | Formato | Descripción |
 |---|---|---|
-| 📄 **Actividades PDF** | PDF | Exporta la vista actual del calendario como imagen (captura) |
-| 📋 **Cronograma PDF** | PDF | Genera un cronograma mensual en formato tabla con todas las actividades del mes, sus fechas, responsables y estado |
-| 📝 **Cronograma Word** | Word (.docx) | Igual que el cronograma PDF pero en formato editable Word |
-| 📄 **Informe PDF** | PDF | Exporta las tres tablas de actividades (atrasadas, en proceso, ejecutadas) con el filtro de área aplicado |
-| 📝 **Informe Word** | Word (.docx) | Igual que el Informe PDF pero en formato editable Word |
+| 📄 **Actividades PDF** | PDF | Exporta la vista actual del calendario como imagen |
+| 📋 **Cronograma PDF** | PDF | Cronograma mensual en tabla con actividades, fechas, responsables y estado |
+| 📝 **Cronograma Word** | Word | Igual que el cronograma PDF pero editable |
+| 📄 **Informe PDF** | PDF | Exporta las tres tablas de actividades con el filtro de área aplicado |
+| 📝 **Informe Word** | Word | Igual que el Informe PDF pero editable |
 
-**Pasos para exportar un cronograma:**
-
+**Pasos:**
 1. Navegue al mes deseado usando los botones del calendario.
 2. Aplique el filtro de área si es necesario.
 3. Haga clic en el botón de exportación correspondiente (ej.: **📋 Cronograma PDF**).
-4. El sistema generará el archivo automáticamente y lo descargará a su computadora.
-5. El archivo descargado contendrá el mes, año y el nombre del proyecto en el nombre del archivo.
+4. El sistema genera el archivo y lo descarga automáticamente.
 
 > **[INSERTAR CAPTURA: botones de exportación en la barra superior del calendario]**
 
 > **[INSERTAR CAPTURA: botones de Informe PDF e Informe Word sobre las tablas de actividades]**
 
+**Resultado esperado:** Se descarga un archivo con el mes, año y nombre del proyecto en el nombre del archivo, listo para compartir o imprimir.
+
 > **Nota:** Los botones de exportación estarán deshabilitados (grisados) si no hay actividades en el mes seleccionado.
 
 ---
 
-## 3. MENÚ: COMUNICACIÓN
+## 7. MENÚ: INVESTIGACIÓN E INCIDENCIA
 
-El menú **Comunicación** (📡) funciona como una **biblioteca digital** de archivos y documentos organizados por proyecto y carpeta. Permite a cualquier usuario (incluido el Administrador) navegar entre proyectos como si fueran carpetas y descargar los archivos que necesite.
+El menú **Investigación e Incidencia** (🔬) permite gestionar los documentos y enlaces del proyecto **SAIH investigación**. Está disponible para el Administrador y todos los roles excepto Planificador.
 
-Para ingresar haga clic en **📡 Comunicación** en el menú lateral.
-
-> **[INSERTAR CAPTURA: vista general de la página de Comunicación]**
+Para ingresar haga clic en **🔬 Investigación e Incidencia** en el menú lateral.
 
 ---
 
-### 3.1 Navegación por proyectos y carpetas
+### 7.1 Visualización de tareas
 
-La pantalla de Comunicación está organizada en tres niveles:
+**Acción:** Ver las tareas y sus documentos del proyecto de investigación.
 
-**Nivel 1 — Proyectos:**
+**Pasos:**
+1. Al ingresar, el sistema carga automáticamente las tareas del proyecto "SAIH investigacion".
+2. Cada tarea se muestra con su nombre y la lista de documentos vinculados.
+3. Use el campo de búsqueda para filtrar las tareas por nombre.
 
-Al ingresar verá una lista de todos los proyectos disponibles en el workspace CDIMA. Cada proyecto se muestra como una tarjeta con su nombre e ícono de carpeta.
+> **[INSERTAR CAPTURA: vista general de Investigación e Incidencia con lista de tareas y documentos]**
 
-> **[INSERTAR CAPTURA: lista de proyectos en la página de Comunicación]**
-
-1. Haga clic sobre el **nombre o tarjeta del proyecto** que le interesa.
-2. El sistema cargará las **secciones** de ese proyecto.
-
-**Nivel 2 — Secciones (Carpetas):**
-
-Las secciones representan las **agrupaciones de actividades** dentro del proyecto (pueden ser períodos, áreas, etc.). Se muestran como carpetas con un ícono de color.
-
-> **[INSERTAR CAPTURA: secciones del proyecto mostradas como carpetas]**
-
-1. Haga clic sobre la **sección o carpeta** de interés.
-2. El sistema mostrará las **tareas** de esa sección.
-
-**Nivel 3 — Tareas y Subtareas:**
-
-Dentro de cada sección verá las tareas, y dentro de cada tarea sus subtareas. Los archivos y enlaces se muestran como elementos descargables.
-
-> **[INSERTAR CAPTURA: archivos y enlaces dentro de una tarea en Comunicación]**
-
-**Barra de navegación (breadcrumb):**
-
-En la parte superior de la pantalla encontrará una barra de navegación que muestra el camino recorrido:  
-`Proyectos > [Nombre Proyecto] > [Nombre Sección] > [Nombre Tarea]`
-
-Puede hacer clic en cualquier nivel para **regresar** a ese punto de la navegación.
-
-> **[INSERTAR CAPTURA: barra de navegación breadcrumb]**
-
-**Búsqueda:**
-
-Utilice el campo de búsqueda (ícono 🔍) para filtrar por nombre de archivo, carpeta o tarea dentro del nivel actual.
+**Resultado esperado:** Se muestra la lista completa de tareas del proyecto con sus documentos asociados, listos para consultar o gestionar.
 
 ---
 
-### 3.2 Descarga de archivos
+### 7.2 Agregar un documento a una tarea
 
-Los archivos disponibles en cada tarea/subtarea se identifican visualmente por el **tipo de archivo** con íconos y colores diferenciados:
+**Acción:** Vincular un nuevo documento o enlace a una tarea del proyecto.
 
-| Tipo | Color | Ícono |
-|---|---|---|
-| Carpeta (Google Drive folder) | Naranja/Café | 📁 |
-| PDF | Rojo | 📄 |
-| Word / Documento | Azul | 📄 |
-| Excel / Hoja de cálculo | Verde | 📊 |
-| PowerPoint / Presentación | Naranja | 📊 |
-| Imagen | Morado | 🖼️ |
-| Video | Azul claro | 🎬 |
-| Enlace / Otro | Gris | 🔗 |
+**Pasos:**
+1. Ubique la tarea a la que desea agregar el documento.
+2. Haga clic en el botón **"+ Agregar documento"** (o el ícono correspondiente junto a la tarea).
+3. En el formulario emergente complete:
+   - **Nombre del documento:** nombre descriptivo (ej.: "Informe de avance Mayo 2026")
+   - **URL:** enlace al documento en Google Drive u otra plataforma válida
+4. Haga clic en **"Guardar"**.
 
-> **[INSERTAR CAPTURA: tarjetas de archivos con distintos tipos de íconos y colores]**
+> **[INSERTAR CAPTURA: formulario de agregar documento con campos nombre y URL]**
 
-**Para descargar o abrir un archivo:**
-
-1. Ubique el archivo que desea dentro de la tarea.
-2. Haga clic en el botón **⬇ Descargar** o en el ícono de descarga que aparece en la tarjeta del archivo.
-3. El archivo se abrirá en una nueva pestaña del navegador (para enlaces de Google Drive) o se descargará directamente a su computadora.
-
-> **Nota:** El rol Administrador puede **ver y descargar** todos los archivos disponibles. Solo el rol **Comunicación** puede agregar o eliminar archivos y enlaces.
+**Resultado esperado:** El documento aparece en la lista de la tarea como un enlace activo. El registro se guarda en Asana en las notas de la tarea.
 
 ---
 
-## 4. MENÚ: PROYECTOS
+### 7.3 Eliminar un documento
 
-El menú **Proyectos** (📊) permite al Administrador acceder al **detalle de avance** de cada actividad dentro de los diferentes proyectos CDIMA. Aquí se puede navegar por proyecto, período y actividad, visualizando su información, sub-actividades, solicitudes y contrataciones.
+**Acción:** Eliminar un documento vinculado a una tarea.
 
-Para ingresar haga clic en **📊 Proyectos** en el menú lateral.
+**Pasos:**
+1. Ubique el documento dentro de la tarea.
+2. Haga clic en el ícono **🗑️** junto al documento que desea eliminar.
+3. Confirme la eliminación en la ventana de confirmación.
 
----
+> **[INSERTAR CAPTURA: tarjeta de documento con ícono de eliminar visible]**
 
-### 4.1 Selección de proyecto, período y actividad
+**Resultado esperado:** El documento se elimina de la lista y el registro se actualiza en Asana. Aparece una notificación de confirmación en la parte superior de la pantalla.
 
-La pantalla de Proyectos muestra un **selector jerárquico** con tres niveles:
+> **Nota:** La eliminación es permanente. Verifique que el documento correcto antes de confirmar.
 
-**Paso 1 — Seleccionar Proyecto:**
 
-1. En la primera columna del selector verá la lista de todos los proyectos disponibles.
-2. Haga clic sobre el **nombre del proyecto** que desea revisar (ej.: "Proyecto EV 2026").
-3. El sistema cargará automáticamente los períodos de ese proyecto en la columna siguiente.
-
-> **[INSERTAR CAPTURA: selector de proyecto con lista de proyectos]**
-
-**Paso 2 — Seleccionar Período (Sección):**
-
-1. En la segunda columna verá los **períodos o secciones** del proyecto seleccionado (ej.: "Enero", "Primer Trimestre", etc.).
-2. Haga clic sobre el período que desea revisar.
-3. El sistema cargará las actividades de ese período.
-
-> **[INSERTAR CAPTURA: selector de período con secciones del proyecto]**
-
-**Paso 3 — Seleccionar Actividad:**
-
-1. En la tercera columna verá la lista de **actividades** del período seleccionado.
-2. Haga clic sobre la actividad para ver su detalle completo.
-
-> **[INSERTAR CAPTURA: selector de actividad con lista de tareas del período]**
-
-También puede usar la **barra de búsqueda** y el **filtro de estado** para encontrar rápidamente una actividad específica.
-
----
-
-### 4.2 Visualización del detalle de avance
-
-Al seleccionar una actividad, el panel derecho (o la vista principal) mostrará toda la información de esa actividad:
-
-> **[INSERTAR CAPTURA: pantalla de detalle de actividad con toda la información]**
-
-**Información general de la actividad:**
-
-| Dato | Descripción |
-|---|---|
-| Nombre | Nombre completo de la actividad |
-| Estado | Estado actual (En Proceso, Ejecutado, Reprogramado) |
-| Fechas | Fecha de inicio y fecha de vencimiento |
-| Área | Área responsable |
-| Responsables | Nombre(s) del responsable de la actividad |
-| Notas | Descripción o notas adicionales de la actividad |
-
-**Pestañas de información:**
-
-La vista de detalle tiene múltiples pestañas que organizan la información:
-
-| Pestaña | Contenido |
-|---|---|
-| **Sub-actividades** | Lista de subtareas con su estado individual (✅ Ejecutada / ⏳ En Proceso), barras de progreso y fechas |
-| **Solicitudes** | Historial de solicitudes de fondos, materiales y devoluciones asociadas a esta actividad |
-| **Contrataciones** | Estado de las contrataciones de personal (CPER) ligadas a esta actividad con el proceso paso a paso |
-| **Distribución** | Distribución de responsabilidades por área o persona |
-| **Beneficiarios** | Registro de beneficiarios cuando aplica |
-
-> **[INSERTAR CAPTURA: pestañas de la vista de detalle de actividad]**
-
-**Indicadores de avance de la actividad:**
-
-En la parte superior del detalle, verá indicadores visuales del progreso:
-- **Barra de progreso** con porcentaje de sub-actividades ejecutadas.
-- **Conteo:** X de Y sub-actividades ejecutadas.
-- **Gantt Chart** (cuando haya fechas definidas): muestra las subtareas como barras en el tiempo.
-
-> **[INSERTAR CAPTURA: barra de progreso y gráfico Gantt de la actividad]**
-
-**Diagrama de Gantt:**
-
-El diagrama Gantt muestra gráficamente el cronograma de las sub-actividades:
-- Las barras verdes representan sub-actividades **ejecutadas**.
-- Las barras azules/grises representan sub-actividades **en proceso**.
-
-> **[INSERTAR CAPTURA: diagrama de Gantt de las sub-actividades]**
-
-**Exportación de reportes dinámicos desde Proyectos:**
-
-En la vista de detalle de una actividad, encontrará botones para generar reportes:
-
-| Botón | Formato | Descripción |
-|---|---|---|
-| 📄 **Exportar PDF** | PDF | Genera un informe completo de la actividad con todas sus sub-actividades, estado, fechas y distribución de responsables |
-| 📝 **Exportar Word** | Word (.docx) | Igual que el PDF pero en formato editable |
-
-1. Seleccione la actividad cuyo reporte desea generar.
-2. Haga clic en el botón de exportación deseado.
-3. El archivo se descargará automáticamente con el nombre del proyecto y la actividad.
-
-> **[INSERTAR CAPTURA: botones de exportación en la vista de detalle]**
-
----
-
-## 5. INICIO — RESUMEN EJECUTIVO
-
-La pantalla de **Inicio** (🏠) es el panel de control principal del Administrador. Muestra una visión completa y en tiempo real del estado de solicitudes, contrataciones, retrasos e indicadores de avance de todos los proyectos.
-
-Para ingresar haga clic en **🏠 Inicio** en el menú lateral, o acceda directamente desde la pantalla raíz del sistema.
-
-> **[INSERTAR CAPTURA: pantalla completa de Inicio con todas las secciones visibles]**
-
-En la parte superior encontrará el botón **🔄 Actualizar** para recargar todos los datos desde Asana.
-
----
-
-### 5.1 Solicitudes pendientes de aprobación
-
-La primera sección de la pantalla de Inicio es la tabla de **Solicitudes Pendientes de Aprobación** 🔔.
-
-Esta tabla muestra todas las solicitudes que los técnicos han generado desde los distintos proyectos y que requieren una acción del Administrador.
-
-> **[INSERTAR CAPTURA: tabla de solicitudes pendientes con filas de ejemplo]**
-
-**Tipos de solicitudes:**
-
-| Tipo | Color | Descripción |
-|---|---|---|
-| **Solicitud de Fondos** | Azul | Solicitudes de dinero para actividades (prefijo SFON) |
-| **Solicitud de Material** | Naranja | Pedidos de materiales o insumos (prefijo SMAT) |
-| **Devolución de Material** | Morado | Registro de devolución de materiales (prefijo DMAT) |
-
-**Información en la tabla:**
-
-Cada fila muestra:
-- **Nombre** de la solicitud
-- **Tipo** (etiqueta de color)
-- **Proyecto** al que pertenece
-- **Período** (sección)
-- **Actividad** a la que pertenece
-- **Solicitante** (nombre y correo del técnico)
-- **Fecha** de la solicitud
-
-**Acciones disponibles por solicitud:**
-
-| Botón | Descripción |
-|---|---|
-| 👁️ **Ver detalle** | Abre una ventana emergente con el detalle completo: lista de ítems, cantidades, importes, lugar, fechas |
-| 💬 **Observar** | Permite escribir un comentario de observación y enviar la solicitud de vuelta al solicitante para corrección |
-| ✅ **Aprobar** | Marca la solicitud como aprobada y la elimina de la lista pendiente |
-
-> **[INSERTAR CAPTURA: botones de acción en la columna Acciones de la tabla]**
-
-**Ver el detalle de una solicitud:**
-
-1. Haga clic en el botón **👁️** de la solicitud que desea revisar.
-2. Se abrirá una ventana emergente mostrando:
-   - Información de la actividad y área
-   - Lista de fondos o materiales solicitados con montos o cantidades
-   - Lugar de entrega y fechas
-   - Datos del solicitante
-3. Cierre la ventana cuando termine la revisión.
-
-> **[INSERTAR CAPTURA: modal de detalle de una solicitud de fondos]**
-
-**Observar una solicitud:**
-
-Si la solicitud tiene algún problema o requiere corrección:
-
-1. Haga clic en **💬 Observar**.
-2. Escriba el motivo de la observación en el campo de texto.
-3. Haga clic en **"Guardar observación"**.
-4. La solicitud se marcará como observada y dejará de aparecer en la lista de pendientes. El técnico podrá ver el motivo desde su sesión.
-
-> **[INSERTAR CAPTURA: modal de observación con campo de texto y botón guardar]**
-
-**Aprobar una solicitud:**
-
-1. Revise el detalle de la solicitud (opcional pero recomendado).
-2. Haga clic en el botón **✅ Aprobar**.
-3. Aparecerá una ventana de confirmación con el mensaje "¿Aprobar solicitud? Se marcará esta solicitud como aprobada."
-4. Haga clic en **"Aprobar"** para confirmar.
-5. La solicitud desaparecerá de la lista y quedará registrada en Asana con la fecha y hora de aprobación.
-
-> **[INSERTAR CAPTURA: ventana de confirmación de aprobación]**
-
-> **Importante:** Solo los roles **Administrador** y **Director** pueden aprobar u observar solicitudes.
-
----
-
-### 5.2 Contrataciones activas
-
-La segunda sección del Inicio es **Contrataciones Activas** 📋. Muestra todas las contrataciones de personal (tareas con prefijo `CPER`) que están activas en cualquier proyecto.
-
-> **[INSERTAR CAPTURA: sección de Contrataciones Activas con tarjetas de ejemplo]**
-
-Cada contratación se muestra como una **tarjeta** con la siguiente información:
-
-- **Nombre** de la contratación (sin el prefijo CPER)
-- **Proyecto** al que pertenece (📁)
-- **Período/Sección** (📅)
-- **Actividad padre** (📌)
-- **Proceso paso a paso** (barra de progreso con 5 etapas)
-- **Historial de estados** (registro de todos los cambios realizados)
-
-**Etapas del proceso de contratación:**
-
-El stepper visual muestra el avance a través de las 5 etapas:
-
-```
-1. Requerimiento de contratación
-       ↓
-2. Elaboración de TDRs
-       ↓
-3. Lanzamiento de convocatoria
-       ↓
-4. Selección del consultor
-       ↓
-5. Informe final del consultor
-```
-
-Los puntos verdes y la línea verde indican las etapas completadas. El punto del color actual indica la etapa en proceso.
-
-> **[INSERTAR CAPTURA: stepper de 5 etapas de una contratación mostrando progreso]**
-
-**Actualizar el estado de una contratación:**
-
-1. Haga clic en el botón **✏️ Actualizar estado** en la tarjeta de la contratación.
-2. Se abrirá el formulario de actualización con los siguientes campos:
-   - **Estado actual:** seleccione la etapa del proceso
-   - **Observaciones:** describa el avance o novedades (opcional)
-   - **Archivos adjuntos:** puede agregar enlaces de documentos de respaldo
-   - **Usuario:** se registra automáticamente con su nombre y correo
-3. Haga clic en **"Guardar"** para confirmar el cambio.
-4. El stepper y el historial se actualizarán inmediatamente.
-
-> **[INSERTAR CAPTURA: modal de actualización de estado de contratación]**
-
-**Ver y gestionar el historial de estados:**
-
-Cada tarjeta tiene una sección **"Historial"** que puede expandir:
-
-1. Haga clic en **▶ Historial (N registros)** para expandir el historial.
-2. Cada entrada muestra:
-   - Estado registrado
-   - Nombre y correo del usuario que registró el cambio
-   - Fecha y hora del registro
-   - Observaciones escritas
-   - Archivos o enlaces de respaldo (como hipervínculos clicables)
-
-> **[INSERTAR CAPTURA: historial expandido de una contratación con varias entradas]**
-
-**Eliminar una entrada del historial:**
-
-Si necesita eliminar un registro incorrecto del historial:
-
-1. En la entrada que desea eliminar, haga clic en el ícono 🗑️.
-2. Aparecerá una confirmación: "¿Eliminar esta entrada del historial?"
-3. Haga clic en **"Sí"** para confirmar.
-4. La entrada se eliminará y el estado actual de la contratación se actualizará al último registro válido.
-
-> **[INSERTAR CAPTURA: botón de eliminar entrada del historial con confirmación]**
-
----
-
-### 5.3 Actividades con retraso
-
-La tercera sección del Inicio es la tabla de **Actividades con Retraso** ⚠️. Muestra todas las actividades de todos los proyectos que tienen el estado **"En Proceso"** pero cuya fecha de vencimiento ya ha pasado.
-
-> **[INSERTAR CAPTURA: tabla de actividades atrasadas en el Inicio]**
-
-**Columnas de la tabla:**
-
-| Columna | Descripción |
-|---|---|
-| **Actividad / Proyecto / Responsable** | Nombre de la actividad, proyecto al que pertenece, período y responsable asignado |
-| **Sub-actividades** | Lista de sub-actividades con su estado individual (✅/⏳) y barra de progreso |
-| **Fecha vencimiento** | Fecha límite que ya fue superada (en rojo) |
-| **Días de retraso** | Cantidad de días transcurridos desde la fecha de vencimiento (en rojo) |
-
-La tabla está ordenada de **mayor a menor días de retraso**, poniendo al tope las actividades más críticas.
-
-**Para cada actividad atrasada se puede ver:**
-
-- El **porcentaje de avance** en sub-actividades (barras de progreso verdes).
-- Cuántas sub-actividades están ✅ ejecutadas vs. ⏳ pendientes.
-
-Esta información permite al Administrador **priorizar las gestiones** y comunicarse con los responsables correspondientes.
-
-> **[INSERTAR CAPTURA: fila de actividad atrasada con sub-actividades y barra de progreso]**
-
----
-
-### 5.4 Indicadores de avance global
-
-Al fondo de la pantalla de Inicio se encuentra la sección de **Indicadores de Avance Global** 📊. Esta sección muestra el estado de avance de **todos los proyectos activos** en el workspace CDIMA.
-
-> **[INSERTAR CAPTURA: cuadrícula de indicadores globales por proyecto]**
-
-Cada proyecto se muestra como una **tarjeta** con:
-
-| Indicador | Descripción |
-|---|---|
-| **Nombre del proyecto** | Nombre completo del proyecto con su color identificador |
-| **Gráfico de dona (%)** | Porcentaje de actividades ejecutadas del proyecto |
-| **Total** | Número total de actividades (tareas principales) del proyecto |
-| **Ejecutadas** | Cantidad de actividades con estado "Ejecutado" |
-| **Atrasadas** | Cantidad de actividades cuya fecha ya pasó y no están ejecutadas |
-| **Próximas a vencer** | Actividades que vencen en los próximos 7 días |
-| **Solicitudes pendientes** | Número de solicitudes pendientes de aprobación en ese proyecto |
-
-El gráfico de dona muestra visualmente el **porcentaje de completud** del proyecto. Cuanto más cerca del 100% (círculo completo), más avanzado está el proyecto.
-
-Los proyectos están ordenados de **mayor a menor porcentaje de avance**.
-
-> **[INSERTAR CAPTURA: tarjeta de un proyecto con el gráfico de dona y todos los indicadores]**
-
-**Uso de los indicadores para toma de decisiones:**
-
-- Proyectos con **alta cantidad de atrasadas** → requieren atención inmediata.
-- Proyectos con **solicitudes pendientes > 0** → hay solicitudes esperando aprobación.
-- Proyectos con **porcentaje de avance bajo** y fecha avanzada → riesgo de no cumplimiento.
-
----
-
----
-
-## 6. MENÚ: ESCUELA DE FORMACIÓN
-
-El menú **Escuela de Formación** (🏫) permite gestionar las escuelas de formación del programa CDIMA. Desde aquí se pueden crear escuelas, inscribir estudiantes, registrar asistencia, centralizar notas y gestionar documentos.
-
-> **Nota:** Este menú solo es visible para los roles **Director** y **Técnico EP**. El rol Administrador **no tiene acceso** a este módulo por defecto según la configuración de permisos actual. Si su organización requiere habilitarlo, debe solicitarlo al equipo técnico.
-
-> Si su rol tiene acceso, haga clic en **🏫 Escuela de Formación** en el menú lateral.
-
----
-
-### 6.1 Crear una nueva Escuela
-
-1. En la esquina superior derecha de la pantalla, haga clic en el botón **⚙️** (configuración).
-2. Del menú desplegable seleccione **➕ Crear nueva Escuela**.
-3. Se abrirá el formulario de creación con los siguientes campos:
-
-**Información de la Escuela:**
-
-| Campo | Descripción | Obligatorio |
-|---|---|---|
-| **Nombre de la Escuela** | Nombre oficial de la escuela (ej.: "Escuela de Lideresas 2026") | Sí |
-| **Tipo de Escuela** | Clasificación o tipo del programa | No |
-
-**Registro de Estudiantes iniciales (opcional):**
-
-En la misma pantalla puede registrar uno o más estudiantes desde el inicio. Para cada estudiante complete:
-
-| Campo | Descripción |
-|---|---|
-| **Nombre(s)** | Primer nombre(s) del estudiante |
-| **Apellido Paterno** | Apellido paterno |
-| **Apellido Materno** | Apellido materno (opcional) |
-| **Género** | Femenino / Masculino / Otro |
-| **Fecha de nacimiento** | En formato DD/MM/AAAA |
-| **Documento de identidad** | Número de cédula o carnet |
-| **Cargo / Especialidad** | Cargo o especialidad del participante |
-| **Teléfono** | Número de contacto |
-| **Lugar de nacimiento** | Ciudad o localidad |
-| **Domicilio** | Dirección actual |
-| **Identidad cultural** | Nación/pueblo indígena si corresponde |
-
-4. Haga clic en **"+ Agregar otro estudiante"** si necesita registrar más de uno.
-5. Haga clic en **"Guardar"** para crear la escuela. La escuela aparecerá en el selector principal.
-
-> **[INSERTAR CAPTURA: formulario de creación de escuela con campos visibles]**
-
-> **Nota:** El nombre de cada persona se almacena en Asana con el formato: `Nombre, Apellido Paterno, Apellido Materno`. El sistema lo convierte automáticamente para mostrarlo en el orden correcto (Apellido Paterno Apellido Materno, Nombre).
-
----
-
-### 6.2 Editar una Escuela existente
-
-1. Seleccione la escuela en el selector desplegable superior.
-2. Haga clic en el botón **⚙️**.
-3. Seleccione **✏️ Editar Escuela**.
-4. Se abrirá el formulario con los datos actuales precargados.
-5. Puede modificar el nombre, tipo, o los datos de cualquier estudiante.
-6. Si desea **eliminar un estudiante**, haga clic en el botón **✕** junto a su nombre. Aparecerá una confirmación antes de eliminarlo permanentemente de Asana.
-7. Haga clic en **"Guardar"** para aplicar los cambios.
-
-> **[INSERTAR CAPTURA: formulario de edición de escuela con datos precargados]**
-
----
-
-### 6.3 Seleccionar una Escuela
-
-En la parte superior de la página encontrará el selector desplegable:
-
-```
-🏫 Escuela en: [Seleccionar escuela...]
-```
-
-1. Haga clic en el selector.
-2. Escriba parte del nombre para filtrar (el campo tiene búsqueda).
-3. Seleccione la escuela deseada.
-4. El sistema cargará automáticamente todos los datos de esa escuela y mostrará las pestañas de gestión.
-
-> **[INSERTAR CAPTURA: selector de escuela desplegado con opciones visibles]**
-
----
-
-### 6.4 Pestañas de gestión de la Escuela
-
-Al seleccionar una escuela, aparece una tarjeta con 4 pestañas:
-
-| Pestaña | Ícono | Descripción |
-|---|---|---|
-| **Estudiantes** | 👨‍🎓 Estudiantes (N) | Lista completa de estudiantes inscritos |
-| **Centralizador** | 📊 Centralizador | Tabla de notas por módulo de todos los estudiantes |
-| **Asistencia** | ✓ Asistencia | Registro y visualización de asistencias por fecha |
-| **Documentos** | 📄 Documentos | Archivos y enlaces asociados a la escuela |
-
-> **[INSERTAR CAPTURA: pestañas de gestión de la escuela seleccionada]**
-
----
-
-### 6.5 Pestaña: Estudiantes
-
-La pestaña **👨‍🎓 Estudiantes** muestra la lista completa de estudiantes inscritos en la escuela.
-
-> **[INSERTAR CAPTURA: pestaña de estudiantes con lista de personas]**
-
-**Información visible por estudiante:**
-- Nombre completo (Apellido Paterno, Apellido Materno, Nombre)
-- Género
-- Fecha de nacimiento y edad calculada automáticamente
-- Documento de identidad
-- Especialidad / Cargo
-- Teléfono y domicilio
-
-**Acciones disponibles:**
-
-| Botón | Descripción |
-|---|---|
-| **👁 Ver información** | Muestra la ficha completa de datos del estudiante |
-| **📄 Reporte individual** | Genera un PDF con la información del estudiante y sus asistencias |
-
-**Inscribir un nuevo estudiante individualmente:**
-
-1. Haga clic en el botón **"➕ Agregar Estudiante"** en la parte superior de la pestaña.
-2. Se abrirá el formulario de registro con los siguientes campos:
-   - Nombre(s), Apellido Paterno, Apellido Materno
-   - Género, Fecha de nacimiento, Documento de identidad
-   - Especialidad, Teléfono, Lugar de nacimiento, Domicilio, Identidad cultural
-3. Haga clic en **"Guardar"** para registrar al estudiante.
-4. La lista se actualizará mostrando el nuevo estudiante.
-
-> **[INSERTAR CAPTURA: modal de agregar estudiante con todos los campos]**
-
----
-
-### 6.6 Pestaña: Centralizador de Notas
-
-La pestaña **📊 Centralizador** muestra la tabla consolidada de todas las notas de los estudiantes de la escuela.
-
-> **[INSERTAR CAPTURA: tabla del centralizador de notas con módulos y promedios]**
-
-**Estructura de la tabla:**
-
-| Columna | Descripción |
-|---|---|
-| **N°** | Número correlativo |
-| **Apellidos y Nombre** | Nombre completo del estudiante |
-| **Módulo 1...N** | Nota de cada módulo (admite decimales con 2 cifras) |
-| **Final** | Nota final calculada (promedio de todos los módulos) |
-| **Promedio General** | Fila al pie mostrando el promedio de cada módulo y el promedio global |
-
-**Registrar o actualizar notas:**
-
-1. Haga clic en el botón **"✏️ Registrar Notas"** en la parte superior de la pestaña.
-2. Se abrirá el modal de registro de notas con:
-   - **Selector de Módulo:** elija el módulo cuyas notas desea registrar (Módulo 1, Módulo 2, etc.)
-   - **Lista de estudiantes** con sus notas actuales del módulo seleccionado
-3. Modifique las notas que necesite (campo numérico, admite decimales).
-4. Al cambiar de módulo, los valores se cargan automáticamente.
-5. Al terminar, haga clic en **"Guardar Notas"**.
-6. Aparecerá una confirmación indicando cuántas notas se modificarán.
-7. Si alguna nota falla al guardarse, el sistema marcará en **rojo** los estudiantes con error y habilitará el botón **"Reintentar Guardado"** para procesar solo los fallidos.
-
-> **[INSERTAR CAPTURA: modal de registro de notas con selector de módulo y tabla]**
-
----
-
-### 6.7 Pestaña: Asistencia
-
-La pestaña **✓ Asistencia** permite registrar la asistencia de los estudiantes por fecha y visualizar el historial completo.
-
-> **[INSERTAR CAPTURA: pestaña de asistencia con tabla de registros]**
-
-**Registrar asistencia de un día:**
-
-1. Haga clic en el botón **"✓ Registrar Asistencia"**.
-2. Se abrirá el modal de asistencia con:
-   - **Selector de fecha** (por defecto: hoy) — use el campo de fecha para seleccionar cualquier día.
-   - **Lista de todos los estudiantes** con:
-     - Checkbox **"Asistió"** (marcado = presente, sin marcar = ausente)
-     - Campo de **"Observaciones"** (opcional, ej.: "Permiso médico")
-3. Marque o desmarque cada estudiante según corresponda.
-4. Haga clic en **"Guardar Asistencias"**.
-5. Se mostrará una confirmación con la fecha y la cantidad de estudiantes.
-6. Si un registro ya existe para esa fecha, se **reemplazará** automáticamente.
-7. Si algún guardado falla, los estudiantes afectados se marcan en **rojo** y puede usar **"Reintentar Guardado"**.
-
-> **[INSERTAR CAPTURA: modal de registro de asistencia con checkbox y fecha]**
-
-**Visualización del historial de asistencias:**
-
-La pestaña muestra una **tabla cruzada** con:
-- **Filas:** cada estudiante
-- **Columnas:** cada fecha registrada, ordenadas cronológicamente
-- **Celdas:** ✅ (asistió) o ❌ (faltó)
-
-> **[INSERTAR CAPTURA: tabla cruzada de asistencias con fechas como columnas]**
-
-**Eliminar registros de asistencia:**
-
-- Para eliminar el registro de **una fecha completa** (todos los estudiantes): haga clic en el ícono 🗑️ en el encabezado de la columna de esa fecha.
-- Para eliminar el registro de **un estudiante en una fecha específica**: haga clic en el ícono 🗑️ en la celda correspondiente.
-- Ambas acciones piden confirmación antes de ejecutarse.
-
----
-
-### 6.8 Pestaña: Documentos
-
-La pestaña **📄 Documentos** permite agregar y gestionar enlaces de documentos asociados a la escuela (actas, materiales, fotografías, etc.).
-
-> **[INSERTAR CAPTURA: pestaña de documentos con tarjetas de archivos]**
-
-**Agregar un nuevo documento:**
-
-1. Haga clic en el botón **"+ Agregar archivo"** o en el ícono **➕** dentro de la categoría correspondiente.
-2. Se abrirá un formulario con:
-   - **Nombre del archivo:** nombre descriptivo (ej.: "Acta de apertura - Enero 2026")
-   - **Enlace (URL):** URL válida de Google Drive, OneDrive, o cualquier plataforma
-3. Haga clic en **"Guardar"**.
-4. El documento aparecerá como una tarjeta con ícono según el tipo (📕 PDF, 📘 Word, 📗 Excel, 📁 Carpeta, etc.).
-
-> **[INSERTAR CAPTURA: modal de agregar documento con campos nombre y URL]**
-
-**Abrir o descargar un documento:**
-
-Haga clic sobre el nombre del archivo o en el ícono de la tarjeta. El enlace se abrirá en una nueva pestaña del navegador.
-
-**Eliminar un documento:**
-
-Haga clic en el ícono **✕** o **🗑️** de la tarjeta del documento. Se pedirá confirmación antes de eliminar.
-
----
-
-### 6.9 Generación de Reportes de Escuela
-
-En la pantalla de la escuela seleccionada, en la esquina superior derecha, encontrará el botón **"⋯ Reportes ▾"**. Haga clic para ver las opciones de exportación:
-
-| Opción | Formato | Descripción |
-|---|---|---|
-| **📄 Listado General PDF** | PDF | Lista completa de estudiantes con sus datos personales |
-| **📝 Listado General Word** | Word (.docx) | Igual que el anterior en formato editable |
-| **🗂 Centralizador de Notas PDF** | PDF | Tabla completa con notas de todos los módulos y promedio |
-| **📋 Acta de Calificaciones Word** | Word (.docx) | Documento formal de actas con el formato institucional |
-
-**Pasos para generar un reporte:**
-
-1. Asegúrese de tener una escuela seleccionada y con datos cargados.
-2. Haga clic en **"⋯ Reportes ▾"**.
-3. Seleccione el tipo de reporte deseado.
-4. El archivo se descargará automáticamente.
-
-> **[INSERTAR CAPTURA: menú desplegable de reportes de escuela]**
-
-> **Nota:** Los botones de reportes solo aparecen cuando hay estudiantes registrados en la escuela.
-
----
-
-## 7. MENÚ: DIPLOMADOS
-
-El menú **Diplomados** (🎓) permite gestionar los diplomados del programa CDIMA. Funciona de manera muy similar a Escuelas, con la diferencia de que los diplomados tienen **Docentes** además de Estudiantes, y manejan **5 módulos** de notas.
-
-> **Nota:** Este menú solo es visible para los roles **Director** y **Técnico EP**. El rol Administrador **no tiene acceso** por defecto. Si se requiere habilitarlo, debe solicitarse al equipo técnico.
-
-> Si su rol tiene acceso, haga clic en **🎓 Diplomados** en el menú lateral.
-
----
-
-### 7.1 Crear un nuevo Diplomado
-
-1. Haga clic en el botón **⚙️** en la esquina superior derecha.
-2. Seleccione **➕ Crear nuevo Diplomado**.
-3. Se abrirá el formulario de creación con:
-
-| Campo | Descripción | Obligatorio |
-|---|---|---|
-| **Nombre del Diplomado** | Nombre oficial (ej.: "Diplomado en Liderazgo Político 2026") | Sí |
-| **Descripción** | Descripción breve del programa | No |
-
-4. En la creación de un diplomado no se registran estudiantes ni docentes directamente — estos se agregan desde las pestañas una vez creado el diplomado.
-5. Haga clic en **"Crear"** para guardar.
-
-> **[INSERTAR CAPTURA: formulario de creación de diplomado]**
-
----
-
-### 7.2 Seleccionar un Diplomado
-
-En la parte superior de la página:
-
-```
-🎓 Diplomado en: [Seleccionar diplomado...]
-```
-
-1. Haga clic en el selector.
-2. Escriba parte del nombre para filtrar.
-3. Seleccione el diplomado.
-4. El sistema cargará los datos y mostrará las 5 pestañas de gestión.
-
-> **[INSERTAR CAPTURA: selector de diplomado desplegado con opciones visibles]**
-
----
-
-### 7.3 Pestañas de gestión del Diplomado
-
-Al seleccionar un diplomado, aparece una tarjeta con **5 pestañas**:
-
-| Pestaña | Ícono | Descripción |
-|---|---|---|
-| **Docentes** | 👨‍🏫 Docentes (N) | Lista de docentes del diplomado |
-| **Estudiantes** | 👨‍🎓 Estudiantes (N) | Lista de estudiantes inscritos |
-| **Centralizador** | 📊 Centralizador | Tabla de notas (5 módulos + Final + Promedio) |
-| **Asistencia** | ✓ Asistencia | Registro de asistencias por fecha |
-| **Documentos** | 📄 Documentos | Archivos y enlaces del diplomado |
-
-> **[INSERTAR CAPTURA: 5 pestañas de gestión del diplomado seleccionado]**
-
----
-
-### 7.4 Pestaña: Docentes
-
-La pestaña **👨‍🏫 Docentes** muestra y gestiona los docentes asignados al diplomado.
-
-> **[INSERTAR CAPTURA: pestaña de docentes con lista de personas]**
-
-**Agregar un Docente:**
-
-1. Haga clic en el botón **"➕ Agregar Docente"**.
-2. Se abrirá el formulario con los mismos campos que para estudiantes:
-   - Nombre(s), Apellidos, Género, Fecha de nacimiento, Documento de identidad
-   - **Cargo** (en lugar de Especialidad para docentes), Teléfono, Domicilio, etc.
-3. Haga clic en **"Guardar"** para registrar al docente.
-
-> **[INSERTAR CAPTURA: modal de agregar docente con campos visibles]**
-
-**Acciones por docente:**
-- **👁 Ver información:** muestra la ficha completa del docente
-- **📄 Reporte individual:** genera un PDF con la información del docente
-
----
-
-### 7.5 Pestaña: Estudiantes (Diplomado)
-
-Idéntica a la pestaña de Estudiantes de Escuelas (ver sección 6.5), con las mismas funciones de agregar, ver información y generar reportes individuales.
-
-**Inscribir un Estudiante:**
-
-1. Haga clic en **"➕ Agregar Estudiante"**.
-2. Complete todos los campos del formulario.
-3. Haga clic en **"Guardar"**.
-
-> **[INSERTAR CAPTURA: pestaña de estudiantes del diplomado]**
-
----
-
-### 7.6 Pestaña: Centralizador de Notas (Diplomado)
-
-La pestaña **📊 Centralizador** funciona igual que en Escuelas (ver sección 6.6), pero con una estructura específica de **5 módulos**:
-
-| Columna | Descripción |
-|---|---|
-| **Módulo 1 — Módulo 5** | Notas de cada uno de los 5 módulos del diplomado |
-| **Final** | Promedio calculado de los 5 módulos (admite decimales) |
-| **Promedio General** | Fila al pie con el promedio de cada módulo y el promedio global |
-
-> **[INSERTAR CAPTURA: tabla del centralizador con 5 módulos, columna Final y fila de Promedio General]**
-
-**Registrar notas:**
-
-1. Haga clic en **"✏️ Registrar Notas"**.
-2. En el modal, use el **selector de módulo** para elegir entre Módulo 1 a Módulo 5.
-3. Ingrese las notas de cada estudiante (admite valores con decimales).
-4. Solo se guardarán en Asana las notas que fueron **modificadas** respecto a los valores actuales.
-5. Haga clic en **"Guardar Notas"** y confirme la acción.
-6. El sistema procesa los cambios en lotes y notifica el resultado.
-
-> **[INSERTAR CAPTURA: modal de registro de notas del diplomado con selector de módulo]**
-
----
-
-### 7.7 Pestaña: Asistencia (Diplomado)
-
-Idéntica a la pestaña de Asistencia de Escuelas (ver sección 6.7). Las funcionalidades son exactamente las mismas:
-
-- Registrar asistencia para una fecha seleccionada
-- Ver tabla cruzada histórica de asistencias
-- Eliminar registros por fecha o por estudiante individual
-
-> **[INSERTAR CAPTURA: pestaña de asistencia del diplomado con tabla histórica]**
-
----
-
-### 7.8 Pestaña: Documentos (Diplomado)
-
-Idéntica a la pestaña de Documentos de Escuelas (ver sección 6.8). Permite agregar, visualizar y eliminar documentos y enlaces del diplomado.
-
-> **[INSERTAR CAPTURA: pestaña de documentos del diplomado con tarjetas de archivos]**
-
----
-
-### 7.9 Generación de Reportes de Diplomado
-
-En la esquina superior derecha del diplomado seleccionado, haga clic en **"⋯ Reportes ▾"**:
-
-| Opción | Formato | Descripción |
-|---|---|---|
-| **📄 Listado General PDF** | PDF | Lista completa de docentes y estudiantes con datos personales |
-| **📝 Listado General Word** | Word (.docx) | Igual en formato editable |
-| **🗂 Centralizador PDF** | PDF | Tabla con los 5 módulos, columna Final y Promedio General por estudiante |
-| **📊 Centralizador Word** | Word (.docx) | Igual en formato editable |
-
-> **[INSERTAR CAPTURA: menú desplegable de reportes del diplomado]**
-
-> **Nota:** Para exportar el Centralizador debe haber al menos un estudiante registrado en el diplomado.
-
----
-
-## NOTAS FINALES
-
-- Todos los cambios realizados desde CDIMA Amuyt'a (cambios de estado, aprobaciones, observaciones, actualizaciones de contrataciones) se guardan directamente en **Asana** y son visibles para todos los usuarios del workspace.
-- Se recomienda **no cerrar la sesión** de Asana mientras se trabaja en CDIMA Amuyt'a, ya que el sistema requiere el token de conexión activo.
-- Para cualquier problema técnico, consulte al equipo de soporte de CDIMA.
-
----
-
-*Manual generado para uso interno de CDIMA — Rol Administrador*  
-*Sistema CDIMA Amuyt'a — Sistema de Gestión de Proyectos y Control Académico*

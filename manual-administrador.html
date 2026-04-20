@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual de Usuario — Administrador | CDIMA Amuyt'a</title>
+  <style>
+    :root {
+      --sidebar-width: 280px;
+      --header-height: 60px;
+      --blue: #1e40af;
+      --blue-light: #dbeafe;
+      --blue-mid: #3b82f6;
+      --green: #15803d;
+      --green-light: #dcfce7;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --amber: #b45309;
+      --amber-light: #fef3c7;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-400: #94a3b8;
+      --gray-600: #475569;
+      --gray-800: #1e293b;
+      --text: #1e293b;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      color: var(--text);
+      background: var(--gray-50);
+      line-height: 1.65;
+    }
+
+    /* ── TOP HEADER ── */
+    .top-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-height);
+      background: var(--blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      gap: 0.75rem;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .top-header .logo-circle {
+      width: 36px; height: 36px;
+      background: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .top-header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+    .top-header .badge {
+      margin-left: auto;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: flex;
+      margin-top: var(--header-height);
+      min-height: calc(100vh - var(--header-height));
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      flex-shrink: 0;
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      background: white;
+      border-right: 1px solid var(--gray-200);
+      padding: 1.25rem 0;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+
+    .sidebar-section { margin-bottom: 0.25rem; }
+    .sidebar-heading {
+      font-size: 0.69rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray-400);
+      padding: 0.5rem 1.25rem 0.25rem;
+    }
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.42rem 1.25rem;
+      font-size: 0.84rem;
+      color: var(--gray-600);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.12s;
+      line-height: 1.3;
+    }
+    .sidebar a:hover { background: var(--gray-50); color: var(--blue); }
+    .sidebar a.active { background: var(--blue-light); color: var(--blue); border-left-color: var(--blue-mid); font-weight: 600; }
+    .sidebar a .icon { font-size: 0.9rem; flex-shrink: 0; }
+    .sidebar a.sub { padding-left: 2.5rem; font-size: 0.81rem; }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      padding: 2.5rem 2.75rem;
+      max-width: 900px;
+    }
+
+    /* ── SECTIONS ── */
+    section { margin-bottom: 3.5rem; scroll-margin-top: calc(var(--header-height) + 1.5rem); }
+    section h2 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--gray-800);
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid var(--gray-200);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    section h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin: 2rem 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    section h3::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 18px;
+      background: var(--blue-mid);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    p { margin-bottom: 0.75rem; }
+    strong { font-weight: 700; }
+    em { font-style: italic; }
+    code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.88em;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: var(--blue);
+    }
+    .url-block {
+      background: var(--gray-800);
+      color: #e2e8f0;
+      border-radius: var(--radius);
+      padding: 0.65rem 1rem;
+      font-family: 'SF Mono', monospace;
+      font-size: 0.9rem;
+      margin: 0.5rem 0 1rem;
+      border-left: 4px solid var(--blue-mid);
+    }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; margin: 0.75rem 0 1.25rem; border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    table { width: 100%; border-collapse: collapse; min-width: 400px; }
+    thead tr { background: var(--gray-800); color: white; }
+    thead th { padding: 0.6rem 0.85rem; font-size: 0.8rem; font-weight: 700; text-align: left; letter-spacing: 0.02em; }
+    tbody tr { background: white; }
+    tbody tr:nth-child(even) { background: var(--gray-50); }
+    tbody tr:hover { background: var(--blue-light); }
+    td { padding: 0.55rem 0.85rem; font-size: 0.88rem; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+
+    /* ── STEPS ── */
+    .steps { list-style: none; counter-reset: step-counter; margin: 0.5rem 0 1rem; }
+    .steps li {
+      counter-increment: step-counter;
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+      align-items: flex-start;
+    }
+    .steps li::before {
+      content: counter(step-counter);
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 2px;
+    }
+
+    /* ── ACTION CARD ── */
+    .action-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin: 1rem 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .action-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--blue);
+      color: white;
+      border-radius: 20px;
+      padding: 2px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── RESULT BOX ── */
+    .result-box {
+      background: var(--green-light);
+      border: 1px solid #86efac;
+      border-left: 4px solid var(--green);
+      border-radius: var(--radius);
+      padding: 0.65rem 1rem;
+      font-size: 0.88rem;
+      margin: 0.75rem 0;
+      color: #14532d;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+    .result-box::before { content: '✓'; font-weight: 800; flex-shrink: 0; }
+
+    /* ── CAPTURE PLACEHOLDER ── */
+    .capture {
+      background: var(--gray-100);
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin: 0.75rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--gray-400);
+      font-size: 0.84rem;
+      font-style: italic;
+    }
+    .capture::before { content: '📷'; font-size: 1.3rem; flex-shrink: 0; font-style: normal; }
+    .capture.has-img { flex-direction: column; border-style: solid; border-color: var(--gray-200); padding: 0.75rem; align-items: stretch; }
+    .capture.has-img::before { display: none; }
+    .capture.has-img a { display: block; }
+    .capture.has-img img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); cursor: zoom-in; display: block; transition: transform 0.15s; }
+    .capture.has-img img:hover { transform: scale(1.01); }
+    .capture.has-img .cap-caption { color: var(--gray-600); font-size: 0.8rem; font-style: italic; text-align: center; padding-top: 0.4rem; }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.88rem;
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+    }
+    .callout.tip { background: #eff6ff; border-left: 4px solid var(--blue-mid); color: #1e40af; }
+    .callout.warn { background: var(--amber-light); border-left: 4px solid #f59e0b; color: #92400e; }
+    .callout.danger { background: var(--red-light); border-left: 4px solid var(--red); color: #991b1b; }
+    .callout .ci { flex-shrink: 0; font-size: 1rem; }
+
+    /* ── PERMISSION BADGES ── */
+    .yes { color: var(--green); font-weight: 700; }
+    .no  { color: var(--gray-400); font-weight: 700; }
+    .partial { color: var(--amber); font-weight: 700; font-size: 0.82rem; }
+
+    /* ── PROCESS STEPPER ── */
+    .stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 1rem 0;
+      padding-left: 1rem;
+      border-left: 3px solid var(--gray-200);
+    }
+    .stepper-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      position: relative;
+    }
+    .stepper-num {
+      width: 28px; height: 28px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-left: -16px;
+      border: 3px solid white;
+    }
+    .stepper-text { font-size: 0.9rem; padding-top: 4px; }
+
+    /* ── ROLE GRID ── */
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    .role-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      border-top: 3px solid var(--blue-mid);
+    }
+    .role-card h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--blue); }
+    .role-card p { font-size: 0.8rem; color: var(--gray-600); margin: 0; line-height: 1.4; }
+
+    /* ── MENU NAV SHOWCASE ── */
+    .menu-showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.6rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    .menu-item {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+    .menu-item .icon { font-size: 1.15rem; }
+
+    /* ── INTRO HERO ── */
+    .hero {
+      background: linear-gradient(135deg, var(--blue) 0%, #1d4ed8 100%);
+      border-radius: 12px;
+      padding: 2rem 2.25rem;
+      color: white;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 4px 20px rgba(30,64,175,0.25);
+    }
+    .hero h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .hero p { font-size: 0.95rem; opacity: 0.88; margin-bottom: 1rem; }
+    .hero-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .hero-meta span {
+      background: rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    /* ── PREFIX BADGES ── */
+    .prefix { display: inline-block; background: var(--gray-800); color: #e2e8f0; font-family: monospace; font-size: 0.82rem; border-radius: 4px; padding: 1px 7px; font-weight: 700; }
+    .prefix.sfon { background: #1d4ed8; }
+    .prefix.smat { background: #c2410c; }
+    .prefix.dmat { background: #7c3aed; }
+    .prefix.cper { background: #065f46; }
+
+    /* ── HR ── */
+    hr { border: none; border-top: 1px solid var(--gray-200); margin: 2.5rem 0; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      main { margin-left: 0; padding: 1.5rem 1.25rem; }
+      .hero h1 { font-size: 1.25rem; }
+    }
+    @media print {
+      .sidebar, .top-header { display: none; }
+      main { margin-left: 0; padding: 0; }
+      .capture { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP HEADER -->
+<header class="top-header">
+  <div class="logo-circle">🏛️</div>
+  <h1>Manual de Usuario — Administrador · CDIMA Amuyt'a</h1>
+  <span class="badge">v2.0 · Abril 2026</span>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR NAV -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Inicio</div>
+      <a href="#sec-intro" class="active"><span class="icon">📄</span> Introducción</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">1 · Ingreso</div>
+      <a href="#sec-asana"><span class="icon">🔗</span> 1.1 Asana</a>
+      <a href="#sec-cdima"><span class="icon">🖥️</span> 1.2 CDIMA Amuyt'a</a>
+      <a href="#sec-drive"><span class="icon">📁</span> 1.3 Google Drive</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">2 · Roles y Permisos</div>
+      <a href="#sec-roles"><span class="icon">👥</span> 2.1 Roles del sistema</a>
+      <a href="#sec-permisos"><span class="icon">🔑</span> 2.2 Permisos Administrador</a>
+      <a href="#sec-menu-roles"><span class="icon">📋</span> 2.3 Menú por rol</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">3 · Menú: Inicio</div>
+      <a href="#sec-solicitudes" class="sub"><span class="icon">🔔</span> 3.1 Solicitudes pendientes</a>
+      <a href="#sec-aprobar" class="sub"><span class="icon">✅</span> 3.2 Aprobar solicitud</a>
+      <a href="#sec-observar" class="sub"><span class="icon">💬</span> 3.3 Observar solicitud</a>
+      <a href="#sec-contrataciones" class="sub"><span class="icon">📋</span> 3.4 Contrataciones activas</a>
+      <a href="#sec-retraso" class="sub"><span class="icon">⚠️</span> 3.5 Actividades con retraso</a>
+      <a href="#sec-indicadores" class="sub"><span class="icon">📊</span> 3.6 Indicadores globales</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">4 · Menú: Proyectos</div>
+      <a href="#sec-selector" class="sub"><span class="icon">🗂️</span> 4.1 Seleccionar actividad</a>
+      <a href="#sec-detalle" class="sub"><span class="icon">🔍</span> 4.2 Detalle de avance</a>
+      <a href="#sec-estado-sub" class="sub"><span class="icon">🔄</span> 4.3 Estado sub-actividad</a>
+      <a href="#sec-gestionar-sol" class="sub"><span class="icon">📝</span> 4.4 Gestionar solicitudes</a>
+      <a href="#sec-fuentes" class="sub"><span class="icon">🔗</span> 4.5 Fuentes de verificación</a>
+      <a href="#sec-contrat-proj" class="sub"><span class="icon">✏️</span> 4.6 Estado contratación</a>
+      <a href="#sec-exportar" class="sub"><span class="icon">📄</span> 4.7 Exportar reporte</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">5 · Menú: Comunicación</div>
+      <a href="#sec-nav-com" class="sub"><span class="icon">📂</span> 5.1 Navegar carpetas</a>
+      <a href="#sec-descarga" class="sub"><span class="icon">⬇️</span> 5.2 Descargar archivos</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">6 · Menú: Planificación</div>
+      <a href="#sec-asana-plan" class="sub"><span class="icon">📥</span> 6.1 Cargar en Asana</a>
+      <a href="#sec-calendario" class="sub"><span class="icon">📅</span> 6.2 Ver calendario</a>
+      <a href="#sec-ind-mes" class="sub"><span class="icon">📈</span> 6.3 Indicadores del mes</a>
+      <a href="#sec-tablas" class="sub"><span class="icon">📑</span> 6.4 Tablas y filtros</a>
+      <a href="#sec-estado-plan" class="sub"><span class="icon">🔄</span> 6.5 Cambiar estado</a>
+      <a href="#sec-fuentes-plan" class="sub"><span class="icon">🔗</span> 6.6 Fuentes</a>
+      <a href="#sec-reportes-plan" class="sub"><span class="icon">📤</span> 6.7 Exportar reportes</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">7 · Investigación</div>
+      <a href="#sec-inv-ver" class="sub"><span class="icon">👁️</span> 7.1 Ver tareas</a>
+      <a href="#sec-inv-agregar" class="sub"><span class="icon">➕</span> 7.2 Agregar documento</a>
+      <a href="#sec-inv-eliminar" class="sub"><span class="icon">🗑️</span> 7.3 Eliminar documento</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main>
+
+    <!-- HERO -->
+    <div class="hero">
+      <h1>Manual de Usuario — Rol Administrador</h1>
+      <p>Guía completa de uso del sistema CDIMA Amuyt'a para usuarios con rol Administrador. Incluye pasos detallados, capturas de referencia y resultados esperados por cada acción.</p>
+      <div class="hero-meta">
+        <span>📅 Abril 2026</span>
+        <span>🔖 Versión 2.0</span>
+        <span>👤 Rol: Administrador</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-intro">
+      <h2>Plataformas del sistema</h2>
+      <p>El rol <strong>Administrador</strong> trabaja con tres plataformas complementarias:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Plataforma</th><th>URL</th><th>Propósito</th></tr></thead>
+          <tbody>
+            <tr><td>Asana</td><td><code>https://app.asana.com</code></td><td>Ingreso y gestión de datos: fechas, responsables, estados, subtareas</td></tr>
+            <tr><td>CDIMA Amuyt'a</td><td><code>https://cdima-reportes.vercel.app</code></td><td>Visualización, seguimiento, aprobación de solicitudes y reportes</td></tr>
+            <tr><td>Google Drive</td><td><code>https://drive.google.com</code></td><td>Repositorio de archivos y documentos de respaldo</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-asana">
+      <h2>1.1 · Ingreso a Asana</h2>
+      <div class="url-block">https://app.asana.com</div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Iniciar sesión en Asana</div>
+        <ol class="steps">
+          <li>Abra su navegador web (Google Chrome o Microsoft Edge recomendados).</li>
+          <li>Ingrese a la URL: <code>https://app.asana.com</code></li>
+          <li>Ingrese su <strong>correo electrónico</strong> registrado en el workspace <strong>CDIMA</strong> y su contraseña.</li>
+          <li>Haga clic en <strong>"Iniciar sesión"</strong>.</li>
+          <li>Verifique que se encuentra en el workspace <strong>CDIMA</strong> (aparece en la barra lateral izquierda).</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/Lh6w9Q82" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/Lh6w9Q82/pantalla-de-login-de-Asana-con-campos-de-correo-y-contrasen-a.png" alt="Pantalla de login de Asana con campos de correo y contraseña" /></a><div class="cap-caption">Pantalla de login de Asana con campos de correo y contraseña.</div></div>
+        <div class="result-box">Ingresa al workspace CDIMA y puede ver la lista de proyectos en la barra lateral.</div>
+        <div class="capture has-img"><a href="https://ibb.co/mCqnCWTT" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/mCqnCWTT/workspace-CDIMA-en-Asana-con-la-lista-de-proyectos-visible.png" alt="Workspace CDIMA en Asana con la lista de proyectos visible" /></a><div class="cap-caption">Workspace CDIMA en Asana con la lista de proyectos visible.</div></div>
+      </div>
+
+      <h3>Estructura en Asana</h3>
+      <p>Las solicitudes de fondos, materiales y contrataciones son subtareas con prefijos especiales:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Prefijo</th><th>Tipo</th></tr></thead>
+          <tbody>
+            <tr><td><span class="prefix sfon">SFON</span></td><td>Solicitud de Fondos</td></tr>
+            <tr><td><span class="prefix smat">SMAT</span></td><td>Solicitud de Material</td></tr>
+            <tr><td><span class="prefix dmat">DMAT</span></td><td>Devolución de Material</td></tr>
+            <tr><td><span class="prefix cper">CPER</span></td><td>Contratación de Personal</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-cdima">
+      <h2>1.2 · Ingreso a CDIMA Amuyt'a</h2>
+      <div class="url-block">https://cdima-reportes.vercel.app</div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Iniciar sesión en CDIMA Amuyt'a</div>
+        <ol class="steps">
+          <li>Ingrese la URL del sistema en su navegador.</li>
+          <li>Ingrese su <strong>correo electrónico</strong> de Administrador y la contraseña asignada.</li>
+          <li>Haga clic en <strong>"Ingresar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/DDMYJ3JX" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/DDMYJ3JX/pantalla-de-login-de-CDIMA-Amuyt-a-con-campos-de-credenciales.png" alt="Pantalla de login de CDIMA Amuyt'a con campos de credenciales" /></a><div class="cap-caption">Pantalla de login de CDIMA Amuyt'a con campos de credenciales.</div></div>
+        <div class="result-box">Es redirigido automáticamente a la pantalla de Inicio con el menú lateral visible.</div>
+        <div class="capture has-img"><a href="https://ibb.co/gM50BnJK" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/gM50BnJK/pantalla-de-Inicio-despue-s-del-login-con-menu-lateral-completo.png" alt="Pantalla de Inicio después del login con menú lateral completo" /></a><div class="cap-caption">Pantalla de Inicio después del login con menú lateral completo.</div></div>
+      </div>
+
+      <h3>Menú disponible para el Administrador</h3>
+      <div class="menu-showcase">
+        <div class="menu-item"><span class="icon">🏠</span> Inicio</div>
+        <div class="menu-item"><span class="icon">📊</span> Proyectos</div>
+        <div class="menu-item"><span class="icon">📡</span> Comunicación</div>
+        <div class="menu-item"><span class="icon">📅</span> Planificación</div>
+        <div class="menu-item"><span class="icon">🔬</span> Investigación e Incidencia</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-drive">
+      <h2>1.3 · Ingreso a Google Drive</h2>
+      <div class="url-block">https://drive.google.com</div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Acceder a los documentos compartidos</div>
+        <ol class="steps">
+          <li>Ingrese a <code>https://drive.google.com</code>.</li>
+          <li>Inicie sesión con la cuenta de Google institucional asignada por CDIMA.</li>
+          <li>Verifique que tiene acceso a la carpeta <strong>"CDIMA"</strong> en <em>"Compartidos conmigo"</em> o en <em>"Mi unidad"</em>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/CKcndQYT" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/CKcndQYT/carpeta-CDIMA-visible-en-Google-Drive-con-su-contenido.png" alt="Carpeta CDIMA visible en Google Drive con su contenido" /></a><div class="cap-caption">Carpeta CDIMA visible en Google Drive con su contenido.</div></div>
+        <div class="result-box">Tiene acceso a los documentos compartidos que se vinculan desde CDIMA Amuyt'a.</div>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-roles">
+      <h2>2.1 · Roles del sistema</h2>
+      <p>CDIMA Amuyt'a gestiona el acceso mediante <strong>roles de usuario</strong>. Cada rol define qué menús puede ver y qué acciones puede realizar.</p>
+      <div class="role-grid">
+        <div class="role-card"><h4>👑 Director</h4><p>Acceso total a todos los módulos y funciones del sistema.</p></div>
+        <div class="role-card"><h4>🛡️ Administrador</h4><p>Aprueba solicitudes, supervisa proyectos y planificación, gestiona documentos.</p></div>
+        <div class="role-card"><h4>👷 Técnico EV</h4><p>Gestiona proyectos y escuelas del área de Erradicación de Violencia.</p></div>
+        <div class="role-card"><h4>👷 Técnico EP</h4><p>Gestiona proyectos, escuelas, diplomados y cursos de alto nivel (área EP).</p></div>
+        <div class="role-card"><h4>📡 Comunicación</h4><p>Acceso a reportes, biblioteca y planificación. Sin aprobación de solicitudes.</p></div>
+        <div class="role-card"><h4>📅 Planificador</h4><p>Solo puede ver la biblioteca de archivos y la planificación.</p></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-permisos">
+      <h2>2.2 · Permisos del rol Administrador</h2>
+
+      <h3>Módulo Inicio</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
+        <tbody>
+          <tr><td>Ver detalle de solicitudes</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Aprobar solicitudes</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Observar / devolver solicitudes</td><td class="yes">✅ Sí</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Módulo Proyectos</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
+        <tbody>
+          <tr><td>Crear solicitudes de fondos/materiales</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Aprobar y observar solicitudes</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Eliminar solicitudes</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Cambiar estado de sub-actividades</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Registrar beneficiarios</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Agregar fuentes de verificación</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Actualizar estado de contrataciones</td><td class="yes">✅ Sí</td></tr>
+          <tr><td>Exportar reportes</td><td class="yes">✅ Sí</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Módulos Escuelas / Diplomados / Alto Nivel</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
+        <tbody>
+          <tr><td>Crear, editar, gestionar</td><td class="no">❌ No (exclusivo de Director y Técnico EP)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Módulo Investigación e Incidencia</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
+        <tbody>
+          <tr><td>Gestionar documentos</td><td class="yes">✅ Sí</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout warn"><span class="ci">⚠️</span> Solo los roles <strong>Administrador</strong> y <strong>Director</strong> pueden aprobar u observar solicitudes. Los demás roles solo pueden ver el detalle.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-menu-roles">
+      <h2>2.3 · Menú disponible según rol</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Menú</th><th>Admin</th><th>Director</th><th>Téc. EV</th><th>Téc. EP</th><th>Comuni.</th><th>Planif.</th></tr></thead>
+        <tbody>
+          <tr><td>🏠 Inicio</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
+          <tr><td>📊 Proyectos</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
+          <tr><td>📡 Comunicación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+          <tr><td>📅 Planificación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+          <tr><td>🏫 Escuelas</td><td class="no">❌</td><td class="yes">✅</td><td class="partial">✅ (solo EV)</td><td class="partial">✅ (solo EP)</td><td class="no">❌</td><td class="no">❌</td></tr>
+          <tr><td>🎓 Diplomados</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
+          <tr><td>🏆 Alto Nivel</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
+          <tr><td>🔬 Investigación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-solicitudes">
+      <h2>3 · Menú: Inicio</h2>
+      <p>La pantalla de <strong>Inicio</strong> (🏠) es el panel de control principal. Muestra en tiempo real solicitudes pendientes, contrataciones activas, actividades con retraso e indicadores de avance global.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Acceder al panel de control</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>🏠 Inicio</strong> en el menú lateral.</li>
+          <li>Si ya está en Inicio, haga clic en <strong>🔄 Actualizar</strong> para recargar todos los datos desde Asana.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/S7r156SY" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/S7r156SY/pantalla-completa-de-Inicio-con-todas-las-secciones-visibles.png" alt="Pantalla completa de Inicio con todas las secciones visibles" /></a><div class="cap-caption">Pantalla completa de Inicio con todas las secciones visibles.</div></div>
+        <div class="result-box">El sistema carga todas las solicitudes, contrataciones e indicadores desde Asana y los muestra en las secciones correspondientes.</div>
+      </div>
+
+      <h3 id="sec-solicitudes">3.1 · Solicitudes pendientes de aprobación</h3>
+      <p>Esta sección muestra todas las solicitudes que los técnicos han generado y que requieren una acción del Administrador.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Tipo</th><th>Prefijo</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>🔵 Solicitud de Fondos</td><td><span class="prefix sfon">SFON</span></td><td>Solicitudes de dinero para actividades</td></tr>
+          <tr><td>🟠 Solicitud de Material</td><td><span class="prefix smat">SMAT</span></td><td>Pedidos de materiales o insumos</td></tr>
+          <tr><td>🟣 Devolución de Material</td><td><span class="prefix dmat">DMAT</span></td><td>Registro de devolución de materiales</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Ver el detalle de una solicitud</div>
+        <ol class="steps">
+          <li>Ubique la solicitud en la tabla de pendientes.</li>
+          <li>Haga clic en el botón <strong>👁️</strong> en la columna <strong>Acciones</strong>.</li>
+          <li>Revise la ventana emergente: ítems, cantidades, importes, lugar de entrega, fechas y datos del solicitante.</li>
+          <li>Cierre la ventana cuando termine la revisión.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/sdVhFKvQ" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/sdVhFKvQ/modal-de-detalle-de-una-solicitud-de-fondos-con-i-tems-y-montos.png" alt="Modal de detalle de una solicitud de fondos con ítems y montos" /></a><div class="cap-caption">Modal de detalle de una solicitud de fondos con ítems y montos.</div></div>
+        <div class="result-box">Se abre un modal con toda la información de la solicitud sin realizar ningún cambio.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-aprobar">
+      <h2>3.2 · Aprobar una solicitud</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Marcar una solicitud como aprobada</div>
+        <ol class="steps">
+          <li>Revise el detalle de la solicitud (recomendado antes de aprobar).</li>
+          <li>Haga clic en el botón <strong>✅ Aprobar</strong> en la fila de la solicitud.</li>
+          <li>Lea la ventana de confirmación: <em>"¿Aprobar solicitud? Se marcará esta solicitud como aprobada."</em></li>
+          <li>Haga clic en <strong>"Aprobar"</strong> para confirmar.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/pNpYmrf" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/pNpYmrf/ventana-de-confirmacio-n-de-aprobacio-n-con-el-boto-n-Aprobar.png" alt="Ventana de confirmación de aprobación con el botón Aprobar" /></a><div class="cap-caption">Ventana de confirmación de aprobación con el botón "Aprobar".</div></div>
+        <div class="result-box">La solicitud desaparece de la lista de pendientes y queda registrada en Asana con la fecha y hora de aprobación.</div>
+      </div>
+      <div class="callout danger"><span class="ci">🔐</span> Solo los roles <strong>Administrador</strong> y <strong>Director</strong> pueden aprobar solicitudes.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-observar">
+      <h2>3.3 · Observar una solicitud</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Devolver una solicitud con comentario de corrección</div>
+        <ol class="steps">
+          <li>Ubique la solicitud en la tabla de pendientes.</li>
+          <li>Haga clic en el botón <strong>💬 Observar</strong>.</li>
+          <li>Escriba el motivo de la observación (ej.: <em>"Falta adjuntar cotización"</em>).</li>
+          <li>Haga clic en <strong>"Guardar observación"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/tMrYGPrw" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/tMrYGPrw/modal-de-observacio-n-con-campo-de-texto-y-boto-n-guardar.png" alt="Modal de observación con campo de texto y botón guardar" /></a><div class="cap-caption">Modal de observación con campo de texto y botón guardar.</div></div>
+        <div class="result-box">La solicitud se marca como observada, desaparece de la lista de pendientes y el técnico puede ver el motivo desde su sesión.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-contrataciones">
+      <h2>3.4 · Contrataciones activas</h2>
+      <p>Muestra todas las contrataciones de personal (<span class="prefix cper">CPER</span>) activas en cualquier proyecto como tarjetas con barra de progreso y historial.</p>
+
+      <h3>Etapas del proceso de contratación</h3>
+      <div class="stepper">
+        <div class="stepper-item"><div class="stepper-num">1</div><div class="stepper-text">Requerimiento de contratación</div></div>
+        <div class="stepper-item"><div class="stepper-num">2</div><div class="stepper-text">Elaboración de TDRs</div></div>
+        <div class="stepper-item"><div class="stepper-num">3</div><div class="stepper-text">Lanzamiento de convocatoria</div></div>
+        <div class="stepper-item"><div class="stepper-num">4</div><div class="stepper-text">Selección del consultor</div></div>
+        <div class="stepper-item"><div class="stepper-num">5</div><div class="stepper-text">Informe final del consultor</div></div>
+      </div>
+
+      <div class="capture has-img"><a href="https://ibb.co/hFJXMB3Q" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/hFJXMB3Q/tarjeta-de-contratacio-n-con-el-stepper-de-5-etapas-y-barra-de-progreso.png" alt="Tarjeta de contratación con el stepper de 5 etapas y barra de progreso" /></a><div class="cap-caption">Tarjeta de contratación con el stepper de 5 etapas y barra de progreso.</div></div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Actualizar el estado de una contratación</div>
+        <ol class="steps">
+          <li>Ubique la tarjeta de la contratación que desea actualizar.</li>
+          <li>Haga clic en el botón <strong>✏️ Actualizar estado</strong>.</li>
+          <li>En el formulario emergente seleccione la <strong>etapa actual</strong>, agregue <strong>observaciones</strong> y un enlace de respaldo si corresponde.</li>
+          <li>Haga clic en <strong>"Guardar"</strong> para confirmar.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/prdNDthK" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/prdNDthK/modal-de-actualizacio-n-de-estado-con-los-campos-etapa-observaciones-y-archivo.png" alt="Modal de actualización de estado con los campos etapa, observaciones y archivo" /></a><div class="cap-caption">Modal de actualización de estado con los campos etapa, observaciones y archivo.</div></div>
+        <div class="result-box">El stepper visual se actualiza, el historial registra la nueva entrada con fecha y usuario, y los cambios se guardan en Asana.</div>
+      </div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Ver historial de una contratación</div>
+        <ol class="steps">
+          <li>En la tarjeta de la contratación, haga clic en <strong>▶ Historial (N registros)</strong>.</li>
+          <li>Se despliega la lista de todos los cambios: estado, observaciones, fecha, usuario y enlaces de respaldo clicables.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/ymHpNNtz" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/ymHpNNtz/historial-expandido-con-entradas-de-cambio-en-orden-cronolo-gico.png" alt="Historial expandido con entradas de cambio en orden cronológico" /></a><div class="cap-caption">Historial expandido con entradas de cambio en orden cronológico.</div></div>
+        <div class="result-box">Se muestran todos los registros de cambio en orden cronológico con sus datos completos.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-retraso">
+      <h2>3.5 · Actividades con retraso</h2>
+      <p>Lista las actividades cuya fecha de vencimiento ya pasó y que aún están en estado <strong>"En Proceso"</strong>.</p>
+      <div class="capture has-img"><a href="https://ibb.co/6cQrTGJF" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/6cQrTGJF/seccio-n-de-actividades-con-retraso-en-el-panel-de-Inicio-con-di-as-de-retraso-visibles.png" alt="Sección de actividades con retraso en el panel de Inicio con días de retraso visibles" /></a><div class="cap-caption">Sección de actividades con retraso en el panel de Inicio con días de retraso visibles.</div></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-indicadores">
+      <h2>3.6 · Indicadores de avance global</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Indicador</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>Total de actividades</td><td>Conteo total de actividades en todos los proyectos</td></tr>
+          <tr><td>Ejecutadas</td><td>Actividades con estado "Ejecutado" o "Reprogramado"</td></tr>
+          <tr><td>En Proceso</td><td>Actividades que aún no han sido completadas</td></tr>
+          <tr><td>% de avance</td><td>Porcentaje de actividades ejecutadas sobre el total</td></tr>
+        </tbody>
+      </table></div>
+      <div class="capture has-img"><a href="https://ibb.co/B53HgvKS" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/B53HgvKS/panel-de-indicadores-de-avance-global-con-tarjetas-nume-ricas.png" alt="Panel de indicadores de avance global con tarjetas numéricas" /></a><div class="cap-caption">Panel de indicadores de avance global con tarjetas numéricas.</div></div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-selector">
+      <h2>4 · Menú: Proyectos</h2>
+      <p>El menú <strong>Proyectos</strong> (📊) permite acceder al detalle de avance de cada actividad, gestionar sub-actividades, solicitudes, contrataciones, beneficiarios y fuentes de verificación.</p>
+
+      <h3>4.1 · Seleccionar proyecto, período y actividad</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Navegar hasta una actividad específica</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>📊 Proyectos</strong> en el menú lateral.</li>
+          <li>En la <strong>primera columna</strong> del selector jerárquico, haga clic sobre el nombre del proyecto (ej.: <em>"Proyecto EV 2026"</em>). El sistema carga sus períodos.</li>
+          <li>En la <strong>segunda columna</strong>, haga clic sobre el período/sección (ej.: <em>"Enero 2026"</em>). El sistema carga sus actividades.</li>
+          <li>En la <strong>tercera columna</strong>, haga clic sobre la actividad que desea revisar.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/zTbCd1fK" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/zTbCd1fK/selector-jera-rquico-de-tres-columnas-con-proyecto-peri-odo-y-actividad-seleccionados.png" alt="Selector jerárquico de tres columnas con proyecto, período y actividad seleccionados" /></a><div class="cap-caption">Selector jerárquico de tres columnas con proyecto, período y actividad seleccionados.</div></div>
+        <div class="result-box">El panel de detalle de la actividad se despliega con toda su información organizada en pestañas.</div>
+        <div class="callout tip"><span class="ci">💡</span> Use la barra de búsqueda y el filtro de estado para encontrar actividades más rápido.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-detalle">
+      <h2>4.2 · Visualización del detalle de avance</h2>
+
+      <h3>Información general de la actividad</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>Nombre</td><td>Nombre completo de la actividad</td></tr>
+          <tr><td>Estado</td><td>Estado actual (En Proceso, Ejecutado, Reprogramado)</td></tr>
+          <tr><td>Fechas</td><td>Fecha de inicio y fecha de vencimiento</td></tr>
+          <tr><td>Área</td><td>Área responsable</td></tr>
+          <tr><td>Responsables</td><td>Nombre(s) del responsable</td></tr>
+          <tr><td>Notas</td><td>Descripción o notas adicionales</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Pestañas disponibles</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pestaña</th><th>Contenido</th></tr></thead>
+        <tbody>
+          <tr><td>Sub-actividades</td><td>Lista de subtareas con estado, barras de progreso, fechas y diagrama Gantt</td></tr>
+          <tr><td>Solicitudes</td><td>Historial de solicitudes de fondos, materiales y devoluciones</td></tr>
+          <tr><td>Contrataciones</td><td>Estado de contrataciones paso a paso con historial</td></tr>
+          <tr><td>Distribución</td><td>Distribución de responsabilidades</td></tr>
+          <tr><td>Beneficiarios</td><td>Registro de beneficiarios cuando aplica</td></tr>
+        </tbody>
+      </table></div>
+      <div class="capture has-img"><a href="https://ibb.co/7twwrY0X" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/7twwrY0X/vista-de-detalle-de-actividad-con-pestan-as-barra-de-progreso-y-diagrama-Gantt.png" alt="Vista de detalle de actividad con pestañas, barra de progreso y diagrama Gantt" /></a><div class="cap-caption">Vista de detalle de actividad con pestañas, barra de progreso y diagrama Gantt.</div></div>
+      <div class="result-box">Visualiza el estado completo de la actividad con todos sus datos y sub-elementos organizados.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-estado-sub">
+      <h2>4.3 · Cambiar estado de una sub-actividad</h2>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Actualizar el estado de una sub-actividad</div>
+        <ol class="steps">
+          <li>Seleccione la actividad padre y haga clic en la pestaña <strong>Sub-actividades</strong>.</li>
+          <li>Ubique la sub-actividad en la lista.</li>
+          <li>En la columna <strong>Estado</strong>, haga clic en el <strong>dropdown</strong>.</li>
+          <li>Seleccione el nuevo estado: <em>"Ejecutado"</em>, <em>"Reprogramado"</em> o <em>"En Proceso"</em>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/35c5TVFG" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/35c5TVFG/dropdown-de-estado-de-una-sub-actividad-abierto-con-las-opciones-visibles.png" alt="Dropdown de estado de una sub-actividad abierto con las opciones visibles" /></a><div class="cap-caption">Dropdown de estado de una sub-actividad abierto con las opciones visibles.</div></div>
+        <div class="result-box">El estado se actualiza en Asana inmediatamente. La barra de progreso de la actividad padre se recalcula automáticamente.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-gestionar-sol">
+      <h2>4.4 · Gestionar solicitudes desde la actividad</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Crear una nueva solicitud de fondos o materiales</div>
+        <ol class="steps">
+          <li>Seleccione la actividad y vaya a la pestaña <strong>Solicitudes</strong>.</li>
+          <li>Haga clic en <strong>"+ Nueva solicitud"</strong>.</li>
+          <li>Complete el formulario: tipo, ítems, cantidades, importes, lugar de entrega y fecha.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/3ypWjFTb" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/3ypWjFTb/formulario-de-nueva-solicitud-de-fondos-con-los-campos-completados.png" alt="Formulario de nueva solicitud de fondos con los campos completados" /></a><div class="cap-caption">Formulario de nueva solicitud de fondos con los campos completados.</div></div>
+        <div class="result-box">La solicitud queda registrada en Asana con el prefijo correspondiente y aparece en la lista de pendientes del Inicio para su aprobación.</div>
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-fuentes">
+      <h2>4.5 · Agregar fuentes de verificación</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Vincular un documento de respaldo a una actividad</div>
+        <ol class="steps">
+          <li>En la columna <strong>"Fuente"</strong>, haga clic en <strong>"+ fuente"</strong> (primera vez) o en <strong>✏️</strong> (para editar una existente).</li>
+          <li>En el formulario emergente complete:
+            <br>• <strong>Nombre:</strong> nombre descriptivo del documento (ej.: "Informe Febrero 2026")
+            <br>• <strong>URL:</strong> enlace de Google Drive u otra URL válida
+          </li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/fdJFgf3k" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/fdJFgf3k/formulario-de-fuente-de-verificacio-n-con-los-campos-nombre-y-URL.png" alt="Formulario de fuente de verificación con los campos nombre y URL" /></a><div class="cap-caption">Formulario de fuente de verificación con los campos nombre y URL.</div></div>
+        <div class="result-box">El enlace queda guardado en Asana y la columna Fuente muestra el botón 🔗 "Ver fuente" como hipervínculo clicable.</div>
+        <div class="capture has-img"><a href="https://ibb.co/TBVFSKv6" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/TBVFSKv6/columna-Fuente-con-el-enlace-activo-Ver-fuente.png" alt="Columna Fuente con el enlace activo Ver fuente" /></a><div class="cap-caption">Columna Fuente con el enlace activo "Ver fuente".</div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-contrat-proj">
+      <h2>4.6 · Actualizar estado de contratación (desde Proyectos)</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Avanzar el proceso de contratación al siguiente paso</div>
+        <ol class="steps">
+          <li>Seleccione la actividad y vaya a la pestaña <strong>Contrataciones</strong>.</li>
+          <li>Ubique la contratación (<span class="prefix cper">CPER</span>) y haga clic en <strong>✏️ Actualizar estado</strong>.</li>
+          <li>Seleccione la etapa del proceso, agregue observaciones y un enlace de respaldo si corresponde.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/pBDNF5qQ" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/pBDNF5qQ/modal-de-actualizacio-n-de-estado-de-contratacio-n-desde-la-pestan-a-Contrataciones.png" alt="Modal de actualización de estado de contratación desde la pestaña Contrataciones" /></a><div class="cap-caption">Modal de actualización de estado de contratación desde la pestaña Contrataciones.</div></div>
+        <div class="result-box">El stepper avanza a la nueva etapa y el historial registra el cambio con fecha y usuario.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-exportar">
+      <h2>4.7 · Exportar reporte de actividad</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Generar un informe PDF o Word de una actividad</div>
+        <ol class="steps">
+          <li>Seleccione la actividad cuyo reporte desea generar.</li>
+          <li>En la barra superior del panel de detalle, haga clic en:
+            <br>• <strong>📄 Exportar PDF</strong> — informe completo en formato PDF
+            <br>• <strong>📝 Exportar Word</strong> — el mismo informe en formato editable Word
+          </li>
+          <li>El archivo se descarga automáticamente.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/CTXnSv0" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/CTXnSv0/botones-de-exportacio-n-PDF-y-Word-en-la-vista-de-detalle-de-actividad.png" alt="Botones de exportación PDF y Word en la vista de detalle de actividad" /></a><div class="cap-caption">Botones de exportación PDF y Word en la vista de detalle de actividad.</div></div>
+        <div class="result-box">Se descarga un archivo con el nombre del proyecto y la actividad, incluyendo sub-actividades, estados, fechas, distribución de responsables y solicitudes.</div>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-nav-com">
+      <h2>5 · Menú: Comunicación</h2>
+      <p>El menú <strong>Comunicación</strong> (📡) funciona como una biblioteca digital de archivos organizados por proyecto y carpeta. Permite navegar y descargar documentos de todos los proyectos.</p>
+
+      <div class="capture has-img"><a href="https://ibb.co/rKyF764g" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/rKyF764g/vista-general-de-la-pa-gina-de-Comunicacio-n-con-lista-de-proyectos-como-tarjetas.png" alt="Vista general de la página de Comunicación con lista de proyectos como tarjetas" /></a><div class="cap-caption">Vista general de la página de Comunicación con lista de proyectos como tarjetas.</div></div>
+
+      <h3>5.1 · Navegación por proyectos y carpetas</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Navegar hasta los archivos de un proyecto</div>
+        <ol class="steps">
+          <li><strong>Nivel 1 — Proyectos:</strong> Haga clic sobre el proyecto que le interesa.</li>
+          <li><strong>Nivel 2 — Secciones:</strong> Las secciones del proyecto se muestran como carpetas. Haga clic sobre la carpeta de interés.</li>
+          <li><strong>Nivel 3 — Tareas y archivos:</strong> Dentro de cada sección verá las tareas y sus archivos adjuntos.</li>
+        </ol>
+        <div class="capture">Captura: secciones del proyecto mostradas como carpetas con ícono y nombre.</div>
+        <div class="result-box">Accede al nivel deseado y puede ver la lista de archivos disponibles con sus íconos de tipo.</div>
+      </div>
+      <div class="callout tip"><span class="ci">💡</span> Use el campo 🔍 para filtrar por nombre de archivo, carpeta o tarea dentro del nivel actual. El breadcrumb muestra la ruta: <code>Proyectos &gt; [Proyecto] &gt; [Sección] &gt; [Tarea]</code> — haga clic en cualquier nivel para regresar.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-descarga">
+      <h2>5.2 · Descarga de archivos</h2>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ícono</th><th>Tipo</th><th>Color</th></tr></thead>
+        <tbody>
+          <tr><td>📁</td><td>Carpeta (Google Drive)</td><td>Naranja/Café</td></tr>
+          <tr><td>📕</td><td>PDF</td><td>Rojo</td></tr>
+          <tr><td>📘</td><td>Word / Documento</td><td>Azul</td></tr>
+          <tr><td>📗</td><td>Excel / Hoja de cálculo</td><td>Verde</td></tr>
+          <tr><td>📙</td><td>PowerPoint</td><td>Naranja</td></tr>
+          <tr><td>🖼️</td><td>Imagen</td><td>Morado</td></tr>
+          <tr><td>🎬</td><td>Video</td><td>Azul claro</td></tr>
+          <tr><td>🔗</td><td>Enlace / Otro</td><td>Gris</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Abrir o descargar un archivo</div>
+        <ol class="steps">
+          <li>Ubique el archivo dentro de la tarea.</li>
+          <li>Haga clic en el botón <strong>⬇ Descargar</strong> o en el ícono de descarga de la tarjeta.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/Vpb9sZmy" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/Vpb9sZmy/tarjetas-de-archivos-con-distintos-tipos-de-i-conos-y-boto-n-de-descarga.png" alt="Tarjetas de archivos con distintos tipos de íconos y botón de descarga" /></a><div class="cap-caption">Tarjetas de archivos con distintos tipos de íconos y botón de descarga.</div></div>
+        <div class="result-box">El archivo se abre en una nueva pestaña del navegador (para enlaces de Google Drive) o se descarga directamente a su computadora.</div>
+      </div>
+      <div class="callout warn"><span class="ci">📌</span> El rol Administrador puede <strong>ver y descargar</strong> todos los archivos. Solo el rol <strong>Comunicación</strong> puede agregar o eliminar archivos desde este módulo.</div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-asana-plan">
+      <h2>6 · Menú: Planificación</h2>
+      <p>El menú <strong>Planificación</strong> (📅) permite visualizar y gestionar las actividades del proyecto de planificación CDIMA en un calendario interactivo.</p>
+
+      <h3>6.1 · Cargado de información en Asana</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Ingresar una actividad para que aparezca en el calendario</div>
+        <ol class="steps">
+          <li>Acceda al proyecto <strong>"Planificacion CDIMA"</strong> en Asana.</li>
+          <li>Seleccione la <strong>sección</strong> (período) correspondiente.</li>
+          <li>Haga clic en <strong>"+ Agregar tarea"</strong> e ingrese el nombre de la actividad.</li>
+          <li>Abra la tarea y complete los campos personalizados.</li>
+          <li>Guarde los cambios.</li>
+        </ol>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Campo en Asana</th><th>Dónde se ingresa</th></tr></thead>
+          <tbody>
+            <tr><td>Nombre de la tarea</td><td>Campo principal de la tarea</td></tr>
+            <tr><td>Fecha de inicio / vencimiento</td><td>Sección "Fechas"</td></tr>
+            <tr><td>Estado</td><td>Campo personalizado "Estado"</td></tr>
+            <tr><td>Área</td><td>Campo personalizado "Área"</td></tr>
+            <tr><td>Responsables de actividad</td><td>Campo personalizado "Responsables de actividad"</td></tr>
+            <tr><td>Fuente / Fuente URL</td><td>Campos personalizados "Fuente" y "Fuente URL"</td></tr>
+          </tbody>
+        </table></div>
+        <div class="capture has-img"><a href="https://ibb.co/nSQq3mC" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/nSQq3mC/ficha-de-tarea-en-Asana-con-los-campos-personalizados-completados.png" alt="Ficha de tarea en Asana con los campos personalizados completados" /></a><div class="cap-caption">Ficha de tarea en Asana con los campos personalizados completados.</div></div>
+        <div class="result-box">La actividad aparece automáticamente en el calendario de CDIMA Amuyt'a en el rango de fechas indicado.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-calendario">
+      <h2>6.2 · Visualización del calendario</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Ver el calendario de actividades del mes</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>📅 Planificación</strong>. El mes actual se carga automáticamente.</li>
+          <li>Use los botones <strong>◀ Anterior</strong> y <strong>Siguiente ▶</strong> para navegar entre meses.</li>
+          <li>Use el botón <strong>"Hoy"</strong> para volver al mes actual.</li>
+          <li>Cambie entre vista de <strong>Mes</strong>, <strong>Semana</strong> o <strong>Día</strong> con los botones de vista.</li>
+          <li>Haga clic sobre cualquier bloque del calendario para ver el detalle de esa actividad.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/R4GTwfC2" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/R4GTwfC2/vista-general-del-calendario-con-actividades-como-bloques-de-color-en-distintos-di-as.png" alt="Vista general del calendario con actividades como bloques de color en distintos días" /></a><div class="cap-caption">Vista general del calendario con actividades como bloques de color en distintos días.</div></div>
+        <div class="result-box">Se muestra el calendario con todas las actividades del período. Al hacer clic en un bloque aparece el detalle: nombre, fecha, estado, área y responsable.</div>
+        <div class="capture has-img"><a href="https://ibb.co/BVbnJd8Q" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/BVbnJd8Q/modal-de-detalle-de-actividad-al-hacer-clic-en-el-calendario.png" alt="Modal de detalle de actividad al hacer clic en el calendario" /></a><div class="cap-caption">Modal de detalle de actividad al hacer clic en el calendario.</div></div>
+      </div>
+
+      <h3>Leyenda de colores</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Color / Estilo</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td>Colores variados</td><td>Cada actividad tiene un color único para diferenciarlas</td></tr>
+          <tr><td>Fondo rojo con borde rojo</td><td>Actividad <strong>atrasada</strong> (En Proceso y fecha vencida)</td></tr>
+          <tr><td>Opacidad reducida (grisado)</td><td>Actividad <strong>Ejecutada</strong> o <strong>Reprogramada</strong></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-ind-mes">
+      <h2>6.3 · Indicadores del mes</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Indicador</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>Total</td><td>Cantidad total de actividades programadas en el mes</td></tr>
+          <tr><td>Ejecutadas</td><td>Actividades con estado "Ejecutado" o "Reprogramado"</td></tr>
+          <tr><td>En Proceso</td><td>Actividades que aún no han sido completadas</td></tr>
+          <tr><td>% de avance</td><td>Porcentaje de actividades ejecutadas sobre el total</td></tr>
+        </tbody>
+      </table></div>
+      <div class="capture has-img"><a href="https://ibb.co/DHhZ3ZTj" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/DHhZ3ZTj/seccio-n-de-estadi-sticas-con-indicadores-nume-ricos-del-mes-seleccionado.png" alt="Sección de estadísticas con indicadores numéricos del mes seleccionado" /></a><div class="cap-caption">Sección de estadísticas con indicadores numéricos del mes seleccionado.</div></div>
+      <div class="result-box">Los indicadores se actualizan automáticamente al navegar entre meses con los botones del calendario.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-tablas">
+      <h2>6.4 · Lista de actividades y filtros</h2>
+      <p>Debajo de los indicadores se muestran <strong>tres tablas</strong> de actividades del mes:</p>
+      <ol class="steps">
+        <li><strong>⚠️ Actividades En Proceso (Atrasadas)</strong> — Fecha vencida, aún en proceso.</li>
+        <li><strong>🔄 Actividades En Proceso</strong> — En curso y dentro de su plazo.</li>
+        <li><strong>✅ Actividades Ejecutadas</strong> — Completadas en el mes.</li>
+      </ol>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Filtrar actividades por área</div>
+        <ol class="steps">
+          <li>En la barra de herramientas sobre las tablas, haga clic en el selector <strong>"Filtrar por área"</strong>.</li>
+          <li>Elija el área deseada (ej.: <em>"Comunicación"</em>, <em>"Planificación"</em>).</li>
+          <li>Las tres tablas se actualizan mostrando solo las actividades de esa área.</li>
+          <li>Para quitar el filtro, haga clic en <strong>"✕ Limpiar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/xSyJFrtd" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/xSyJFrtd/selector-de-filtro-por-a-rea-con-opciones-desplegadas.png" alt="Selector de filtro por área con opciones desplegadas" /></a><div class="cap-caption">Selector de filtro por área con opciones desplegadas.</div></div>
+        <div class="result-box">Las tablas muestran únicamente las actividades del área seleccionada.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-estado-plan">
+      <h2>6.5 · Cambiar el estado de una actividad</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Actualizar el estado desde la tabla de Planificación</div>
+        <ol class="steps">
+          <li>Ubique la actividad en cualquiera de las tres tablas.</li>
+          <li>Haga clic en el <strong>dropdown de estado</strong> en la columna correspondiente.</li>
+          <li>Seleccione el nuevo estado: <em>"Ejecutado"</em>, <em>"Reprogramado"</em> o <em>"En Proceso"</em>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/Q33FJ9rG" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/Q33FJ9rG/dropdown-de-estado-abierto-en-la-columna-de-la-tabla-con-opciones-visibles.png" alt="Dropdown de estado abierto en la columna de la tabla con opciones visibles" /></a><div class="cap-caption">Dropdown de estado abierto en la columna de la tabla con opciones visibles.</div></div>
+        <div class="result-box">El estado se actualiza en Asana inmediatamente. El dropdown muestra la fecha y hora del último cambio. La actividad se mueve a la tabla correspondiente.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-fuentes-plan">
+      <h2>6.6 · Agregar fuentes de verificación (Planificación)</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Vincular un documento a una actividad del calendario</div>
+        <ol class="steps">
+          <li>En la columna <strong>"Fuente"</strong> de la tabla, haga clic en <strong>"+ fuente"</strong> o en <strong>✏️</strong>.</li>
+          <li>Complete:
+            <br>• <strong>Nombre:</strong> nombre descriptivo (ej.: "Acta reunión Febrero")
+            <br>• <strong>URL:</strong> enlace de Google Drive o cualquier URL válida
+          </li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/rGMpHfrf" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/rGMpHfrf/formulario-de-fuente-de-verificacio-n-con-los-campos-nombre-y-URL-completados.png" alt="Formulario de fuente de verificación con los campos nombre y URL completados" /></a><div class="cap-caption">Formulario de fuente de verificación con los campos nombre y URL completados.</div></div>
+        <div class="result-box">La fuente queda vinculada en Asana. La columna Fuente muestra el enlace 🔗 "Ver fuente" para acceder directamente al documento.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-reportes-plan">
+      <h2>6.7 · Generación de reportes de Planificación</h2>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Actividades PDF</td><td>PDF</td><td>Exporta la vista actual del calendario como imagen</td></tr>
+          <tr><td>📋 Cronograma PDF</td><td>PDF</td><td>Cronograma mensual en tabla con actividades, fechas, responsables y estado</td></tr>
+          <tr><td>📝 Cronograma Word</td><td>Word</td><td>Igual que el cronograma PDF pero editable</td></tr>
+          <tr><td>📄 Informe PDF</td><td>PDF</td><td>Exporta las tres tablas de actividades con el filtro de área aplicado</td></tr>
+          <tr><td>📝 Informe Word</td><td>Word</td><td>Igual que el Informe PDF pero editable</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Exportar un reporte de Planificación</div>
+        <ol class="steps">
+          <li>Navegue al mes deseado usando los botones del calendario.</li>
+          <li>Aplique el filtro de área si es necesario.</li>
+          <li>Haga clic en el botón de exportación correspondiente (ej.: <strong>📋 Cronograma PDF</strong>).</li>
+          <li>El sistema genera el archivo y lo descarga automáticamente.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/ZRPSGjf5" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/ZRPSGjf5/botones-de-exportacio-n-en-la-barra-superior-del-calendario.png" alt="Botones de exportación en la barra superior del calendario" /></a><div class="cap-caption">Botones de exportación en la barra superior del calendario.</div></div>
+        <div class="capture has-img"><a href="https://ibb.co/rGsDzcjY" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/rGsDzcjY/botones-de-Informe-PDF-e-Informe-Word-sobre-las-tablas-de-actividades.png" alt="Botones de Informe PDF e Informe Word sobre las tablas de actividades" /></a><div class="cap-caption">Botones de Informe PDF e Informe Word sobre las tablas de actividades.</div></div>
+        <div class="result-box">Se descarga un archivo con el mes, año y nombre del proyecto, listo para compartir o imprimir.</div>
+      </div>
+      <div class="callout warn"><span class="ci">📌</span> Los botones de exportación estarán deshabilitados (grisados) si no hay actividades en el mes seleccionado.</div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-inv-ver">
+      <h2>7 · Menú: Investigación e Incidencia</h2>
+      <p>El menú <strong>Investigación e Incidencia</strong> (🔬) permite gestionar los documentos y enlaces del proyecto <strong>SAIH investigación</strong>. Disponible para todos los roles excepto Planificador.</p>
+
+      <h3>7.1 · Visualización de tareas</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Ver las tareas y documentos del proyecto</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>🔬 Investigación e Incidencia</strong> en el menú lateral.</li>
+          <li>El sistema carga automáticamente las tareas del proyecto "SAIH investigacion".</li>
+          <li>Use el campo de búsqueda para filtrar las tareas por nombre.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/Cp7X6NZv" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/Cp7X6NZv/vista-general-de-Investigacio-n-e-Incidencia-con-lista-de-tareas-y-sus-documentos.png" alt="Vista general de Investigación e Incidencia con lista de tareas y sus documentos" /></a><div class="cap-caption">Vista general de Investigación e Incidencia con lista de tareas y sus documentos.</div></div>
+        <div class="result-box">Se muestra la lista completa de tareas del proyecto con sus documentos asociados, listos para consultar o gestionar.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-inv-agregar">
+      <h2>7.2 · Agregar un documento a una tarea</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Vincular un nuevo documento a una tarea</div>
+        <ol class="steps">
+          <li>Ubique la tarea a la que desea agregar el documento.</li>
+          <li>Haga clic en el botón <strong>"+ Agregar documento"</strong> junto a la tarea.</li>
+          <li>Complete:
+            <br>• <strong>Nombre del documento:</strong> nombre descriptivo (ej.: "Informe de avance Mayo 2026")
+            <br>• <strong>URL:</strong> enlace al documento en Google Drive u otra plataforma válida
+          </li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/MD2THWDP" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/MD2THWDP/formulario-de-agregar-documento-con-campos-nombre-y-URL-completados.png" alt="Formulario de agregar documento con campos nombre y URL completados" /></a><div class="cap-caption">Formulario de agregar documento con campos nombre y URL completados.</div></div>
+        <div class="result-box">El documento aparece en la lista de la tarea como enlace activo. El registro se guarda en las notas de la tarea en Asana.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-inv-eliminar">
+      <h2>7.3 · Eliminar un documento</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Eliminar un documento vinculado a una tarea</div>
+        <ol class="steps">
+          <li>Ubique el documento dentro de la tarea.</li>
+          <li>Haga clic en el ícono <strong>🗑️</strong> junto al documento que desea eliminar.</li>
+          <li>Confirme la eliminación en la ventana de confirmación.</li>
+        </ol>
+        <div class="capture has-img"><a href="https://ibb.co/v6tZRg2k" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/v6tZRg2k/tarjeta-de-documento-con-el-i-cono-de-eliminar-visible-al-pasar-el-cursor.png" alt="Tarjeta de documento con el ícono de eliminar visible al pasar el cursor" /></a><div class="cap-caption">Tarjeta de documento con el ícono de eliminar visible al pasar el cursor.</div></div>
+        <div class="result-box">El documento se elimina de la lista y el registro se actualiza en Asana. Aparece una notificación de confirmación en la parte superior de la pantalla.</div>
+      </div>
+      <div class="callout danger"><span class="ci">⚠️</span> La eliminación es <strong>permanente</strong>. Verifique que seleccionó el documento correcto antes de confirmar.</div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-60px 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
