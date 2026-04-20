@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!manual-administrador\\.html).*)",
       "destination": "/index.html"
     }
   ]
