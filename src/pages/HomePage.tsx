@@ -270,8 +270,7 @@ function extractJsonData(notes: string | undefined): Record<string, unknown> | n
   try { return JSON.parse(match[1]); } catch { return null; }
 }
 
-const CHUNK = 4;
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
@@ -344,165 +343,157 @@ const HomePage: React.FC = () => {
       const allApproved: SolicitudRow[] = [];
       const allObserved: SolicitudRow[] = [];
 
-      // Procesar proyectos en chunks para no saturar la API
-      for (let i = 0; i < filteredProjects.length; i += CHUNK) {
-        const chunk = filteredProjects.slice(i, i + CHUNK);
-        const chunkResults = await Promise.all(
-          chunk.map(async project => {
-            const rows: SolicitudRow[] = [];
-            const approvedRows: SolicitudRow[] = [];
-            const observedRows: SolicitudRow[] = [];
-            const contRows: ContratacionRow[] = [];
-            const atrasadasRows: AtrasadaRow[] = [];
-            let pendingReqs = 0;
-            try {
-              // For técnico roles, check project area before fetching all tasks
-              if (isTecnico && tecnicoArea) {
-                const resumenTask = await asanaService.getProjectResumenTask(project.gid);
-                const areaField = resumenTask?.custom_fields?.find(
-                  f => f.name.toLowerCase().replace(/á/g, 'a') === 'area'
-                );
-                const areaVal = (areaField?.enum_value?.name ?? areaField?.display_value ?? '').toLowerCase();
-                if (!areaVal.includes(tecnicoArea.toLowerCase())) {
-                  return { rows: [], approvedRows: [], observedRows: [], contRows: [], atrasadasRows: [] };
-                }
+      // Procesar todos los proyectos en paralelo (sin chunks ni delays)
+      const projectResults = await Promise.all(
+        filteredProjects.map(async project => {
+          const rows: SolicitudRow[] = [];
+          const approvedRows: SolicitudRow[] = [];
+          const observedRows: SolicitudRow[] = [];
+          const contRows: ContratacionRow[] = [];
+          const atrasadasRows: AtrasadaRow[] = [];
+          let pendingReqs = 0;
+          try {
+            // For técnico roles, check project area before fetching all tasks
+            if (isTecnico && tecnicoArea) {
+              const resumenTask = await asanaService.getProjectResumenTask(project.gid);
+              const areaField = resumenTask?.custom_fields?.find(
+                f => f.name.toLowerCase().replace(/á/g, 'a') === 'area'
+              );
+              const areaVal = (areaField?.enum_value?.name ?? areaField?.display_value ?? '').toLowerCase();
+              if (!areaVal.includes(tecnicoArea.toLowerCase())) {
+                return { rows: [], approvedRows: [], observedRows: [], contRows: [], atrasadasRows: [] };
               }
-              const tasks = await asanaService.getProjectTasks(project.gid);
-              const topLevel = tasks.filter(t => !t.parent && !t.name.startsWith('Resumen:'));
-              const parentTasks = topLevel.filter(t => t.num_subtasks && t.num_subtasks > 0);
-
-              // "Completado" = campo personalizado "Estado" con valor "EJECUTADO"
-              const isEjecutado = (t: AsanaTask) => {
-                const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
-                if (!estadoField) return t.completed;
-                const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
-                return val === 'EJECUTADO';
-              };
-
-              // Collect overdue top-level activities and build a lookup map
-              const atrasadasMap = new Map<string, number>();
-              if (!isTecnico) {
-                topLevel
-                  .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
-                  .forEach(t => {
-                    const idx = atrasadasRows.length;
-                    atrasadasMap.set(t.gid, idx);
-                    atrasadasRows.push({
-                      key: t.gid,
-                      task: t,
-                      projectName: project.name,
-                      sectionName: t.memberships?.[0]?.section?.name ?? '',
-                      daysLate: Math.floor((new Date(today).getTime() - new Date(t.due_on!).getTime()) / 86400000),
-                      subActividades: [],
-                    });
-                  });
-              }
-
-              // Fetch subtasks of tasks que tienen subtareas
-              for (let j = 0; j < parentTasks.length; j += CHUNK) {
-                const taskChunk = parentTasks.slice(j, j + CHUNK);
-                await Promise.all(
-                  taskChunk.map(async parentTask => {
-                    try {
-                      const subtasks = await asanaService.getSubtasks(parentTask.gid);
-                      // Populate sub-activities for overdue parent tasks
-                      if (!isTecnico) {
-                        const atrasadaIdx = atrasadasMap.get(parentTask.gid);
-                        if (atrasadaIdx !== undefined) {
-                          atrasadasRows[atrasadaIdx].subActividades = subtasks.filter(
-                            s => !s.name.startsWith('SFON') && !s.name.startsWith('SMAT') &&
-                                 !s.name.startsWith('DMAT') && !s.name.startsWith('CPER') &&
-                                 !s.name.startsWith('FUENTES DE VERIFICACION') && !s.name.startsWith('Resumen:')
-                          );
-                        }
-                      }
-                      for (const sub of subtasks) {
-                        const prefix = getSolicitudPrefix(sub.name);
-                        const jsonData = extractJsonData(sub.notes);
-                        const isApproved = !!(jsonData?.fechaAprobacion);
-                        const isObserved = !!(jsonData?.motivoObservacion && jsonData?.fechaObservacion);
-                        if (prefix && !isApproved && !isObserved) {
-                          pendingReqs++;
-                          rows.push({
-                            key: sub.gid,
-                            task: sub,
-                            projectName: project.name,
-                            parentTaskName: parentTask.name,
-                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
-                            tipo: getTipoFromPrefix(prefix),
-                            fecha: extractFechaSolicitud(sub.notes),
-                          });
-                        } else if (prefix && isApproved) {
-                          approvedRows.push({
-                            key: sub.gid,
-                            task: sub,
-                            projectName: project.name,
-                            parentTaskName: parentTask.name,
-                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
-                            tipo: getTipoFromPrefix(prefix),
-                            fecha: extractFechaSolicitud(sub.notes),
-                          });
-                        } else if (prefix && isObserved) {
-                          observedRows.push({
-                            key: sub.gid,
-                            task: sub,
-                            projectName: project.name,
-                            parentTaskName: parentTask.name,
-                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
-                            tipo: getTipoFromPrefix(prefix),
-                            fecha: extractFechaSolicitud(sub.notes),
-                          });
-                        }
-                        // Collect CPER contrataciones
-                        if (!isTecnico && sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
-                          contRows.push({
-                            key: sub.gid,
-                            task: sub,
-                            projectName: project.name,
-                            parentTaskName: parentTask.name,
-                            sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
-                          });
-                        }
-                      }
-                    } catch {
-                      // Ignorar errores de subtareas individuales
-                    }
-                  })
-                );
-                if (j + CHUNK < parentTasks.length) await delay(200);
-              }
-
-              // Build stats for this project
-              if (!isTecnico) {
-                const completed = topLevel.filter(isEjecutado).length;
-                const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
-                const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
-                allStats.push({
-                  gid: project.gid,
-                  name: project.name,
-                  color: getProjectColor(project.gid),
-                  totalTasks: topLevel.length,
-                  completedTasks: completed,
-                  overdueTasks: overdue,
-                  dueSoon,
-                  pendingRequests: pendingReqs,
-                });
-              }
-            } catch {
-              // Ignorar errores de proyectos individuales
             }
-            return { rows, approvedRows, observedRows, contRows, atrasadasRows };
-          })
-        );
-        chunkResults.forEach(r => {
-          allRows.push(...r.rows);
-          allApproved.push(...r.approvedRows);
-          allObserved.push(...r.observedRows);
-          allContrataciones.push(...r.contRows);
-          allAtrasadas.push(...r.atrasadasRows);
-        });
-        if (i + CHUNK < filteredProjects.length) await delay(300);
-      }
+            const tasks = await asanaService.getProjectTasks(project.gid);
+            const topLevel = tasks.filter(t => !t.parent && !t.name.startsWith('Resumen:'));
+            const parentTasks = topLevel.filter(t => t.num_subtasks && t.num_subtasks > 0);
+
+            // "Completado" = campo personalizado "Estado" con valor "EJECUTADO"
+            const isEjecutado = (t: AsanaTask) => {
+              const estadoField = t.custom_fields?.find(f => f.name === 'Estado');
+              if (!estadoField) return t.completed;
+              const val = (estadoField.enum_value?.name ?? estadoField.display_value ?? '').toUpperCase();
+              return val === 'EJECUTADO';
+            };
+
+            // Collect overdue top-level activities and build a lookup map
+            const atrasadasMap = new Map<string, number>();
+            if (!isTecnico) {
+              topLevel
+                .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
+                .forEach(t => {
+                  const idx = atrasadasRows.length;
+                  atrasadasMap.set(t.gid, idx);
+                  atrasadasRows.push({
+                    key: t.gid,
+                    task: t,
+                    projectName: project.name,
+                    sectionName: t.memberships?.[0]?.section?.name ?? '',
+                    daysLate: Math.floor((new Date(today).getTime() - new Date(t.due_on!).getTime()) / 86400000),
+                    subActividades: [],
+                  });
+                });
+            }
+
+            // Fetch all subtasks in parallel (sin chunks ni delays)
+            await Promise.all(
+              parentTasks.map(async parentTask => {
+                try {
+                  const subtasks = await asanaService.getSubtasks(parentTask.gid);
+                  // Populate sub-activities for overdue parent tasks
+                  if (!isTecnico) {
+                    const atrasadaIdx = atrasadasMap.get(parentTask.gid);
+                    if (atrasadaIdx !== undefined) {
+                      atrasadasRows[atrasadaIdx].subActividades = subtasks.filter(
+                        s => !s.name.startsWith('SFON') && !s.name.startsWith('SMAT') &&
+                             !s.name.startsWith('DMAT') && !s.name.startsWith('CPER') &&
+                             !s.name.startsWith('FUENTES DE VERIFICACION') && !s.name.startsWith('Resumen:')
+                      );
+                    }
+                  }
+                  for (const sub of subtasks) {
+                    const prefix = getSolicitudPrefix(sub.name);
+                    const jsonData = extractJsonData(sub.notes);
+                    const isApproved = !!(jsonData?.fechaAprobacion);
+                    const isObserved = !!(jsonData?.motivoObservacion && jsonData?.fechaObservacion);
+                    if (prefix && !isApproved && !isObserved) {
+                      pendingReqs++;
+                      rows.push({
+                        key: sub.gid,
+                        task: sub,
+                        projectName: project.name,
+                        parentTaskName: parentTask.name,
+                        sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                        tipo: getTipoFromPrefix(prefix),
+                        fecha: extractFechaSolicitud(sub.notes),
+                      });
+                    } else if (prefix && isApproved) {
+                      approvedRows.push({
+                        key: sub.gid,
+                        task: sub,
+                        projectName: project.name,
+                        parentTaskName: parentTask.name,
+                        sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                        tipo: getTipoFromPrefix(prefix),
+                        fecha: extractFechaSolicitud(sub.notes),
+                      });
+                    } else if (prefix && isObserved) {
+                      observedRows.push({
+                        key: sub.gid,
+                        task: sub,
+                        projectName: project.name,
+                        parentTaskName: parentTask.name,
+                        sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                        tipo: getTipoFromPrefix(prefix),
+                        fecha: extractFechaSolicitud(sub.notes),
+                      });
+                    }
+                    // Collect CPER contrataciones
+                    if (!isTecnico && sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
+                      contRows.push({
+                        key: sub.gid,
+                        task: sub,
+                        projectName: project.name,
+                        parentTaskName: parentTask.name,
+                        sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                      });
+                    }
+                  }
+                } catch {
+                  // Ignorar errores de subtareas individuales
+                }
+              })
+            );
+
+            // Build stats for this project
+            if (!isTecnico) {
+              const completed = topLevel.filter(isEjecutado).length;
+              const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
+              const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
+              allStats.push({
+                gid: project.gid,
+                name: project.name,
+                color: getProjectColor(project.gid),
+                totalTasks: topLevel.length,
+                completedTasks: completed,
+                overdueTasks: overdue,
+                dueSoon,
+                pendingRequests: pendingReqs,
+              });
+            }
+          } catch {
+            // Ignorar errores de proyectos individuales
+          }
+          return { rows, approvedRows, observedRows, contRows, atrasadasRows };
+        })
+      );
+      projectResults.forEach(r => {
+        allRows.push(...r.rows);
+        allApproved.push(...r.approvedRows);
+        allObserved.push(...r.observedRows);
+        allContrataciones.push(...r.contRows);
+        allAtrasadas.push(...r.atrasadasRows);
+      });
 
       const parseFechaSol = (f: string) => {
         if (f === '-') return 0;

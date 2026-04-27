@@ -9,6 +9,28 @@ import config from '../config/env';
 
 const BASE_URL = 'https://app.asana.com/api/1.0';
 
+// Caps concurrent requests to respect Asana limits:
+//   GET:   max 50 concurrent
+//   Write: max 15 concurrent (POST/PUT/PATCH/DELETE)
+// Retries on 429 using Retry-After header or exponential backoff (up to 3 retries).
+class Semaphore {
+  private queue: Array<() => void> = [];
+  private running = 0;
+  constructor(private max: number) {}
+  acquire(): Promise<void> {
+    if (this.running < this.max) { this.running++; return Promise.resolve(); }
+    return new Promise(resolve => { this.queue.push(() => { this.running++; resolve(); }); });
+  }
+  release(): void {
+    this.running--;
+    const next = this.queue.shift();
+    if (next) next();
+  }
+}
+
+const readSemaphore  = new Semaphore(30);
+const writeSemaphore = new Semaphore(12);
+
 class AsanaService {
   private token: string = config.asanaToken || '';
   private workspacesCache: AsanaWorkspace[] | null = null;
@@ -34,26 +56,55 @@ class AsanaService {
       throw new Error('Token de acceso no configurado');
     }
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: options?.method || 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
+    const method = (options?.method ?? 'GET').toUpperCase();
+    const isWrite = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+    const sem = isWrite ? writeSemaphore : readSemaphore;
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(
-        error.errors?.[0]?.message || `Error ${response.status}: ${response.statusText}`
-      );
+    const MAX_RETRIES = 3;
+    let attempt = 0;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      await sem.acquire();
+      try {
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...options?.headers,
+          },
+          ...options,
+        });
+
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const waitMs = retryAfter
+            ? parseFloat(retryAfter) * 1000
+            : Math.min(1000 * 2 ** attempt, 16000);
+          sem.release();
+          attempt++;
+          if (attempt > MAX_RETRIES) {
+            throw new Error('Rate limit de Asana superado. Intenta de nuevo en unos momentos.');
+          }
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(
+            error.errors?.[0]?.message || `Error ${response.status}: ${response.statusText}`
+          );
+        }
+
+        const data = await response.json();
+        return data.data as T;
+      } finally {
+        sem.release();
+      }
     }
-
-    const data = await response.json();
-    return data.data;
   }
 
   async getWorkspaces(): Promise<AsanaWorkspace[]> {
