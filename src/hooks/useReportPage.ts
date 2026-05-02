@@ -329,20 +329,34 @@ export const useReportPage = () => {
         }
       });
       
-      // Agrupar por Responsable de Actividad
+      // Agrupar por Responsable de Actividad (selección múltiple)
       const responsable = task.custom_fields?.find(f => f.name === 'Responsable de Actividad');
-      const responsableName = responsable?.enum_value?.name || responsable?.text_value || 'Sin responsable';
-      
-      if (!byResponsable[responsableName]) {
-        byResponsable[responsableName] = { total: 0, completed: 0, pending: 0 };
+      let responsableNames: string[] = [];
+
+      if (responsable?.multi_enum_values && responsable.multi_enum_values.length > 0) {
+        responsableNames = responsable.multi_enum_values.map(v => v.name).filter(Boolean);
+      } else if (responsable?.enum_value?.name) {
+        responsableNames = [responsable.enum_value.name];
+      } else if (responsable?.display_value) {
+        responsableNames = responsable.display_value.split(',').map(v => v.trim()).filter(Boolean);
       }
-      byResponsable[responsableName].total += 1;
-      
-      if (isCompleted) {
-        byResponsable[responsableName].completed += 1;
-      } else {
-        byResponsable[responsableName].pending += 1;
+
+      if (responsableNames.length === 0) {
+        responsableNames = ['Sin responsable'];
       }
+
+      responsableNames.forEach(responsableName => {
+        if (!byResponsable[responsableName]) {
+          byResponsable[responsableName] = { total: 0, completed: 0, pending: 0 };
+        }
+        byResponsable[responsableName].total += 1;
+
+        if (isCompleted) {
+          byResponsable[responsableName].completed += 1;
+        } else {
+          byResponsable[responsableName].pending += 1;
+        }
+      });
     });
 
     return { total, completed, pending, completionPercentage, byAssignee, byResponsable };
