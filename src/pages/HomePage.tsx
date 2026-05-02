@@ -22,6 +22,7 @@ import {
   CheckCircleOutlined,
   CommentOutlined,
   DeleteOutlined,
+  DollarOutlined,
   EyeOutlined,
   LinkOutlined,
   PlusOutlined,
@@ -299,6 +300,10 @@ const HomePage: React.FC = () => {
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
 
+  // ── Crear SFON desde SMAT aprobada ──────────────────────────────────────
+  const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string } | null>(null);
+  const [loadingSfonGid, setLoadingSfonGid] = useState<string | null>(null);
+
   // ── Nueva Solicitud desde HomePage ──────────────────────────────────────
   const [showNuevaSolModal, setShowNuevaSolModal] = useState(false);
   const [nuevaSolTask, setNuevaSolTask]           = useState<AsanaTask | null>(null);
@@ -319,6 +324,19 @@ const HomePage: React.FC = () => {
     setNuevaSolTask(null);
     setNuevaSolType('');
     loadSolicitudes();
+  };
+
+  const handleCrearSfonDesdeSmat = async (row: SolicitudRow) => {
+    setLoadingSfonGid(row.task.gid);
+    try {
+      const fullTask = await asanaService.getTask(row.task.gid);
+      setSfonFromSmat({ task: fullTask, projectName: row.projectName, parentTaskName: row.parentTaskName });
+      setDetailModal(null);
+    } catch (err) {
+      console.error('Error al cargar la tarea SMAT:', err);
+    } finally {
+      setLoadingSfonGid(null);
+    }
   };
 
   const loadSolicitudes = useCallback(async () => {
@@ -459,6 +477,59 @@ const HomePage: React.FC = () => {
                       });
                     }
                   }
+
+                  // Fetch nested SFONs inside approved SMAT subtasks
+                  const smatAprobadas = subtasks.filter(s => {
+                    if (getSolicitudPrefix(s.name) !== 'SMAT') return false;
+                    const d = extractJsonData(s.notes);
+                    return !!(d?.fechaAprobacion);
+                  });
+                  await Promise.all(
+                    smatAprobadas.map(async smat => {
+                      try {
+                        const subSubs = await asanaService.getSubtasks(smat.gid);
+                        for (const ssub of subSubs) {
+                          const subPrefix = getSolicitudPrefix(ssub.name);
+                          if (!subPrefix) continue;
+                          const subJsonData = extractJsonData(ssub.notes);
+                          const subIsApproved = !!(subJsonData?.fechaAprobacion);
+                          const subIsObserved = !!(subJsonData?.motivoObservacion && subJsonData?.fechaObservacion);
+                          const nestedParentName = `${parentTask.name} › ${smat.name}`;
+                          if (!subIsApproved && !subIsObserved) {
+                            pendingReqs++;
+                            rows.push({
+                              key: ssub.gid, task: ssub,
+                              projectName: project.name,
+                              parentTaskName: nestedParentName,
+                              sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                              tipo: getTipoFromPrefix(subPrefix),
+                              fecha: extractFechaSolicitud(ssub.notes),
+                            });
+                          } else if (subIsApproved) {
+                            approvedRows.push({
+                              key: ssub.gid, task: ssub,
+                              projectName: project.name,
+                              parentTaskName: nestedParentName,
+                              sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                              tipo: getTipoFromPrefix(subPrefix),
+                              fecha: extractFechaSolicitud(ssub.notes),
+                            });
+                          } else if (subIsObserved) {
+                            observedRows.push({
+                              key: ssub.gid, task: ssub,
+                              projectName: project.name,
+                              parentTaskName: nestedParentName,
+                              sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
+                              tipo: getTipoFromPrefix(subPrefix),
+                              fecha: extractFechaSolicitud(ssub.notes),
+                            });
+                          }
+                        }
+                      } catch {
+                        // ignorar errores de sub-subtareas
+                      }
+                    })
+                  );
                 } catch {
                   // Ignorar errores de subtareas individuales
                 }
@@ -507,7 +578,23 @@ const HomePage: React.FC = () => {
         return parseFechaSol(f);
       };
       setSolicitudes([...allRows].sort((a, b) => parseFechaSol(a.fecha) - parseFechaSol(b.fecha)));
-      setSolicitudesAprobadas([...allApproved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a)));
+
+      // Agrupar aprobadas: cada SMAT va seguida inmediatamente de sus SFONs anidados
+      const nestedApproved = allApproved.filter(r => r.parentTaskName.includes(' › '));
+      const standaloneApproved = allApproved.filter(r => !r.parentTaskName.includes(' › '));
+      standaloneApproved.sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a));
+      const groupedApproved: SolicitudRow[] = [];
+      for (const row of standaloneApproved) {
+        groupedApproved.push(row);
+        if (row.tipo === 'Solicitud de Material') {
+          const children = nestedApproved.filter(n => n.parentTaskName.endsWith(` › ${row.task.name}`));
+          children.sort((a, b) => parseFechaSol(a.fecha) - parseFechaSol(b.fecha));
+          groupedApproved.push(...children);
+        }
+      }
+      const usedKeys = new Set(groupedApproved.map(r => r.key));
+      nestedApproved.filter(n => !usedKeys.has(n.key)).forEach(n => groupedApproved.push(n));
+      setSolicitudesAprobadas(groupedApproved);
       setSolicitudesObservadas([...allObserved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a)));
       setContrataciones(allContrataciones);
       setAtrasadas(allAtrasadas.sort((a, b) => b.daysLate - a.daysLate));
@@ -532,6 +619,25 @@ const HomePage: React.FC = () => {
     }
   }, [loadSolicitudes]);
 
+  // Inserta una fila aprobada respetando la agrupación SMAT → SFON
+  const insertApprovedRow = (prev: SolicitudRow[], newRow: SolicitudRow): SolicitudRow[] => {
+    const isNested = newRow.parentTaskName.includes(' › ');
+    if (isNested) {
+      const smatName = newRow.parentTaskName.split(' › ').pop()!;
+      const parentIdx = prev.findIndex(r => r.tipo === 'Solicitud de Material' && r.task.name === smatName);
+      if (parentIdx !== -1) {
+        const result = [...prev];
+        let insertIdx = parentIdx + 1;
+        while (insertIdx < result.length && result[insertIdx].parentTaskName.endsWith(` › ${smatName}`)) insertIdx++;
+        result.splice(insertIdx, 0, newRow);
+        return result;
+      }
+      return [...prev, newRow];
+    }
+    // No anidada: insertar al inicio (más reciente primero)
+    return [newRow, ...prev];
+  };
+
   const handleApprove = async (row: SolicitudRow) => {
     setApprovingGid(row.task.gid);
     try {
@@ -545,7 +651,9 @@ const HomePage: React.FC = () => {
       const notasBase = (row.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
       const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
       await asanaService.updateTask(row.task.gid, { completed: true, notes: newNotes });
+      const updatedRow: SolicitudRow = { ...row, task: { ...row.task, notes: newNotes } };
       setSolicitudes(prev => prev.filter(r => r.key !== row.key));
+      setSolicitudesAprobadas(prev => insertApprovedRow(prev, updatedRow));
     } catch (err) {
       console.error('Error al aprobar:', err);
     } finally {
@@ -567,7 +675,9 @@ const HomePage: React.FC = () => {
       const notasBase = (observeModal.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
       const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
       await asanaService.updateTask(observeModal.task.gid, { notes: newNotes });
+      const updatedRow: SolicitudRow = { ...observeModal, task: { ...observeModal.task, notes: newNotes } };
       setSolicitudes(prev => prev.filter(r => r.key !== observeModal.task.gid));
+      setSolicitudesObservadas(prev => [updatedRow, ...prev]);
       setObserveModal(null);
       setObserveText('');
     } catch (err) {
@@ -831,7 +941,7 @@ const HomePage: React.FC = () => {
   const colAccionesHistorico = {
     title: 'Acciones',
     key: 'acciones',
-    width: 100,
+    width: 140,
     fixed: 'right' as const,
     render: (_: unknown, row: SolicitudRow) => (
       <Space size={4}>
@@ -841,6 +951,17 @@ const HomePage: React.FC = () => {
         <Tooltip title="Imprimir PDF">
           <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
         </Tooltip>
+        {row.tipo === 'Solicitud de Material' && !!(extractJsonData(row.task.notes)?.fechaAprobacion) && (
+          <Tooltip title="Agregar Solicitud de Fondos">
+            <Button
+              size="small"
+              icon={<DollarOutlined />}
+              loading={loadingSfonGid === row.task.gid}
+              style={{ color: '#1d4ed8', borderColor: '#93c5fd' }}
+              onClick={() => handleCrearSfonDesdeSmat(row)}
+            />
+          </Tooltip>
+        )}
         <Popconfirm
           title="¿Eliminar solicitud?"
           description="Esta acción no se puede deshacer."
@@ -924,8 +1045,68 @@ const HomePage: React.FC = () => {
     },
   };
 
+  // Columna info con jerarquía para tab Aprobadas
+  const colSolicitudInfoAprobadas = {
+    title: 'Solicitud / Proyecto / Actividad',
+    key: 'proyectoActividad',
+    width: 380,
+    render: (_: unknown, row: SolicitudRow) => {
+      const isNested = row.parentTaskName.includes(' › ');
+      const jsonData = extractJsonData(row.task.notes);
+      const solicitante = jsonData?.usuario as { nombre: string; email: string } | undefined;
+      const tipoColorMap: Record<string, { bg: string; color: string; border: string }> = {
+        'Solicitud de Fondos':    { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+        'Solicitud de Material':  { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
+        'Devolución de Material': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
+      };
+      const tc = tipoColorMap[row.tipo] ?? { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+      const parts = isNested ? row.parentTaskName.split(' › ') : [];
+      const smatName = isNested ? parts[parts.length - 1] : null;
+      const activityName = isNested ? parts.slice(0, -1).join(' › ') : row.parentTaskName;
+      return (
+        <div style={{ display: 'flex', gap: isNested ? 0 : 0 }}>
+          {isNested && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 8, flexShrink: 0 }}>
+              <div style={{ width: 2, flex: 1, background: '#c7d2fe', borderRadius: 1, minHeight: 8 }} />
+              <div style={{ fontSize: 14, color: '#6366f1', lineHeight: 1 }}>└</div>
+            </div>
+          )}
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 3,
+            wordBreak: 'break-word', whiteSpace: 'normal',
+            ...(isNested ? { borderLeft: '2px solid #c7d2fe', paddingLeft: 8, background: '#f5f3ff', borderRadius: '0 6px 6px 0', padding: '4px 8px' } : {}),
+          }}>
+            <Typography.Text strong style={{ fontSize: 12 }}>{row.task.name}</Typography.Text>
+            <span style={{
+              display: 'inline-block', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600,
+              backgroundColor: tc.bg, color: tc.color, border: `1px solid ${tc.border}`,
+              borderRadius: 4, padding: '1px 7px', lineHeight: '18px',
+            }}>{row.tipo}</span>
+            <Typography.Text style={{ fontSize: 12 }}>{row.projectName}</Typography.Text>
+            {row.sectionName && (
+              <Typography.Text style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>📅 {row.sectionName}</Typography.Text>
+            )}
+            {isNested ? (
+              <>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{activityName}</Typography.Text>
+                <Typography.Text style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600 }}>📦 {smatName}</Typography.Text>
+              </>
+            ) : (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>{row.parentTaskName}</Typography.Text>
+            )}
+            {solicitante ? (
+              <Typography.Text style={{ fontSize: 11, color: '#6b7280' }}>👤 {solicitante.nombre} · <span style={{ color: '#9ca3af' }}>{solicitante.email}</span></Typography.Text>
+            ) : (
+              <Typography.Text style={{ fontSize: 11, color: '#d1d5db' }}>👤 Sin registro</Typography.Text>
+            )}
+          </div>
+        </div>
+      );
+    },
+  };
+
   const columns = [colSolicitudInfo, colFechaSolicitud, colInforme, colAccionesPendientes];
-  const columnsAprobadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colAccionesHistorico];
+  const columnsAprobadas = [colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colAccionesHistorico];
   const columnsObservadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colMotivoObservacion, colAccionesHistorico];
 
   const CONTRATACION_PASOS = [
@@ -1637,8 +1818,20 @@ const HomePage: React.FC = () => {
                 )}
               </div>
 
-              <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa' }}>
-                <button type="button" onClick={() => setDetailModal(null)} className="button-primary" style={{ width: '100%' }}>Cerrar</button>
+              <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                <div>
+                  {detailModal.tipo === 'Solicitud de Material' && isDetailApproved && (
+                    <Button
+                      icon={<DollarOutlined />}
+                      loading={loadingSfonGid === detailModal.task.gid}
+                      style={{ color: '#1d4ed8', borderColor: '#93c5fd' }}
+                      onClick={() => handleCrearSfonDesdeSmat(detailModal)}
+                    >
+                      Agregar Solicitud de Fondos
+                    </Button>
+                  )}
+                </div>
+                <button type="button" onClick={() => setDetailModal(null)} className="button-primary">Cerrar</button>
               </div>
             </div>
           </div>
@@ -1794,6 +1987,19 @@ const HomePage: React.FC = () => {
           projectName={nuevaSolTask.projects?.[0]?.name}
           onClose={handleNuevaSolClose}
           onSuccess={handleNuevaSolSuccess}
+        />
+      )}
+
+      {sfonFromSmat && (
+        <FundsRequestModal
+          task={sfonFromSmat.task}
+          projectName={sfonFromSmat.projectName}
+          parentTaskName={sfonFromSmat.parentTaskName}
+          onClose={() => setSfonFromSmat(null)}
+          onSuccess={() => {
+            setSfonFromSmat(null);
+            loadSolicitudes();
+          }}
         />
       )}
 

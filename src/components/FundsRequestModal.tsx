@@ -148,27 +148,26 @@ Solicitud generada automáticamente desde el sistema de reportes CDIMA
 ${JSON.stringify(jsonData, null, 2)}
 ===FIN_DATOS_JSON===`;
 
-      // Obtener el workspace del primer proyecto de la tarea
-      const workspaceGid = task.projects?.[0]?.workspace?.gid;
+      // Obtener el workspace: directo en la tarea (subtareas) o desde el primer proyecto
+      const workspaceGid = task.workspace?.gid ?? task.projects?.[0]?.workspace?.gid;
       if (!workspaceGid) {
         throw new Error('No se pudo obtener el workspace de la tarea');
       }
 
-      // Buscar el campo personalizado "Tipo de Solicitud"
-      const tipoSolicitudField = task.custom_fields?.find(
-        field => field.name === 'Tipo de Solicitud'
-      );
-      
-      // Preparar custom_fields si existe el campo
+      // Preparar custom_fields solo si la tarea pertenece a un proyecto
+      // (las sub-subtareas no heredan custom fields de proyecto)
       const customFields: Record<string, string> = {};
-      if (tipoSolicitudField?.gid) {
-        // Buscar el enum_value para "Solicitud de Fondos"
-        const solicitudFondosValue = tipoSolicitudField.enum_options?.find(
-          option => option.name === 'Solicitud de Fondos'
+      if (task.projects && task.projects.length > 0) {
+        const tipoSolicitudField = task.custom_fields?.find(
+          field => field.name === 'Tipo de Solicitud'
         );
-        
-        if (solicitudFondosValue?.gid) {
-          customFields[tipoSolicitudField.gid] = solicitudFondosValue.gid;
+        if (tipoSolicitudField?.gid) {
+          const solicitudFondosValue = tipoSolicitudField.enum_options?.find(
+            option => option.name === 'Solicitud de Fondos'
+          );
+          if (solicitudFondosValue?.gid) {
+            customFields[tipoSolicitudField.gid] = solicitudFondosValue.gid;
+          }
         }
       }
 

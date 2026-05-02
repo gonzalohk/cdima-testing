@@ -10,8 +10,8 @@ import config from '../config/env';
 const BASE_URL = 'https://app.asana.com/api/1.0';
 
 // Caps concurrent requests to respect Asana limits:
-//   GET:   max 50 concurrent
-//   Write: max 15 concurrent (POST/PUT/PATCH/DELETE)
+//   GET:   max 30 concurrent
+//   Write: max 12 concurrent (POST/PUT/PATCH/DELETE)
 // Retries on 429 using Retry-After header or exponential backoff (up to 3 retries).
 class Semaphore {
   private queue: Array<() => void> = [];
