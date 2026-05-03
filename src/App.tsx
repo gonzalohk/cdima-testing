@@ -9,6 +9,7 @@ import DiplomadosPage from './pages/DiplomadosPage';
 import EscuelasPage from './pages/EscuelasPage';
 import ProduccionAltoNivelPage from './pages/ProduccionAltoNivelPage';
 import InvestigacionIncidenciaPage from './pages/InvestigacionIncidenciaPage';
+import PublicacionesPage from './pages/PublicacionesPage';
 import LoginPage from './pages/LoginPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -59,6 +60,7 @@ function AppRoutes() {
           <Route path="diplomados" element={<DiplomadosPage />} />
           <Route path="produccion-alto-nivel" element={<ProduccionAltoNivelPage />} />
           <Route path="investigacion-e-incidencia" element={<InvestigacionIncidenciaPage />} />
+          <Route path="publicaciones" element={<PublicacionesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>
@@ -69,7 +71,7 @@ function AppRoutes() {
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>

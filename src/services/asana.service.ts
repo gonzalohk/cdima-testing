@@ -149,7 +149,7 @@ class AsanaService {
 
   async getSubtasks(taskGid: string): Promise<AsanaTask[]> {
     return this.fetchAsana<AsanaTask[]>(
-      `/tasks/${taskGid}/subtasks?opt_fields=name,notes,completed,due_on,start_on,assignee.name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
+      `/tasks/${taskGid}/subtasks?opt_fields=name,notes,completed,due_on,start_on,assignee.name,custom_fields,custom_fields.gid,custom_fields.name,custom_fields.display_value,custom_fields.type,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.enum_options,custom_fields.enum_options.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.number_value,custom_fields.text_value`
     );
   }
 

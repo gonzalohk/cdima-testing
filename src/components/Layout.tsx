@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Popconfirm } from 'antd';
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
-import { AsanaSection } from '../types/asana.types';
+import { AsanaSection, AsanaTask } from '../types/asana.types';
 import { useAuth } from '../context/AuthContext';
 import { ROLE_PAGES, ROLE_ESCUELA_AREA } from '../context/permissions';
 import logoCdima from '../assets/logocdima.png';
@@ -18,14 +18,21 @@ const Layout: React.FC = () => {
   const canSeeDiplomados = _pages.includes('/diplomados');
   const canSeeProduccion = _pages.includes('/produccion-alto-nivel');
   const canSeeInvestigacion = _pages.includes('/investigacion-e-incidencia');
-  const canSeeAcademico = canSeeEscuelas || canSeeDiplomados;
+  const canSeePublicaciones = _pages.includes('/publicaciones');
+  const canSeeAcademico = canSeeEscuelas || canSeeDiplomados || canSeeProduccion;
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
   const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
+  const [cursos, setCursos] = useState<AsanaSection[]>([]);
+  const [pubMenus, setPubMenus] = useState<AsanaTask[]>([]);
   const [showEscuelasSubmenu, setShowEscuelasSubmenu] = useState(false);
   const [showDiplomadosSubmenu, setShowDiplomadosSubmenu] = useState(false);
+  const [showCursosSubmenu, setShowCursosSubmenu] = useState(false);
 
   useEffect(() => {
     loadMenuData();
+    const onRefresh = () => loadMenuData();
+    window.addEventListener('publicaciones:refresh', onRefresh);
+    return () => window.removeEventListener('publicaciones:refresh', onRefresh);
   }, []);
 
   const loadMenuData = async () => {
@@ -76,6 +83,24 @@ const Layout: React.FC = () => {
         const diplomadosSections = await asanaService.getSections(diplomadosProject.gid);
         setDiplomados(diplomadosSections);
       }
+
+      // Cargar Cursos de Alto Nivel
+      if (canSeeProduccion) {
+        const cursosProject = projects.find(p => p.name.toLowerCase().includes('curso alto nivel'));
+        if (cursosProject) {
+          const cursosSections = await asanaService.getSections(cursosProject.gid);
+          setCursos(cursosSections);
+        }
+      }
+
+      // Cargar menús de Publicaciones
+      if (canSeePublicaciones) {
+        const pubProject = projects.find(p => p.name === 'Publicaciones CDIMA');
+        if (pubProject) {
+          const allTasks = await asanaService.getProjectTasks(pubProject.gid);
+          setPubMenus(allTasks.filter((t: AsanaTask) => !t.name.startsWith('Resumen:')));
+        }
+      }
     } catch (error) {
       console.error('Error loading menu data:', error);
     }
@@ -91,6 +116,11 @@ const Layout: React.FC = () => {
     setShowDiplomadosSubmenu(false);
   };
 
+  const handleCursoClick = (curso: AsanaSection) => {
+    navigate('/produccion-alto-nivel', { state: { selectedCurso: curso } });
+    setShowCursosSubmenu(false);
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
@@ -100,12 +130,21 @@ const Layout: React.FC = () => {
     e.preventDefault();
     setShowEscuelasSubmenu(!showEscuelasSubmenu);
     setShowDiplomadosSubmenu(false);
+    setShowCursosSubmenu(false);
   };
 
   const toggleDiplomadosSubmenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setShowDiplomadosSubmenu(!showDiplomadosSubmenu);
     setShowEscuelasSubmenu(false);
+    setShowCursosSubmenu(false);
+  };
+
+  const toggleCursosSubmenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowCursosSubmenu(!showCursosSubmenu);
+    setShowEscuelasSubmenu(false);
+    setShowDiplomadosSubmenu(false);
   };
 
   return (
@@ -283,29 +322,72 @@ const Layout: React.FC = () => {
               )}
             </li>}
 
-            {/* Producción — visible según rol */}
-            {canSeeProduccion && <li className="sidebar-group-label">Producción</li>}
-
-            {canSeeProduccion && (
-            <li>
-              <Link
-                to="/produccion-alto-nivel"
+            {/* Curso de Alto Nivel con submenú */}
+            {canSeeProduccion && <li className="nav-item-submenu">
+              <a
+                href="#"
                 className={`nav-link ${location.pathname === '/produccion-alto-nivel' ? 'active' : ''}`}
+                onClick={toggleCursosSubmenu}
               >
                 🚀 Curso de Alto Nivel
-              </Link>
-            </li>
-            )}
+                <span className="submenu-arrow" style={{ marginLeft: 'auto' }}>
+                  {showCursosSubmenu ? '▲' : '▼'}
+                </span>
+              </a>
+              {showCursosSubmenu && (
+                <ul className="submenu">
+                  <li>
+                    <Link
+                      to="/produccion-alto-nivel"
+                      className="submenu-link"
+                      onClick={() => setShowCursosSubmenu(false)}
+                    >
+                      Ver todos
+                    </Link>
+                  </li>
+                  {cursos.length === 0 && (
+                    <li style={{ padding: '0.4rem 1rem', fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                      Sin cursos aún
+                    </li>
+                  )}
+                  {cursos.map(curso => (
+                    <li key={curso.gid}>
+                      <button
+                        className="submenu-link"
+                        onClick={() => handleCursoClick(curso)}
+                      >
+                        {curso.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>}
 
-            {canSeeInvestigacion && (
-            <li>
-              <Link
-                to="/investigacion-e-incidencia"
-                className={`nav-link ${location.pathname === '/investigacion-e-incidencia' ? 'active' : ''}`}
-              >
-                🔎 Investigación e incidencia
-              </Link>
-            </li>
+
+            {canSeePublicaciones && <li className="sidebar-group-label">Publicaciones</li>}
+
+            {canSeePublicaciones && pubMenus.map(menu => (
+              <li key={menu.gid}>
+                <Link
+                  to={`/publicaciones?tab=${menu.gid}`}
+                  className={`nav-link ${location.pathname === '/publicaciones' && new URLSearchParams(location.search).get('tab') === menu.gid ? 'active' : ''}`}
+                >
+                  📄 {menu.name}
+                </Link>
+              </li>
+            ))}
+
+            {canSeePublicaciones && user?.role === 'director' && (
+              <li>
+                <Link
+                  to="/publicaciones?newMenu=1"
+                  className="nav-link"
+                  style={{ color: '#9ca3af', fontSize: 12, fontStyle: 'italic' }}
+                >
+                  + Agregar menú
+                </Link>
+              </li>
             )}
 
             <li className="sidebar-group-label">Ayuda</li>
