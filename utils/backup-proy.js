@@ -144,14 +144,23 @@ function fetchPagedMP(token, url) {
   return items;
 }
 
+function fetchSubtasksRecursiveMP(token, taskGid, result) {
+  var subs = fetchPagedMP(token, '/tasks/' + taskGid + '/subtasks?opt_fields=' + OPT_FIELDS_MP);
+  for (var i = 0; i < subs.length; i++) {
+    result.push(subs[i]);
+    if (subs[i].num_subtasks > 0) {
+      fetchSubtasksRecursiveMP(token, subs[i].gid, result);
+    }
+  }
+}
+
 function fetchAllTasksWithSubtasksMP(token, projectGid) {
-  const tasks = fetchPagedMP(token, '/projects/' + projectGid + '/tasks?opt_fields=' + OPT_FIELDS_MP);
-  const result = [];
-  for (const task of tasks) {
-    result.push(task);
-    if (task.num_subtasks > 0) {
-      const subs = fetchPagedMP(token, '/tasks/' + task.gid + '/subtasks?opt_fields=' + OPT_FIELDS_MP);
-      result.push.apply(result, subs);
+  var tasks = fetchPagedMP(token, '/projects/' + projectGid + '/tasks?opt_fields=' + OPT_FIELDS_MP);
+  var result = [];
+  for (var i = 0; i < tasks.length; i++) {
+    result.push(tasks[i]);
+    if (tasks[i].num_subtasks > 0) {
+      fetchSubtasksRecursiveMP(token, tasks[i].gid, result);
     }
   }
   return result;
