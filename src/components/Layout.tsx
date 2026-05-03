@@ -17,7 +17,6 @@ const Layout: React.FC = () => {
   const canSeeEscuelas = _pages.includes('/escuelas');
   const canSeeDiplomados = _pages.includes('/diplomados');
   const canSeeProduccion = _pages.includes('/produccion-alto-nivel');
-  const canSeeInvestigacion = _pages.includes('/investigacion-e-incidencia');
   const canSeePublicaciones = _pages.includes('/publicaciones');
   const canSeeAcademico = canSeeEscuelas || canSeeDiplomados || canSeeProduccion;
   const [escuelas, setEscuelas] = useState<AsanaSection[]>([]);
