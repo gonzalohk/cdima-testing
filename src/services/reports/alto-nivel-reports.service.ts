@@ -588,8 +588,6 @@ export const exportAltoNivelGeneralWord = ({ curso, estudiantes }: ExportDiploma
                 <tr><td>Mujeres</td><td class="center">${mujeres}</td></tr>
                 <tr><td>Varones</td><td class="center">${varones}</td></tr>
                 <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
-                <tr><td class="bold">19 D/B</td><td></td></tr>
-                <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
               </table>
             </td>
           </tr>

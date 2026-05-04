@@ -1326,6 +1326,11 @@ const EscuelasPage: React.FC = () => {
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                                 >＋ Inscribir Estudiante</button>
                                 <button
+                                  onClick={handleExportEscuelaGeneralWord}
+                                  className="button-secondary"
+                                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                >📝 Listado WORD</button>
+                                <button
                                   onClick={handleExportNominaPDF}
                                   className="button-secondary"
                                   style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}

@@ -456,15 +456,13 @@ export const exportEscuelaGeneralWord = ({
             </td>
           </tr>
           <tr>
-            <td class="field-cell" colspan="6"><span class="bold">ACTIVIDAD:</span> ________________________________</td>
+            <td class="field-cell" colspan="6"><span class="bold">ACTIVIDAD:</span></td>
             <td class="summary-cell" colspan="4" rowspan="4">
               <table class="summary-counts">
                 <tr><td colspan="2" class="summary-title">NRO. DE ASISTENCIA DE PARTICIPANTES</td></tr>
                 <tr><td colspan="2" class="bold center">POBLACION</td></tr>
                 <tr><td>Mujeres</td><td class="center">${mujeres}</td></tr>
                 <tr><td>Varones</td><td class="center">${varones}</td></tr>
-                <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
-                <tr><td class="bold">19 D/B</td><td></td></tr>
                 <tr><td class="bold">TOTAL</td><td class="center">${total}</td></tr>
               </table>
             </td>
