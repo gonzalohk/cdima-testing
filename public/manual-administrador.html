@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Manual de Usuario — Administrador | CDIMA Amuyt'a</title>
+  <title>Manual de Usuario | CDIMA Amuyt'a</title>
   <style>
     :root {
       --sidebar-width: 280px;
@@ -410,8 +410,8 @@
 <!-- TOP HEADER -->
 <header class="top-header">
   <div class="logo-circle">🏛️</div>
-  <h1>Manual de Usuario — Administrador · CDIMA Amuyt'a</h1>
-  <span class="badge">v2.0 · Abril 2026</span>
+  <h1>Manual de Usuario · CDIMA Amuyt'a</h1>
+  <span class="badge">v3.0 · Junio 2026</span>
 </header>
 
 <div class="layout">
@@ -431,7 +431,7 @@
     <div class="sidebar-section">
       <div class="sidebar-heading">2 · Roles y Permisos</div>
       <a href="#sec-roles"><span class="icon">👥</span> 2.1 Roles del sistema</a>
-      <a href="#sec-permisos"><span class="icon">🔑</span> 2.2 Permisos Administrador</a>
+      <a href="#sec-permisos"><span class="icon">🔑</span> 2.2 Permisos por rol</a>
       <a href="#sec-menu-roles"><span class="icon">📋</span> 2.3 Menú por rol</a>
     </div>
     <div class="sidebar-section">
@@ -469,10 +469,39 @@
       <a href="#sec-reportes-plan" class="sub"><span class="icon">📤</span> 6.7 Exportar reportes</a>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-heading">7 · Investigación</div>
-      <a href="#sec-inv-ver" class="sub"><span class="icon">👁️</span> 7.1 Ver tareas</a>
-      <a href="#sec-inv-agregar" class="sub"><span class="icon">➕</span> 7.2 Agregar documento</a>
-      <a href="#sec-inv-eliminar" class="sub"><span class="icon">🗑️</span> 7.3 Eliminar documento</a>
+      <div class="sidebar-heading">7 · Menú: Escuelas</div>
+      <a href="#sec-escuelas-intro" class="sub"><span class="icon">🏫</span> 7.1 Seleccionar escuela</a>
+      <a href="#sec-escuelas-estudiantes" class="sub"><span class="icon">👤</span> 7.2 Estudiantes</a>
+      <a href="#sec-escuelas-centralizador" class="sub"><span class="icon">📊</span> 7.3 Centralizador</a>
+      <a href="#sec-escuelas-asistencia" class="sub"><span class="icon">✅</span> 7.4 Asistencia</a>
+      <a href="#sec-escuelas-documentos" class="sub"><span class="icon">📁</span> 7.5 Documentos</a>
+      <a href="#sec-escuelas-exportar" class="sub"><span class="icon">📤</span> 7.6 Exportar</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">8 · Menú: Diplomados</div>
+      <a href="#sec-diplomados-intro" class="sub"><span class="icon">🎓</span> 8.1 Seleccionar diplomado</a>
+      <a href="#sec-diplomados-docentes" class="sub"><span class="icon">👨‍🏫</span> 8.2 Docentes</a>
+      <a href="#sec-diplomados-estudiantes" class="sub"><span class="icon">👤</span> 8.3 Estudiantes</a>
+      <a href="#sec-diplomados-centralizador" class="sub"><span class="icon">📊</span> 8.4 Centralizador</a>
+      <a href="#sec-diplomados-asistencia" class="sub"><span class="icon">✅</span> 8.5 Asistencia</a>
+      <a href="#sec-diplomados-documentos" class="sub"><span class="icon">📁</span> 8.6 Documentos</a>
+      <a href="#sec-diplomados-exportar" class="sub"><span class="icon">📤</span> 8.7 Exportar</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">9 · Menú: Curso Alto Nivel</div>
+      <a href="#sec-alto-intro" class="sub"><span class="icon">🚀</span> 9.1 Seleccionar curso</a>
+      <a href="#sec-alto-docentes" class="sub"><span class="icon">👨‍🏫</span> 9.2 Docentes</a>
+      <a href="#sec-alto-estudiantes" class="sub"><span class="icon">👤</span> 9.3 Estudiantes</a>
+      <a href="#sec-alto-centralizador" class="sub"><span class="icon">📊</span> 9.4 Centralizador</a>
+      <a href="#sec-alto-asistencia" class="sub"><span class="icon">✅</span> 9.5 Asistencia</a>
+      <a href="#sec-alto-documentos" class="sub"><span class="icon">📁</span> 9.6 Documentos</a>
+      <a href="#sec-alto-exportar" class="sub"><span class="icon">📤</span> 9.7 Exportar</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">10 · Menú: Publicaciones</div>
+      <a href="#sec-pub-intro" class="sub"><span class="icon">📌</span> 10.1 Menús y tarjetas</a>
+      <a href="#sec-pub-crear" class="sub"><span class="icon">➕</span> 10.2 Crear menú</a>
+      <a href="#sec-pub-links" class="sub"><span class="icon">🔗</span> 10.3 Agregar enlace</a>
     </div>
   </nav>
 
@@ -481,19 +510,19 @@
 
     <!-- HERO -->
     <div class="hero">
-      <h1>Manual de Usuario — Rol Administrador</h1>
-      <p>Guía completa de uso del sistema CDIMA Amuyt'a para usuarios con rol Administrador. Incluye pasos detallados, capturas de referencia y resultados esperados por cada acción.</p>
+      <h1>Manual de Usuario — CDIMA Amuyt'a</h1>
+      <p>Guía completa del sistema CDIMA Amuyt'a. Cubre todos los módulos del menú lateral: Inicio, Proyectos, Comunicación, Planificación, Escuelas de Formación, Diplomados, Curso de Alto Nivel y Publicaciones.</p>
       <div class="hero-meta">
-        <span>📅 Abril 2026</span>
-        <span>🔖 Versión 2.0</span>
-        <span>👤 Rol: Administrador</span>
+        <span>📅 Junio 2026</span>
+        <span>🔖 Versión 3.0</span>
+        <span>📋 Todos los roles</span>
       </div>
     </div>
 
     <!-- ══════════════════════════════════════════ -->
     <section id="sec-intro">
       <h2>Plataformas del sistema</h2>
-      <p>El rol <strong>Administrador</strong> trabaja con tres plataformas complementarias:</p>
+      <p>CDIMA Amuyt'a trabaja con tres plataformas complementarias:</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Plataforma</th><th>URL</th><th>Propósito</th></tr></thead>
@@ -557,14 +586,18 @@
         <div class="capture has-img"><a href="https://ibb.co/gM50BnJK" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/gM50BnJK/pantalla-de-Inicio-despue-s-del-login-con-menu-lateral-completo.png" alt="Pantalla de Inicio después del login con menú lateral completo" /></a><div class="cap-caption">Pantalla de Inicio después del login con menú lateral completo.</div></div>
       </div>
 
-      <h3>Menú disponible para el Administrador</h3>
+      <h3>Menú del sistema (según rol)</h3>
       <div class="menu-showcase">
         <div class="menu-item"><span class="icon">🏠</span> Inicio</div>
         <div class="menu-item"><span class="icon">📊</span> Proyectos</div>
         <div class="menu-item"><span class="icon">📡</span> Comunicación</div>
         <div class="menu-item"><span class="icon">📅</span> Planificación</div>
-        <div class="menu-item"><span class="icon">🔬</span> Investigación e Incidencia</div>
+        <div class="menu-item"><span class="icon">🏫</span> Escuelas de Formación</div>
+        <div class="menu-item"><span class="icon">🎓</span> Diplomados</div>
+        <div class="menu-item"><span class="icon">🚀</span> Curso de Alto Nivel</div>
+        <div class="menu-item"><span class="icon">📌</span> Publicaciones</div>
       </div>
+      <div class="callout tip"><span class="ci">💡</span> El menú visible varía según el rol del usuario. Consulte la sección <a href="#sec-menu-roles">2.3 · Menú por rol</a> para ver qué puede ver cada rol.</div>
     </section>
 
     <!-- ══════════════════════════════════════════ -->
@@ -602,7 +635,7 @@
 
     <!-- ══════════════════════════════════════════ -->
     <section id="sec-permisos">
-      <h2>2.2 · Permisos del rol Administrador</h2>
+      <h2>2.2 · Permisos por rol</h2>
 
       <h3>Módulo Inicio</h3>
       <div class="table-wrap"><table>
@@ -630,21 +663,23 @@
       </table></div>
 
       <h3>Módulos Escuelas / Diplomados / Alto Nivel</h3>
+      <div class="callout tip"><span class="ci">💡</span> Estos módulos son exclusivos de los roles <strong>Director</strong> y <strong>Técnico EP</strong>. El <strong>Técnico EV</strong> accede solo a Escuelas de su área.</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Permiso</th><th>Director</th><th>Téc. EP</th><th>Téc. EV</th></tr></thead>
+        <tbody>
+          <tr><td>Crear / editar</td><td class="yes">✅</td><td class="yes">✅</td><td class="partial">⚠️ Solo Escuelas EV</td></tr>
+          <tr><td>Registrar asistencia y notas</td><td class="yes">✅</td><td class="yes">✅</td><td class="partial">⚠️ Solo Escuelas EV</td></tr>
+          <tr><td>Exportar reportes</td><td class="yes">✅</td><td class="yes">✅</td><td class="partial">⚠️ Solo Escuelas EV</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Módulo Publicaciones</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
         <tbody>
-          <tr><td>Crear, editar, gestionar</td><td class="no">❌ No (exclusivo de Director y Técnico EP)</td></tr>
+          <tr><td>Ver y navegar publicaciones</td><td class="yes">✅ Todos los roles</td></tr>
+          <tr><td>Crear menús y agregar enlaces</td><td class="yes">✅ Todos los roles</td></tr>
         </tbody>
       </table></div>
-
-      <h3>Módulo Investigación e Incidencia</h3>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Permiso</th><th>Acceso</th></tr></thead>
-        <tbody>
-          <tr><td>Gestionar documentos</td><td class="yes">✅ Sí</td></tr>
-        </tbody>
-      </table></div>
-
       <div class="callout warn"><span class="ci">⚠️</span> Solo los roles <strong>Administrador</strong> y <strong>Director</strong> pueden aprobar u observar solicitudes. Los demás roles solo pueden ver el detalle.</div>
     </section>
 
@@ -654,14 +689,14 @@
       <div class="table-wrap"><table>
         <thead><tr><th>Menú</th><th>Admin</th><th>Director</th><th>Téc. EV</th><th>Téc. EP</th><th>Comuni.</th><th>Planif.</th></tr></thead>
         <tbody>
-          <tr><td>🏠 Inicio</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
+          <tr><td>🏠 Inicio</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
           <tr><td>📊 Proyectos</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
           <tr><td>📡 Comunicación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
           <tr><td>📅 Planificación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
-          <tr><td>🏫 Escuelas</td><td class="no">❌</td><td class="yes">✅</td><td class="partial">✅ (solo EV)</td><td class="partial">✅ (solo EP)</td><td class="no">❌</td><td class="no">❌</td></tr>
+          <tr><td>🏫 Escuelas</td><td class="no">❌</td><td class="yes">✅</td><td class="partial">⚠️ (solo EV)</td><td class="partial">⚠️ (solo EP)</td><td class="no">❌</td><td class="no">❌</td></tr>
           <tr><td>🎓 Diplomados</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
-          <tr><td>🏆 Alto Nivel</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
-          <tr><td>🔬 Investigación</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="no">❌</td></tr>
+          <tr><td>🚀 Curso Alto Nivel</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td></tr>
+          <tr><td>📌 Publicaciones</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -1170,58 +1205,518 @@
     <hr />
 
     <!-- ══════════════════════════════════════════ -->
-    <section id="sec-inv-ver">
-      <h2>7 · Menú: Investigación e Incidencia</h2>
-      <p>El menú <strong>Investigación e Incidencia</strong> (🔬) permite gestionar los documentos y enlaces del proyecto <strong>SAIH investigación</strong>. Disponible para todos los roles excepto Planificador.</p>
+    <section id="sec-escuelas-intro">
+      <h2>7 · Menú: Escuelas de Formación</h2>
+      <p>El menú <strong>Escuelas de Formación</strong> (🏫) permite gestionar las escuelas del área: nómina de estudiantes, calificaciones, asistencia y documentos. Solo los roles <strong>Director</strong>, <strong>Técnico EV</strong> y <strong>Técnico EP</strong> tienen acceso.</p>
+      <div class="callout tip"><span class="ci">💡</span> Los roles <strong>Técnico EV</strong> y <strong>Técnico EP</strong> solo ven las escuelas de su propia área. El <strong>Director</strong> ve todas las escuelas.</div>
 
-      <h3>7.1 · Visualización de tareas</h3>
+      <h3>7.1 · Seleccionar una escuela</h3>
       <div class="action-card">
-        <div class="action-label">🎯 Acción: Ver las tareas y documentos del proyecto</div>
+        <div class="action-label">🎯 Acción: Abrir la información de una escuela</div>
         <ol class="steps">
-          <li>Haga clic en <strong>🔬 Investigación e Incidencia</strong> en el menú lateral.</li>
-          <li>El sistema carga automáticamente las tareas del proyecto "SAIH investigacion".</li>
-          <li>Use el campo de búsqueda para filtrar las tareas por nombre.</li>
+          <li>En el menú lateral, bajo <strong>🏫 Escuelas de Formación</strong>, se listan las escuelas como submenú.</li>
+          <li>Haga clic sobre el nombre de la escuela que desea gestionar.</li>
+          <li>El sistema carga todos los datos de la escuela.</li>
         </ol>
-        <div class="capture has-img"><a href="https://ibb.co/Cp7X6NZv" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/Cp7X6NZv/vista-general-de-Investigacio-n-e-Incidencia-con-lista-de-tareas-y-sus-documentos.png" alt="Vista general de Investigación e Incidencia con lista de tareas y sus documentos" /></a><div class="cap-caption">Vista general de Investigación e Incidencia con lista de tareas y sus documentos.</div></div>
-        <div class="result-box">Se muestra la lista completa de tareas del proyecto con sus documentos asociados, listos para consultar o gestionar.</div>
+        <div class="result-box">Se muestra el panel de la escuela con las pestañas: Estudiantes, Centralizador, Asistencia y Documentos.</div>
+      </div>
+
+      <h3>Pestañas disponibles</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pestaña</th><th>Contenido</th></tr></thead>
+        <tbody>
+          <tr><td>👤 Estudiantes</td><td>Lista de estudiantes inscritos. Permite agregar, editar y exportar.</td></tr>
+          <tr><td>📊 Centralizador</td><td>Calificaciones por módulo. Permite registrar y exportar.</td></tr>
+          <tr><td>✅ Asistencia</td><td>Registro de asistencia por sesión. Permite registrar y exportar.</td></tr>
+          <tr><td>📁 Documentos</td><td>Gestión de documentos vinculados a la escuela.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-escuelas-estudiantes">
+      <h2>7.2 · Pestaña: Estudiantes (Escuelas)</h2>
+      <p>Muestra la nómina completa de estudiantes inscritos en la escuela seleccionada.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar un estudiante</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>"+ Agregar persona"</strong> en la barra de herramientas.</li>
+          <li>Complete el formulario con los datos del estudiante: nombre, CI, correo, teléfono y otros campos.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">El estudiante se agrega a la lista y el registro se guarda en Asana.</div>
+      </div>
+
+      <h3>Exportación desde la pestaña Estudiantes</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Listado general de todos los estudiantes en formato editable</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Nómina oficial con todos los estudiantes</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Ficha individual del estudiante seleccionado</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Ficha individual en formato editable</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout tip"><span class="ci">💡</span> El botón <strong>📝 Listado WORD</strong> genera un documento Word con el listado completo de estudiantes, útil para editar o enviar por correo.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-escuelas-centralizador">
+      <h2>7.3 · Pestaña: Centralizador de Notas (Escuelas)</h2>
+      <p>Muestra las calificaciones de todos los estudiantes organizadas por módulo.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar calificaciones</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Centralizador</strong>.</li>
+          <li>Haga clic en la celda de nota del estudiante que desea actualizar.</li>
+          <li>Ingrese la calificación y presione Enter o haga clic fuera del campo.</li>
+        </ol>
+        <div class="result-box">La nota se guarda automáticamente en Asana.</div>
+        <div class="callout warn"><span class="ci">⚠️</span> Solo los roles con permiso <code>escuelas.notas.registrar</code> pueden modificar calificaciones.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Tabla completa de calificaciones</td></tr>
+          <tr><td>📝 Acta de Calificaciones</td><td>Word</td><td>Acta oficial de calificaciones en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-escuelas-asistencia">
+      <h2>7.4 · Pestaña: Asistencia (Escuelas)</h2>
+      <p>Permite registrar y consultar la asistencia de los estudiantes por sesión.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar asistencia</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Asistencia</strong>.</li>
+          <li>Haga clic en <strong>"📋 Registrar asistencia"</strong>.</li>
+          <li>Seleccione la fecha de la sesión.</li>
+          <li>Marque los estudiantes como presentes o ausentes.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">La asistencia queda registrada y se refleja en el porcentaje de cada estudiante.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Registro completo de asistencia por sesión</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Registro en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-escuelas-documentos">
+      <h2>7.5 · Pestaña: Documentos (Escuelas)</h2>
+      <p>Permite vincular y gestionar documentos externos (Google Drive, URLs) asociados a la escuela.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar o eliminar un documento</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Documentos</strong>.</li>
+          <li>Para agregar: haga clic en <strong>"+ Agregar documento"</strong>, complete nombre y URL, haga clic en <strong>"Guardar"</strong>.</li>
+          <li>Para eliminar: haga clic en el ícono <strong>🗑️</strong> junto al documento y confirme.</li>
+        </ol>
+        <div class="result-box">El documento se agrega o elimina de la lista.</div>
+        <div class="callout danger"><span class="ci">⚠️</span> La eliminación es permanente. No afecta al archivo original en Google Drive, solo elimina el enlace.</div>
       </div>
     </section>
 
     <!-- ══════════════════════════════════════════ -->
-    <section id="sec-inv-agregar">
-      <h2>7.2 · Agregar un documento a una tarea</h2>
+    <section id="sec-escuelas-exportar">
+      <h2>7.6 · Resumen de exportaciones — Escuelas</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Desde</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📝 Acta de Calificaciones</td><td>Word</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Pestaña Asistencia</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Pestaña Asistencia</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-intro">
+      <h2>8 · Menú: Diplomados</h2>
+      <p>El menú <strong>Diplomados</strong> (🎓) permite gestionar los programas de diplomado: docentes, estudiantes, calificaciones, asistencia y documentos. Solo los roles <strong>Director</strong> y <strong>Técnico EP</strong> tienen acceso.</p>
+
+      <h3>8.1 · Seleccionar un diplomado</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Abrir la información de un diplomado</div>
+        <ol class="steps">
+          <li>En el menú lateral, bajo <strong>🎓 Diplomados</strong>, se listan los diplomados disponibles como submenú.</li>
+          <li>Haga clic sobre el nombre del diplomado que desea gestionar.</li>
+          <li>El sistema carga todos los datos del diplomado.</li>
+        </ol>
+        <div class="result-box">Se muestra el panel del diplomado con las pestañas: Docentes, Estudiantes, Centralizador, Asistencia y Documentos.</div>
+      </div>
+
+      <h3>Pestañas disponibles</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pestaña</th><th>Contenido</th></tr></thead>
+        <tbody>
+          <tr><td>👨‍🏫 Docentes</td><td>Lista de docentes asignados. Permite agregar, editar y exportar ficha.</td></tr>
+          <tr><td>👤 Estudiantes</td><td>Nómina de estudiantes inscritos. Permite agregar y exportar.</td></tr>
+          <tr><td>📊 Centralizador</td><td>Calificaciones por módulo. Permite registrar y exportar.</td></tr>
+          <tr><td>✅ Asistencia</td><td>Registro de asistencia por sesión. Permite registrar y exportar.</td></tr>
+          <tr><td>📁 Documentos</td><td>Gestión de documentos vinculados al diplomado.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-docentes">
+      <h2>8.2 · Pestaña: Docentes</h2>
+      <p>Muestra los docentes asignados al diplomado. Es la pestaña activa por defecto al abrir un diplomado.</p>
 
       <div class="action-card">
-        <div class="action-label">🎯 Acción: Vincular un nuevo documento a una tarea</div>
+        <div class="action-label">🎯 Acción: Agregar un docente</div>
         <ol class="steps">
-          <li>Ubique la tarea a la que desea agregar el documento.</li>
-          <li>Haga clic en el botón <strong>"+ Agregar documento"</strong> junto a la tarea.</li>
-          <li>Complete:
-            <br>• <strong>Nombre del documento:</strong> nombre descriptivo (ej.: "Informe de avance Mayo 2026")
-            <br>• <strong>URL:</strong> enlace al documento en Google Drive u otra plataforma válida
+          <li>Vaya a la pestaña <strong>Docentes</strong>.</li>
+          <li>Haga clic en <strong>"+ Agregar persona"</strong>.</li>
+          <li>Complete los datos del docente y haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">El docente aparece en la lista y el registro se guarda en Asana.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-estudiantes">
+      <h2>8.3 · Pestaña: Estudiantes (Diplomados)</h2>
+      <p>Muestra la nómina de estudiantes inscritos en el diplomado.</p>
+
+      <h3>Exportación desde la pestaña Estudiantes</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Listado general de todos los estudiantes en formato editable</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Nómina oficial en formato PDF</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Ficha individual del estudiante seleccionado</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Ficha individual en formato editable</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout tip"><span class="ci">💡</span> El botón <strong>📝 Listado WORD</strong> genera un documento Word con el listado completo de estudiantes del diplomado.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-centralizador">
+      <h2>8.4 · Pestaña: Centralizador de Notas (Diplomados)</h2>
+      <p>Tabla de calificaciones de los estudiantes por módulo.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar o actualizar calificaciones</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Centralizador</strong>.</li>
+          <li>Haga clic en la celda de nota que desea modificar.</li>
+          <li>Ingrese la calificación y confirme.</li>
+        </ol>
+        <div class="result-box">La calificación se guarda en Asana.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Tabla completa de calificaciones</td></tr>
+          <tr><td>📝 Centralizador Word</td><td>Word</td><td>Tabla de calificaciones en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-asistencia">
+      <h2>8.5 · Pestaña: Asistencia (Diplomados)</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar asistencia</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Asistencia</strong>.</li>
+          <li>Haga clic en <strong>"📋 Registrar asistencia"</strong>.</li>
+          <li>Seleccione la fecha y marque la asistencia de cada estudiante.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">La asistencia queda registrada.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Registro completo de asistencia</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Registro en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-documentos">
+      <h2>8.6 · Pestaña: Documentos (Diplomados)</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar o eliminar un documento</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Documentos</strong>.</li>
+          <li>Para agregar: haga clic en <strong>"+ Agregar documento"</strong>, complete nombre y URL, haga clic en <strong>"Guardar"</strong>.</li>
+          <li>Para eliminar: haga clic en <strong>🗑️</strong> y confirme.</li>
+        </ol>
+        <div class="result-box">El documento se agrega o elimina de la lista.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-diplomados-exportar">
+      <h2>8.7 · Resumen de exportaciones — Diplomados</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Desde</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📝 Centralizador Word</td><td>Word</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Pestaña Asistencia</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Pestaña Asistencia</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-intro">
+      <h2>9 · Menú: Curso de Alto Nivel</h2>
+      <p>El menú <strong>Curso de Alto Nivel</strong> (🚀) se encuentra bajo la sección <strong>Académico</strong> del menú lateral, junto a Escuelas y Diplomados. Solo los roles <strong>Director</strong> y <strong>Técnico EP</strong> tienen acceso.</p>
+
+      <h3>9.1 · Seleccionar un curso</h3>
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Abrir la información de un curso de alto nivel</div>
+        <ol class="steps">
+          <li>En el menú lateral, bajo <strong>🚀 Curso de Alto Nivel</strong>, se listan los cursos como submenú.</li>
+          <li>Haga clic sobre el nombre del curso que desea gestionar.</li>
+          <li>El sistema carga todos los datos del curso.</li>
+        </ol>
+        <div class="result-box">Se muestra el panel del curso con las pestañas: Docentes, Estudiantes, Centralizador, Asistencia y Documentos.</div>
+      </div>
+
+      <h3>Pestañas disponibles</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pestaña</th><th>Contenido</th></tr></thead>
+        <tbody>
+          <tr><td>👨‍🏫 Docentes</td><td>Lista de docentes asignados. Permite agregar, editar y exportar ficha.</td></tr>
+          <tr><td>👤 Estudiantes</td><td>Nómina de participantes inscritos. Permite agregar y exportar.</td></tr>
+          <tr><td>📊 Centralizador</td><td>Calificaciones por módulo. Permite registrar y exportar.</td></tr>
+          <tr><td>✅ Asistencia</td><td>Registro de asistencia por sesión. Permite registrar y exportar.</td></tr>
+          <tr><td>📁 Documentos</td><td>Gestión de documentos vinculados al curso.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-docentes">
+      <h2>9.2 · Pestaña: Docentes (Curso de Alto Nivel)</h2>
+      <p>Muestra los docentes asignados al curso. Es la pestaña activa por defecto al abrir un curso de alto nivel.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar un docente</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Docentes</strong>.</li>
+          <li>Haga clic en <strong>"+ Agregar persona"</strong>.</li>
+          <li>Complete los datos del docente y haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">El docente aparece en la lista y el registro se guarda en Asana.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-estudiantes">
+      <h2>9.3 · Pestaña: Estudiantes (Curso de Alto Nivel)</h2>
+      <p>Muestra la nómina de participantes inscritos en el curso de alto nivel.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar un participante</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Estudiantes</strong>.</li>
+          <li>Haga clic en <strong>"+ Agregar persona"</strong>.</li>
+          <li>Complete los datos del participante y haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">El participante aparece en la lista y el registro se guarda en Asana.</div>
+      </div>
+
+      <h3>Exportación desde la pestaña Estudiantes</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Listado general de todos los participantes en formato editable</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Nómina oficial en formato PDF</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Ficha individual del participante seleccionado</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Ficha individual en formato editable</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout tip"><span class="ci">💡</span> El botón <strong>📝 Listado WORD</strong> genera un documento Word con el listado completo de participantes del curso de alto nivel.</div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-centralizador">
+      <h2>9.4 · Pestaña: Centralizador de Notas (Curso de Alto Nivel)</h2>
+      <p>Tabla de calificaciones de los participantes por módulo.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar o actualizar calificaciones</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Centralizador</strong>.</li>
+          <li>Haga clic en la celda de nota que desea modificar.</li>
+          <li>Ingrese la calificación y confirme.</li>
+        </ol>
+        <div class="result-box">La calificación se guarda en Asana.</div>
+        <div class="callout warn"><span class="ci">⚠️</span> Solo los roles con permiso <code>alto-nivel.notas.registrar</code> pueden modificar calificaciones.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Tabla completa de calificaciones</td></tr>
+          <tr><td>📝 Centralizador Word</td><td>Word</td><td>Tabla de calificaciones en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-asistencia">
+      <h2>9.5 · Pestaña: Asistencia (Curso de Alto Nivel)</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Registrar asistencia</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Asistencia</strong>.</li>
+          <li>Haga clic en <strong>"📋 Registrar asistencia"</strong>.</li>
+          <li>Seleccione la fecha de la sesión.</li>
+          <li>Marque los participantes como presentes o ausentes.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+        </ol>
+        <div class="result-box">La asistencia queda registrada y se refleja en el porcentaje de cada participante.</div>
+      </div>
+
+      <h3>Exportación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Registro completo de asistencia por sesión</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Registro en formato editable</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-documentos">
+      <h2>9.6 · Pestaña: Documentos (Curso de Alto Nivel)</h2>
+      <p>Permite vincular y gestionar documentos externos (Google Drive, URLs) asociados al curso.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar o eliminar un documento</div>
+        <ol class="steps">
+          <li>Vaya a la pestaña <strong>Documentos</strong>.</li>
+          <li>Para agregar: haga clic en <strong>"+ Agregar documento"</strong>, complete nombre y URL, haga clic en <strong>"Guardar"</strong>.</li>
+          <li>Para eliminar: haga clic en <strong>🗑️</strong> y confirme.</li>
+        </ol>
+        <div class="result-box">El documento se agrega o elimina de la lista.</div>
+        <div class="callout danger"><span class="ci">⚠️</span> La eliminación es permanente. No afecta al archivo original en Google Drive, solo elimina el enlace.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-alto-exportar">
+      <h2>9.7 · Resumen de exportaciones — Curso de Alto Nivel</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Botón</th><th>Formato</th><th>Desde</th></tr></thead>
+        <tbody>
+          <tr><td>📝 Listado WORD</td><td>Word</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>🖨️ Nómina PDF</td><td>PDF</td><td>Pestaña Estudiantes</td></tr>
+          <tr><td>📄 Ficha PDF</td><td>PDF</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📝 Ficha Word</td><td>Word</td><td>Pestaña Estudiantes (selección)</td></tr>
+          <tr><td>📄 Centralizador PDF</td><td>PDF</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📝 Centralizador Word</td><td>Word</td><td>Pestaña Centralizador</td></tr>
+          <tr><td>📄 Asistencia PDF</td><td>PDF</td><td>Pestaña Asistencia</td></tr>
+          <tr><td>📝 Asistencia Word</td><td>Word</td><td>Pestaña Asistencia</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <hr />
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-pub-intro">
+      <h2>10 · Menú: Publicaciones</h2>
+      <p>El menú <strong>Publicaciones</strong> (📌) muestra recursos y materiales organizados por categorías. Cada categoría se muestra como una tarjeta con color único que contiene una lista de enlaces a recursos externos. <strong>Todos los roles</strong> tienen acceso a este módulo.</p>
+      <p>Los datos provienen de Asana: cada <strong>sección del proyecto Publicaciones</strong> es una categoría, y cada tarea dentro de esa sección es un enlace publicado.</p>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Navegar entre categorías de publicaciones</div>
+        <ol class="steps">
+          <li>Haga clic en <strong>📌 Publicaciones</strong> en el menú lateral.</li>
+          <li>En la parte superior se muestran las pestañas de cada categoría. Haga clic en la categoría deseada.</li>
+          <li>Debajo se muestra la lista de enlaces disponibles en esa categoría.</li>
+          <li>Haga clic en cualquier enlace para abrirlo en una nueva pestaña del navegador.</li>
+        </ol>
+        <div class="result-box">Se muestra la tarjeta de la categoría seleccionada con todos sus enlaces activos.</div>
+      </div>
+
+      <h3>Apariencia de las tarjetas</h3>
+      <p>Cada categoría tiene un <strong>color único</strong> que la identifica visualmente. Los colores se asignan automáticamente en orden según el índice de la categoría en la lista (paleta de 7 colores que rota).</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-pub-crear">
+      <h2>10.2 · Crear un nuevo menú de publicaciones</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar una nueva categoría</div>
+        <ol class="steps">
+          <li>Haga clic en el botón <strong>"➕ Agregar menú"</strong> en la barra de herramientas.</li>
+          <li>Escriba el <strong>nombre de la nueva categoría</strong> en el modal.</li>
+          <li>Haga clic en <strong>"Guardar"</strong>.</li>
+          <li>El sistema crea la nueva sección en Asana y redirige automáticamente a la nueva categoría.</li>
+        </ol>
+        <div class="result-box">La nueva categoría aparece como pestaña en la barra de Publicaciones.</div>
+        <div class="callout tip"><span class="ci">💡</span> Después de crear el menú, el sistema navega automáticamente a la nueva categoría para que pueda agregar enlaces de inmediato.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════ -->
+    <section id="sec-pub-links">
+      <h2>10.3 · Agregar enlaces a una categoría</h2>
+
+      <div class="action-card">
+        <div class="action-label">🎯 Acción: Agregar un nuevo enlace</div>
+        <ol class="steps">
+          <li>Seleccione la categoría a la que desea agregar el enlace.</li>
+          <li>Haga clic en <strong>"➕ Agregar enlace"</strong> o <strong>"+ Nueva publicación"</strong>.</li>
+          <li>Complete el formulario:
+            <br>• <strong>Nombre:</strong> nombre descriptivo del recurso (ej.: "Informe Anual 2025")
+            <br>• <strong>URL:</strong> enlace al recurso externo (Google Drive, sitio web, etc.)
           </li>
           <li>Haga clic en <strong>"Guardar"</strong>.</li>
         </ol>
-        <div class="capture has-img"><a href="https://ibb.co/MD2THWDP" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/MD2THWDP/formulario-de-agregar-documento-con-campos-nombre-y-URL-completados.png" alt="Formulario de agregar documento con campos nombre y URL completados" /></a><div class="cap-caption">Formulario de agregar documento con campos nombre y URL completados.</div></div>
-        <div class="result-box">El documento aparece en la lista de la tarea como enlace activo. El registro se guarda en las notas de la tarea en Asana.</div>
+        <div class="result-box">El enlace aparece en la lista de la categoría como elemento clicable que abre en nueva pestaña.</div>
       </div>
-    </section>
-
-    <!-- ══════════════════════════════════════════ -->
-    <section id="sec-inv-eliminar">
-      <h2>7.3 · Eliminar un documento</h2>
-
-      <div class="action-card">
-        <div class="action-label">🎯 Acción: Eliminar un documento vinculado a una tarea</div>
-        <ol class="steps">
-          <li>Ubique el documento dentro de la tarea.</li>
-          <li>Haga clic en el ícono <strong>🗑️</strong> junto al documento que desea eliminar.</li>
-          <li>Confirme la eliminación en la ventana de confirmación.</li>
-        </ol>
-        <div class="capture has-img"><a href="https://ibb.co/v6tZRg2k" target="_blank" rel="noopener noreferrer"><img src="https://i.ibb.co/v6tZRg2k/tarjeta-de-documento-con-el-i-cono-de-eliminar-visible-al-pasar-el-cursor.png" alt="Tarjeta de documento con el ícono de eliminar visible al pasar el cursor" /></a><div class="cap-caption">Tarjeta de documento con el ícono de eliminar visible al pasar el cursor.</div></div>
-        <div class="result-box">El documento se elimina de la lista y el registro se actualiza en Asana. Aparece una notificación de confirmación en la parte superior de la pantalla.</div>
-      </div>
-      <div class="callout danger"><span class="ci">⚠️</span> La eliminación es <strong>permanente</strong>. Verifique que seleccionó el documento correcto antes de confirmar.</div>
+      <div class="callout tip"><span class="ci">💡</span> Los enlaces se almacenan en el campo personalizado <strong>"url"</strong> de la tarea en Asana. Para editar un enlace existente, modifique la tarea directamente en Asana.</div>
     </section>
 
   </main>
