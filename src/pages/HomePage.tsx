@@ -577,7 +577,7 @@ const HomePage: React.FC = () => {
         const f = (data?.fechaAprobacion as string) || (data?.fechaObservacion as string) || '-';
         return parseFechaSol(f);
       };
-      setSolicitudes([...allRows].sort((a, b) => parseFechaSol(a.fecha) - parseFechaSol(b.fecha)));
+      setSolicitudes([...allRows].sort((a, b) => parseFechaSol(b.fecha) - parseFechaSol(a.fecha)));
 
       // Agrupar aprobadas: cada SMAT va seguida inmediatamente de sus SFONs anidados
       const nestedApproved = allApproved.filter(r => r.parentTaskName.includes(' › '));
@@ -878,7 +878,7 @@ const HomePage: React.FC = () => {
           <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
         </Tooltip>
         {(() => {
-          const canDelPending = user?.role === 'director' || isTecnico;
+          const canDelPending = user?.role === 'director' || user?.role === 'administrador' || isTecnico;
           return (
             <Popconfirm
               title="¿Eliminar solicitud?"
