@@ -9,7 +9,8 @@ import {
   getCustomFieldValueSafe, 
   parseEstudianteData, 
   parseAsistenciaRecords,
-  parseNotasObservaciones
+  parseNotasObservaciones,
+  calcularEdad
 } from '../../utils/asana-helpers';
 import { AsanaSection, AsanaTask } from '../../types/asana.types';
 
@@ -427,29 +428,6 @@ export const exportAltoNivelGeneralWord = ({ curso, estudiantes }: ExportDiploma
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
-
-  const calcularEdad = (fechaNacimiento?: string): string => {
-    if (!fechaNacimiento) return '';
-
-    const match = fechaNacimiento.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-    if (!match) return '';
-
-    const dia = Number(match[1]);
-    const mes = Number(match[2]) - 1;
-    let anio = Number(match[3]);
-    if (anio < 100) anio += 1900;
-
-    const nacimiento = new Date(anio, mes, dia);
-    if (Number.isNaN(nacimiento.getTime())) return '';
-
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const mesDiff = hoy.getMonth() - nacimiento.getMonth();
-    const diaDiff = hoy.getDate() - nacimiento.getDate();
-    if (mesDiff < 0 || (mesDiff === 0 && diaDiff < 0)) edad -= 1;
-
-    return edad >= 0 ? String(edad) : '';
-  };
 
   const filasParticipantes = estudiantes.map((estudiante, index) => {
     const partes = estudiante.name.split(',').map(p => p.trim());
