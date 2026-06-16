@@ -137,6 +137,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   comunicacion: [
     'home.solicitud.ver_detalle',
     'reporte.solicitud.crear',
+    'reporte.subactividad.cambiar_estado',
+    'reporte.subactividad.beneficiarios',
+    'reporte.fuentes.agregar',
+    'reporte.contratacion.actualizar_estado',
     'reporte.exportar',
     'investigacion.documentos.gestionar',
   ],
@@ -155,7 +159,7 @@ export const ROLE_PAGES: Record<UserRole, string[]> = {
   administrador: ['/', '/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia', '/publicaciones'],
   'tecnico ev':  ['/report', '/', '/biblioteca', '/planificacion', '/escuelas','/investigacion-e-incidencia', '/publicaciones'],
   'tecnico ep':  ['/report', '/', '/biblioteca', '/planificacion', '/escuelas', '/diplomados', '/produccion-alto-nivel', '/investigacion-e-incidencia', '/publicaciones'],
-  comunicacion:   ['/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia', '/publicaciones'],
+  comunicacion:   ['/', '/report', '/biblioteca', '/planificacion', '/investigacion-e-incidencia', '/publicaciones'],
   planificador:   ['/biblioteca', '/planificacion', '/publicaciones'],
 };
 

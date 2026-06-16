@@ -276,7 +276,7 @@ function extractJsonData(notes: string | undefined): Record<string, unknown> | n
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const canApprove = user?.role === 'administrador' || user?.role === 'director';
-  const isTecnico = user?.role === 'tecnico ev' || user?.role === 'tecnico ep';
+  const isTecnico = user?.role === 'tecnico ev' || user?.role === 'tecnico ep' || user?.role === 'comunicacion';
   const tecnicoArea = user?.role === 'tecnico ev' ? 'Erradicación de Violencia' : user?.role === 'tecnico ep' ? 'Empoderamiento Político' : null;
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
@@ -577,7 +577,15 @@ const HomePage: React.FC = () => {
         const f = (data?.fechaAprobacion as string) || (data?.fechaObservacion as string) || '-';
         return parseFechaSol(f);
       };
-      setSolicitudes([...allRows].sort((a, b) => parseFechaSol(b.fecha) - parseFechaSol(a.fecha)));
+      const filterByOwner = (rows: SolicitudRow[]) => {
+        if (user?.role !== 'comunicacion') return rows;
+        return rows.filter(r => {
+          const solicitante = (extractJsonData(r.task.notes)?.usuario as { email?: string } | undefined)?.email;
+          return solicitante === user.email;
+        });
+      };
+
+      setSolicitudes(filterByOwner([...allRows].sort((a, b) => parseFechaSol(b.fecha) - parseFechaSol(a.fecha))));
 
       // Agrupar aprobadas: cada SMAT va seguida inmediatamente de sus SFONs anidados
       const nestedApproved = allApproved.filter(r => r.parentTaskName.includes(' › '));
@@ -594,8 +602,8 @@ const HomePage: React.FC = () => {
       }
       const usedKeys = new Set(groupedApproved.map(r => r.key));
       nestedApproved.filter(n => !usedKeys.has(n.key)).forEach(n => groupedApproved.push(n));
-      setSolicitudesAprobadas(groupedApproved);
-      setSolicitudesObservadas([...allObserved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a)));
+      setSolicitudesAprobadas(filterByOwner(groupedApproved));
+      setSolicitudesObservadas(filterByOwner([...allObserved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a))));
       setContrataciones(allContrataciones);
       setAtrasadas(allAtrasadas.sort((a, b) => b.daysLate - a.daysLate));
       setProjectStats(allStats.sort((a, b) => {
@@ -878,7 +886,11 @@ const HomePage: React.FC = () => {
           <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
         </Tooltip>
         {(() => {
-          const canDelPending = user?.role === 'director' || user?.role === 'administrador' || isTecnico;
+          const solicitanteEmail = (extractJsonData(row.task.notes)?.usuario as { email?: string } | undefined)?.email;
+          const isComunicacion = user?.role === 'comunicacion';
+          const isOwner = isComunicacion && solicitanteEmail === user?.email;
+          const canDelPending = user?.role === 'director' || user?.role === 'administrador' || (isTecnico && !isComunicacion) || isOwner;
+          const delTooltip = canDelPending ? 'Eliminar solicitud' : isComunicacion ? 'Solo puedes eliminar tus propias solicitudes' : 'Solo el director puede eliminar';
           return (
             <Popconfirm
               title="¿Eliminar solicitud?"
@@ -889,7 +901,7 @@ const HomePage: React.FC = () => {
               okButtonProps={{ danger: true }}
               disabled={!canDelPending}
             >
-              <Tooltip title={canDelPending ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
+              <Tooltip title={delTooltip}>
                 <Button
                   size="small"
                   icon={<DeleteOutlined />}
