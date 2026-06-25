@@ -14,23 +14,35 @@ interface FundItem {
   importeBolivianos: string;
 }
 
+interface SfonInitialData {
+  titulo?: string;
+  area?: string;
+  lugar?: string;
+  fechaInicio?: string;
+  fechaFinalizacion?: string;
+  fondos?: { id: number; descripcion: string }[];
+}
+
 interface FundsRequestModalProps {
   task: AsanaTask;
   onClose: () => void;
   onSuccess: () => void;
   projectName?: string;
   parentTaskName?: string;
+  initialData?: SfonInitialData;
 }
 
-const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess, projectName }) => {
-  const [area, setArea] = useState('');
-  const [titulo, setTitulo] = useState('');
-  const [lugar, setLugar] = useState('');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFinalizacion, setFechaFinalizacion] = useState('');
-  const [fondos, setFondos] = useState<FundItem[]>([
-    { id: 1, descripcion: '', importeBolivianos: '' }
-  ]);
+const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess, projectName, initialData }) => {
+  const [area, setArea] = useState(initialData?.area ?? '');
+  const [titulo, setTitulo] = useState(initialData?.titulo ?? '');
+  const [lugar, setLugar] = useState(initialData?.lugar ?? '');
+  const [fechaInicio, setFechaInicio] = useState(initialData?.fechaInicio ?? '');
+  const [fechaFinalizacion, setFechaFinalizacion] = useState(initialData?.fechaFinalizacion ?? '');
+  const [fondos, setFondos] = useState<FundItem[]>(
+    initialData?.fondos && initialData.fondos.length > 0
+      ? initialData.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: '' }))
+      : [{ id: 1, descripcion: '', importeBolivianos: '' }]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);

@@ -301,7 +301,7 @@ const HomePage: React.FC = () => {
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
 
   // ── Crear SFON desde SMAT aprobada ──────────────────────────────────────
-  const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string } | null>(null);
+  const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string; initialData?: { titulo?: string; area?: string; lugar?: string; fechaInicio?: string; fechaFinalizacion?: string } } | null>(null);
   const [loadingSfonGid, setLoadingSfonGid] = useState<string | null>(null);
 
   // ── Nueva Solicitud desde HomePage ──────────────────────────────────────
@@ -330,7 +330,27 @@ const HomePage: React.FC = () => {
     setLoadingSfonGid(row.task.gid);
     try {
       const fullTask = await asanaService.getTask(row.task.gid);
-      setSfonFromSmat({ task: fullTask, projectName: row.projectName, parentTaskName: row.parentTaskName });
+      const smatData = extractJsonData(fullTask.notes);
+      // Las fechas en el JSON del SMAT están en DD/MM/YYYY; los inputs type="date" necesitan YYYY-MM-DD
+      const parseDdMmYyyy = (val: string | undefined): string | undefined => {
+        if (!val) return undefined;
+        const parts = val.split('/');
+        if (parts.length !== 3) return undefined;
+        const [d, m, y] = parts;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      };
+      const smatMateriales = smatData?.materiales as { id: number; detalle: string }[] | undefined;
+      const initialData = smatData ? {
+        titulo: (smatData.titulo as string) || undefined,
+        area: (smatData.area as string) || undefined,
+        lugar: (smatData.lugar as string) || undefined,
+        fechaInicio: parseDdMmYyyy(smatData.fechaInicio as string | undefined),
+        fechaFinalizacion: parseDdMmYyyy(smatData.fechaFinalizacion as string | undefined),
+        fondos: smatMateriales && smatMateriales.length > 0
+          ? smatMateriales.map((m, idx) => ({ id: m.id ?? idx + 1, descripcion: m.detalle ?? '' }))
+          : undefined,
+      } : undefined;
+      setSfonFromSmat({ task: fullTask, projectName: row.projectName, parentTaskName: row.parentTaskName, initialData });
       setDetailModal(null);
     } catch (err) {
       console.error('Error al cargar la tarea SMAT:', err);
@@ -2007,6 +2027,7 @@ const HomePage: React.FC = () => {
           task={sfonFromSmat.task}
           projectName={sfonFromSmat.projectName}
           parentTaskName={sfonFromSmat.parentTaskName}
+          initialData={sfonFromSmat.initialData}
           onClose={() => setSfonFromSmat(null)}
           onSuccess={() => {
             setSfonFromSmat(null);
