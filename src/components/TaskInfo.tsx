@@ -13,7 +13,7 @@ import VerificationSourcesModal, { FuentesJsonData, FuenteEntry } from './Verifi
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 import { HtmlModalHeader } from './ModalShared';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getSolicitanteByEmail, getCargoByEmail } from '../context/AuthContext';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -362,6 +362,10 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     const fechaGeneracion = extractFechaSolicitud(taskItem.notes);
     const aprobado = !!extractFechaAprobacion(taskItem.notes);
     const observado = !!extractJsonData(taskItem.notes)?.observado;
+    const solicitante = (extractJsonData(taskItem.notes)?.solicitante as string | undefined)
+      || getSolicitanteByEmail((extractJsonData(taskItem.notes)?.usuario as { email?: string } | undefined)?.email);
+    const cargo = (extractJsonData(taskItem.notes)?.cargo as string | undefined)
+      || getCargoByEmail((extractJsonData(taskItem.notes)?.usuario as { email?: string } | undefined)?.email);
 
     if (tipoSolicitud === 'Solicitud de Fondos') {
       const data = parseFundsRequest(taskItem);
@@ -371,7 +375,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
         aprobado,
-        observado
+        observado,
+        solicitante,
+        cargo
       });
     } else if (tipoSolicitud === 'Solicitud de Material') {
       const data = parseMaterialRequest(taskItem);
@@ -381,7 +387,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
         aprobado,
-        observado
+        observado,
+        solicitante,
+        cargo
       });
     } else if (tipoSolicitud === 'Solicitud de Devolucion') {
       const data = parseMaterialReturn(taskItem);
@@ -391,7 +399,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         parentTaskName: task.name,
         fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
         aprobado,
-        observado
+        observado,
+        solicitante,
+        cargo
       });
     }
   };

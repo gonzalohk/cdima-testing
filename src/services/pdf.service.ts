@@ -1072,6 +1072,8 @@ interface MaterialRequestData {
   parentTaskName?: string;
   aprobado?: boolean;
   observado?: boolean;
+  solicitante?: string;
+  cargo?: string;
 }
 
 export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
@@ -1117,7 +1119,7 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   const hasBoth1 = !!(data.projectName && data.parentTaskName);
   let metaY1 = margins.top + (hasBoth1 ? 19 : hasExtra1 ? 16 : 12);
 
-  const solicitudLabel1 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  const solicitudLabel1 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
   doc.text(`SOLICITUD: ${solicitudLabel1}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
@@ -1165,7 +1167,7 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 8, halign: 'center' as const },
+      0: { cellWidth: 12, halign: 'center' as const },
       1: { cellWidth: 'auto' as const },
       2: { cellWidth: 18, halign: 'center' as const },
       3: { cellWidth: 20, halign: 'center' as const },
@@ -1204,6 +1206,14 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.line(c1a, signaturesY1, c1a + slw1, signaturesY1);
   doc.line(c1b, signaturesY1, c1b + slw1, signaturesY1);
   doc.line(c1c, signaturesY1, c1c + slw1, signaturesY1);
+
+  if (data.solicitante) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(data.solicitante, c1a + slw1 / 2, signaturesY1 - 1.5, { align: 'center' });
+  }
+
   signaturesY1 += 4;
 
   doc.setFontSize(8);
@@ -1212,11 +1222,11 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text('Nombre y Firma', c1b, signaturesY1);
   doc.text('Nombre y Firma', c1c, signaturesY1);
   signaturesY1 += 5;
-  doc.text('Cargo: ................................', c1a, signaturesY1);
+  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c1a, signaturesY1);
   doc.text('Cargo: ................................', c1b, signaturesY1);
   doc.text('Cargo: ................................', c1c, signaturesY1);
   signaturesY1 += 5;
-  doc.text('Fecha: __/__/____', c1a, signaturesY1);
+  doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c1a, signaturesY1);
   doc.text('Fecha: __/__/____', c1b, signaturesY1);
   doc.text('Fecha: __/__/____', c1c, signaturesY1);
 
@@ -1252,6 +1262,8 @@ interface MaterialReturnData {
   parentTaskName?: string;
   aprobado?: boolean;
   observado?: boolean;
+  solicitante?: string;
+  cargo?: string;
 }
 
 export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
@@ -1297,7 +1309,7 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   const hasBoth2 = !!(data.projectName && data.parentTaskName);
   let metaY2 = margins.top + (hasBoth2 ? 19 : hasExtra2 ? 16 : 12);
 
-  const solicitudLabel2 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  const solicitudLabel2 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
   doc.text(`SOLICITUD: ${solicitudLabel2}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
@@ -1345,7 +1357,7 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 8, halign: 'center' as const },
+      0: { cellWidth: 12, halign: 'center' as const },
       1: { cellWidth: 'auto' as const },
       2: { cellWidth: 18, halign: 'center' as const },
       3: { cellWidth: 20, halign: 'center' as const },
@@ -1384,6 +1396,14 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.line(c2a, signaturesY2, c2a + slw2, signaturesY2);
   doc.line(c2b, signaturesY2, c2b + slw2, signaturesY2);
   doc.line(c2c, signaturesY2, c2c + slw2, signaturesY2);
+
+  if (data.solicitante) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(data.solicitante, c2a + slw2 / 2, signaturesY2 - 1.5, { align: 'center' });
+  }
+
   signaturesY2 += 4;
 
   doc.setFontSize(8);
@@ -1392,11 +1412,11 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.text('Nombre y Firma', c2b, signaturesY2);
   doc.text('Nombre y Firma', c2c, signaturesY2);
   signaturesY2 += 5;
-  doc.text('Cargo: ................................', c2a, signaturesY2);
+  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c2a, signaturesY2);
   doc.text('Cargo: ................................', c2b, signaturesY2);
   doc.text('Cargo: ................................', c2c, signaturesY2);
   signaturesY2 += 5;
-  doc.text('Fecha: __/__/____', c2a, signaturesY2);
+  doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c2a, signaturesY2);
   doc.text('Fecha: __/__/____', c2b, signaturesY2);
   doc.text('Fecha: __/__/____', c2c, signaturesY2);
 
@@ -1438,6 +1458,8 @@ interface FundsRequestData {
   parentTaskName?: string;
   aprobado?: boolean;
   observado?: boolean;
+  solicitante?: string;
+  cargo?: string;
 }
 
 export const exportFundsRequestToPDF = (data: FundsRequestData) => {
@@ -1483,7 +1505,7 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   const hasBoth3 = !!(data.projectName && data.parentTaskName);
   let metaY3 = margins.top + (hasBoth3 ? 19 : hasExtra3 ? 16 : 12);
 
-  const solicitudLabel3 = data.taskName.length > 80 ? data.taskName.substring(0, 80) + '...' : data.taskName;
+  const solicitudLabel3 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
   doc.text(`SOLICITUD: ${solicitudLabel3}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
   doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
@@ -1541,7 +1563,7 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 8, halign: 'center' as const },
+      0: { cellWidth: 12, halign: 'center' as const },
       1: { cellWidth: 'auto' as const },
       2: { cellWidth: 35, halign: 'right' as const },
     },
@@ -1578,6 +1600,14 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.line(c3a, signaturesY3, c3a + slw3, signaturesY3);
   doc.line(c3b, signaturesY3, c3b + slw3, signaturesY3);
   doc.line(c3c, signaturesY3, c3c + slw3, signaturesY3);
+
+  if (data.solicitante) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(data.solicitante, c3a + slw3 / 2, signaturesY3 - 1.5, { align: 'center' });
+  }
+
   signaturesY3 += 4;
 
   doc.setFontSize(8);
@@ -1586,11 +1616,11 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.text('Nombre y Firma', c3b, signaturesY3);
   doc.text('Nombre y Firma', c3c, signaturesY3);
   signaturesY3 += 5;
-  doc.text('Cargo: ................................', c3a, signaturesY3);
+  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c3a, signaturesY3);
   doc.text('Cargo: ................................', c3b, signaturesY3);
   doc.text('Cargo: ................................', c3c, signaturesY3);
   signaturesY3 += 5;
-  doc.text('Fecha: __/__/____', c3a, signaturesY3);
+  doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c3a, signaturesY3);
   doc.text('Fecha: __/__/____', c3b, signaturesY3);
   doc.text('Fecha: __/__/____', c3c, signaturesY3);
 

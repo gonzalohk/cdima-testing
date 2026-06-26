@@ -36,6 +36,8 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const { user } = useAuth();
+  const [solicitante, setSolicitante] = useState(user?.solicitante ?? '');
+  const [cargo, setCargo] = useState(user?.cargo ?? '');
 
   const agregarMaterial = () => {
     const newId = Math.max(...materiales.map(m => m.id), 0) + 1;
@@ -105,6 +107,8 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         fechaSolicitud,
         fechaAprobacion: '',
         usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
+        solicitante,
+        cargo,
         materiales: materialesValidos.map(({ id, detalle, cantidad, unidad, observaciones }) => ({
           id, detalle,
           cantidad: cantidad || '-',
@@ -177,6 +181,9 @@ ${JSON.stringify(jsonData, null, 2)}
           materiales: materialesValidos,
           projectName,
           parentTaskName: task.name,
+          fechaGeneracion: fechaSolicitud,
+          solicitante,
+          cargo,
         });
       }, 500);
       
@@ -216,6 +223,22 @@ ${JSON.stringify(jsonData, null, 2)}
           </Form.Item>
 
           <SectionHeader title="Información General" color="#1565C0" icon={<InfoCircleOutlined />} />
+
+          <Form.Item label="Solicitante">
+            <Input
+              value={solicitante}
+              onChange={(e) => setSolicitante(e.target.value)}
+              placeholder="Nombre del solicitante"
+            />
+          </Form.Item>
+
+          <Form.Item label="Cargo">
+            <Input
+              value={cargo}
+              onChange={(e) => setCargo(e.target.value)}
+              placeholder="Cargo del solicitante (opcional)"
+            />
+          </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>

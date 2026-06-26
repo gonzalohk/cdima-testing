@@ -47,6 +47,8 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const { user } = useAuth();
+  const [solicitante, setSolicitante] = useState(user?.solicitante ?? '');
+  const [cargo, setCargo] = useState(user?.cargo ?? '');
 
   const agregarFondo = () => {
     const newId = Math.max(...fondos.map(f => f.id), 0) + 1;
@@ -131,6 +133,8 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         fechaAprobacion: '',
         totalBolivianos: parseFloat(totalBolivianos.toFixed(2)),
         usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
+        solicitante,
+        cargo,
         fondos: fondosValidos.map(({ id, descripcion, importeBolivianos }) => ({
           id, descripcion,
           importeBolivianos: importeBolivianos || '0',
@@ -205,6 +209,9 @@ ${JSON.stringify(jsonData, null, 2)}
           fondos: fondosValidos,
           projectName,
           parentTaskName: task.name,
+          fechaGeneracion: fechaSolicitud,
+          solicitante,
+          cargo,
         });
       }, 500);
       
@@ -244,6 +251,22 @@ ${JSON.stringify(jsonData, null, 2)}
           </Form.Item>
 
           <SectionHeader title="Información General" color="#1565C0" icon={<InfoCircleOutlined />} />
+
+          <Form.Item label="Solicitante">
+            <Input
+              value={solicitante}
+              onChange={(e) => setSolicitante(e.target.value)}
+              placeholder="Nombre del solicitante"
+            />
+          </Form.Item>
+
+          <Form.Item label="Cargo">
+            <Input
+              value={cargo}
+              onChange={(e) => setCargo(e.target.value)}
+              placeholder="Cargo del solicitante (opcional)"
+            />
+          </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>

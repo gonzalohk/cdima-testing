@@ -31,7 +31,7 @@ import {
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getSolicitanteByEmail, getCargoByEmail } from '../context/AuthContext';
 import {
   exportFundsRequestToPDF,
   exportMaterialRequestToPDF,
@@ -818,6 +818,8 @@ const HomePage: React.FC = () => {
         fechaGeneracion: fechaGeneracionOpt,
         aprobado: !!data?.fechaAprobacion,
         observado: !!data?.observado,
+        solicitante: (data?.solicitante as string) || getSolicitanteByEmail((data?.usuario as { email?: string } | undefined)?.email),
+        cargo: (data?.cargo as string) || getCargoByEmail((data?.usuario as { email?: string } | undefined)?.email),
       });
     } else if (row.tipo === 'Solicitud de Material') {
       exportMaterialRequestToPDF({
@@ -832,6 +834,8 @@ const HomePage: React.FC = () => {
         fechaGeneracion: fechaGeneracionOpt,
         aprobado: !!data?.fechaAprobacion,
         observado: !!data?.observado,
+        solicitante: (data?.solicitante as string) || getSolicitanteByEmail((data?.usuario as { email?: string } | undefined)?.email),
+        cargo: (data?.cargo as string) || getCargoByEmail((data?.usuario as { email?: string } | undefined)?.email),
       });
     } else if (row.tipo === 'Devolución de Material') {
       exportMaterialReturnToPDF({
@@ -845,6 +849,8 @@ const HomePage: React.FC = () => {
         fechaGeneracion: fechaGeneracionOpt,
         aprobado: !!data?.fechaAprobacion,
         observado: !!data?.observado,
+        solicitante: (data?.solicitante as string) || getSolicitanteByEmail((data?.usuario as { email?: string } | undefined)?.email),
+        cargo: (data?.cargo as string) || getCargoByEmail((data?.usuario as { email?: string } | undefined)?.email),
       });
     }
   };
