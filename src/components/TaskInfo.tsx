@@ -360,14 +360,18 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   const handlePrintRequest = (taskItem: AsanaTask) => {
     const tipoSolicitud = getCustomFieldValue(taskItem, 'Tipo de Solicitud');
     const fechaGeneracion = extractFechaSolicitud(taskItem.notes);
-    
+    const aprobado = !!extractFechaAprobacion(taskItem.notes);
+    const observado = !!extractJsonData(taskItem.notes)?.observado;
+
     if (tipoSolicitud === 'Solicitud de Fondos') {
       const data = parseFundsRequest(taskItem);
       exportFundsRequestToPDF({
         ...data,
         projectName,
         parentTaskName: task.name,
-        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
+        aprobado,
+        observado
       });
     } else if (tipoSolicitud === 'Solicitud de Material') {
       const data = parseMaterialRequest(taskItem);
@@ -375,7 +379,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         ...data,
         projectName,
         parentTaskName: task.name,
-        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
+        aprobado,
+        observado
       });
     } else if (tipoSolicitud === 'Solicitud de Devolucion') {
       const data = parseMaterialReturn(taskItem);
@@ -383,7 +389,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         ...data,
         projectName,
         parentTaskName: task.name,
-        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined
+        fechaGeneracion: fechaGeneracion !== '-' ? fechaGeneracion : undefined,
+        aprobado,
+        observado
       });
     }
   };

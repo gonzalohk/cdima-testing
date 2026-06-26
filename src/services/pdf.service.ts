@@ -19,6 +19,41 @@ const PDF_COLORS = {
   black: [0, 0, 0] as [number, number, number]
 };
 
+// ============ MARCA DE AGUA DE ESTADO (sello) ============
+// Sello minimalista y corporativo, discreto, anclado a la derecha.
+// Se usa para "APROBADO" y "OBSERVADA". (rightX = borde derecho del sello)
+function drawStampWatermark(doc: jsPDF, rightX: number, centerY: number, text: string) {
+  const anyDoc = doc as any;
+  const charSpace = 1.8;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  const textW = doc.getTextWidth(text) + charSpace * (text.length - 1);
+  const boxW = textW + 11;
+  const boxH = 10;
+  const leftX = rightX - boxW;
+
+  if (anyDoc.GState && anyDoc.setGState) {
+    anyDoc.saveGraphicsState?.();
+    anyDoc.setGState(new anyDoc.GState({ opacity: 0.4 }));
+  }
+
+  // Borde muy discreto (hairline gris)
+  doc.setDrawColor(140, 140, 140);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(leftX, centerY - boxH / 2, boxW, boxH, 1.5, 1.5, 'S');
+
+  // Texto del sello en gris tenue
+  doc.setTextColor(110, 110, 110);
+  doc.text(text, leftX + (boxW - textW) / 2, centerY + 1.6, { charSpace });
+
+  if (anyDoc.restoreGraphicsState) anyDoc.restoreGraphicsState();
+  doc.setTextColor(0, 0, 0);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.2);
+  doc.setFont('helvetica', 'normal');
+}
+
 // Márgenes uniformes (formato carta)
 const PDF_MARGINS = {
   top: 20,
@@ -1035,6 +1070,8 @@ interface MaterialRequestData {
   fechaGeneracion?: string;
   projectName?: string;
   parentTaskName?: string;
+  aprobado?: boolean;
+  observado?: boolean;
 }
 
 export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
@@ -1140,7 +1177,7 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   let signaturesY1 = (doc as any).lastAutoTable.finalY + 12;
 
   // ---- FIRMAS Y AUTORIZACIONES ----
-  if (signaturesY1 > pageHeight - 75) { doc.addPage(); signaturesY1 = margins.top + 10; }
+  if (signaturesY1 > pageHeight - ((data.aprobado || data.observado) ? 88 : 75)) { doc.addPage(); signaturesY1 = margins.top + 10; }
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -1183,6 +1220,12 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text('Fecha: __/__/____', c1b, signaturesY1);
   doc.text('Fecha: __/__/____', c1c, signaturesY1);
 
+  if (data.aprobado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'APROBADO');
+  } else if (data.observado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'OBSERVADA');
+  }
+
   // ---- PIE DE PÁGINA ----
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -1207,6 +1250,8 @@ interface MaterialReturnData {
   fechaGeneracion?: string;
   projectName?: string;
   parentTaskName?: string;
+  aprobado?: boolean;
+  observado?: boolean;
 }
 
 export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
@@ -1312,7 +1357,7 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   let signaturesY2 = (doc as any).lastAutoTable.finalY + 12;
 
   // ---- FIRMAS Y AUTORIZACIONES ----
-  if (signaturesY2 > pageHeight - 75) { doc.addPage(); signaturesY2 = margins.top + 10; }
+  if (signaturesY2 > pageHeight - ((data.aprobado || data.observado) ? 88 : 75)) { doc.addPage(); signaturesY2 = margins.top + 10; }
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -1355,6 +1400,12 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.text('Fecha: __/__/____', c2b, signaturesY2);
   doc.text('Fecha: __/__/____', c2c, signaturesY2);
 
+  if (data.aprobado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'APROBADO');
+  } else if (data.observado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'OBSERVADA');
+  }
+
   // ---- PIE DE PÁGINA ----
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -1385,6 +1436,8 @@ interface FundsRequestData {
   fechaGeneracion?: string;
   projectName?: string;
   parentTaskName?: string;
+  aprobado?: boolean;
+  observado?: boolean;
 }
 
 export const exportFundsRequestToPDF = (data: FundsRequestData) => {
@@ -1498,7 +1551,7 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   let signaturesY3 = (doc as any).lastAutoTable.finalY + 12;
 
   // ---- FIRMAS Y AUTORIZACIONES ----
-  if (signaturesY3 > pageHeight - 75) { doc.addPage(); signaturesY3 = margins.top + 10; }
+  if (signaturesY3 > pageHeight - ((data.aprobado || data.observado) ? 88 : 75)) { doc.addPage(); signaturesY3 = margins.top + 10; }
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -1540,6 +1593,12 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.text('Fecha: __/__/____', c3a, signaturesY3);
   doc.text('Fecha: __/__/____', c3b, signaturesY3);
   doc.text('Fecha: __/__/____', c3c, signaturesY3);
+
+  if (data.aprobado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'APROBADO');
+  } else if (data.observado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'OBSERVADA');
+  }
 
   // ---- PIE DE PÁGINA ----
   doc.setFontSize(8);

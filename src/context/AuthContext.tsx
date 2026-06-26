@@ -19,30 +19,35 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
     password: import.meta.env.VITE_PASSWORD_DIRECTOR as string,
     role: 'director',
     name: 'Director CDIMA',
+    solicitante: 'Alicia Canaviri Mallcu',
   },
   {
     email: 'alicia.cdima@gmail.com',
     password: import.meta.env.VITE_PASSWORD_DIRECTOR as string,
     role: 'director',
     name: 'Director CDIMA',
+    solicitante: 'Alicia Canaviri Mallcu',
   },
   {
     email: 'cdima.eviolencia@gmail.com',
     password: import.meta.env.VITE_PASSWORD_TECNICO_EV as string,
     role: 'tecnico ev',
     name: 'Técnico Erradicación Violencia',
+    solicitante: 'Delma Lopez Callisaya',
   },
   {
     email: 'cdima.erradicaciondeviolencia@gmail.com',
     password: import.meta.env.VITE_PASSWORD_TECNICO_EV as string,
     role: 'tecnico ev',
     name: 'Técnico Erradicación Violencia',
+    solicitante: 'Delma Lopez Callisaya',
   },
   {
     email: 'cdima.epolitico@gmail.com',
     password: import.meta.env.VITE_PASSWORD_TECNICO_EP as string,
     role: 'tecnico ep',
     name: 'Técnico Empoderamiento Politico',
+    solicitante: 'Darío Alanoca Calcina',
   },
   {
     email: 'cdima.empoderamientopolitico@gmail.com',
@@ -55,18 +60,21 @@ const USERS: Array<{ email: string; password: string; role: UserRole; name: stri
     password: import.meta.env.VITE_PASSWORD_ADMINISTRADOR as string,
     role: 'administrador',
     name: 'Sandra Vera',
+    solicitante: 'Sandra Vera Gutierrez',
   },
   {
     email: 'ely.ibanez.v@gmail.com',
     password: import.meta.env.VITE_PASSWORD_COMUNICACION as string,
     role: 'comunicacion',
     name: 'Ely Ibáñez',
+    solicitante: 'Elizabeth Ibañez Susara',
   },
   {
     email: 'cdima.planificador@gmail.com',
     password: import.meta.env.VITE_PASSWORD_PLANIFICADOR as string,
     role: 'planificador',
     name: 'Uusuario Planificador',
+    solicitante: 'Usuario Planificador',
   },
 ];
 

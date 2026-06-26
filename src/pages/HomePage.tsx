@@ -816,6 +816,8 @@ const HomePage: React.FC = () => {
         projectName: row.projectName,
         parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
+        aprobado: !!data?.fechaAprobacion,
+        observado: !!data?.observado,
       });
     } else if (row.tipo === 'Solicitud de Material') {
       exportMaterialRequestToPDF({
@@ -828,6 +830,8 @@ const HomePage: React.FC = () => {
         projectName: row.projectName,
         parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
+        aprobado: !!data?.fechaAprobacion,
+        observado: !!data?.observado,
       });
     } else if (row.tipo === 'Devolución de Material') {
       exportMaterialReturnToPDF({
@@ -839,6 +843,8 @@ const HomePage: React.FC = () => {
         projectName: row.projectName,
         parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
+        aprobado: !!data?.fechaAprobacion,
+        observado: !!data?.observado,
       });
     }
   };
