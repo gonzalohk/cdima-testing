@@ -16,22 +16,39 @@ interface MaterialItem {
   observaciones: string;
 }
 
+interface MaterialReturnInitialData {
+  titulo?: string;
+  area?: string;
+  lugar?: string;
+  fechaDevolucion?: string;
+  materiales?: MaterialItem[];
+}
+
 interface MaterialReturnModalProps {
   task: AsanaTask;
   onClose: () => void;
   onSuccess: () => void;
   projectName?: string;
   parentTaskName?: string;
+  initialData?: MaterialReturnInitialData;
 }
 
-const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess, projectName }) => {
-  const [area, setArea] = useState('');
-  const [titulo, setTitulo] = useState('');
-  const [lugar, setLugar] = useState('');
-  const [fechaDevolucion, setFechaDevolucion] = useState('');
-  const [materiales, setMateriales] = useState<MaterialItem[]>([
-    { id: 1, detalle: '', cantidad: '', unidad: '', observaciones: '' }
-  ]);
+const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose, onSuccess, projectName, initialData }) => {
+  const [area, setArea] = useState(initialData?.area ?? '');
+  const [titulo, setTitulo] = useState(initialData?.titulo ?? '');
+  const [lugar, setLugar] = useState(initialData?.lugar ?? '');
+  const [fechaDevolucion, setFechaDevolucion] = useState(initialData?.fechaDevolucion ?? '');
+  const [materiales, setMateriales] = useState<MaterialItem[]>(
+    initialData?.materiales && initialData.materiales.length > 0
+      ? initialData.materiales.map((m, idx) => ({
+          id: m.id ?? idx + 1,
+          detalle: m.detalle ?? '',
+          cantidad: m.cantidad ?? '',
+          unidad: m.unidad ?? '',
+          observaciones: m.observaciones ?? '',
+        }))
+      : [{ id: 1, detalle: '', cantidad: '', unidad: '', observaciones: '' }]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);

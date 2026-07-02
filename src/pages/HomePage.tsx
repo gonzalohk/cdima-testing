@@ -21,6 +21,7 @@ import {
   BellOutlined,
   CheckCircleOutlined,
   CommentOutlined,
+  CopyOutlined,
   DeleteOutlined,
   DollarOutlined,
   EyeOutlined,
@@ -185,6 +186,14 @@ function getTipoFromPrefix(prefix: 'SFON' | 'SMAT' | 'DMAT'): string {
   return 'Devolución de Material';
 }
 
+// Convierte fechas DD/MM/YYYY a YYYY-MM-DD para inputs type="date" (deja pasar ISO)
+function toDateInput(val?: string): string {
+  if (!val || val === '-') return '';
+  const m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return val;
+}
+
 function extractFechaSolicitud(notes: string | undefined): string {
   if (!notes) return '-';
   const match = notes.match(/Fecha de solicitud:\s*(\d{2}\/\d{2}\/\d{4},\s*\d{2}:\d{2})/);
@@ -194,6 +203,7 @@ function extractFechaSolicitud(notes: string | undefined): string {
 interface SolicitudRow {
   key: string;
   task: AsanaTask;
+  parentTaskGid: string;
   projectName: string;
   parentTaskName: string;
   sectionName: string;
@@ -308,6 +318,10 @@ const HomePage: React.FC = () => {
   const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string; initialData?: { titulo?: string; area?: string; lugar?: string; fechaInicio?: string; fechaFinalizacion?: string } } | null>(null);
   const [loadingSfonGid, setLoadingSfonGid] = useState<string | null>(null);
 
+  // ── Duplicar solicitud observada (crear nueva con datos prellenados) ────
+  const [loadingDupGid, setLoadingDupGid] = useState<string | null>(null);
+  const [duplicarSol, setDuplicarSol] = useState<{ task: AsanaTask; tipo: SolicitudType; data: Record<string, unknown> } | null>(null);
+
   // ── Nueva Solicitud desde HomePage ──────────────────────────────────────
   const [showNuevaSolModal, setShowNuevaSolModal] = useState(false);
   const [nuevaSolTask, setNuevaSolTask]           = useState<AsanaTask | null>(null);
@@ -360,6 +374,24 @@ const HomePage: React.FC = () => {
       console.error('Error al cargar la tarea SMAT:', err);
     } finally {
       setLoadingSfonGid(null);
+    }
+  };
+
+  const handleDuplicarSolicitud = async (row: SolicitudRow) => {
+    setLoadingDupGid(row.task.gid);
+    try {
+      const data = extractJsonData(row.task.notes) ?? {};
+      const parentTask = await asanaService.getTask(row.parentTaskGid);
+      let tipo: SolicitudType;
+      if (row.tipo === 'Solicitud de Fondos') tipo = 'fondos';
+      else if (row.tipo === 'Solicitud de Material') tipo = 'material';
+      else tipo = 'devolucion';
+      setDuplicarSol({ task: parentTask, tipo, data });
+      setDetailModal(null);
+    } catch (err) {
+      console.error('Error al duplicar la solicitud observada:', err);
+    } finally {
+      setLoadingDupGid(null);
     }
   };
 
@@ -463,6 +495,7 @@ const HomePage: React.FC = () => {
                       rows.push({
                         key: sub.gid,
                         task: sub,
+                        parentTaskGid: parentTask.gid,
                         projectName: project.name,
                         parentTaskName: parentTask.name,
                         sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -473,6 +506,7 @@ const HomePage: React.FC = () => {
                       approvedRows.push({
                         key: sub.gid,
                         task: sub,
+                        parentTaskGid: parentTask.gid,
                         projectName: project.name,
                         parentTaskName: parentTask.name,
                         sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -483,6 +517,7 @@ const HomePage: React.FC = () => {
                       observedRows.push({
                         key: sub.gid,
                         task: sub,
+                        parentTaskGid: parentTask.gid,
                         projectName: project.name,
                         parentTaskName: parentTask.name,
                         sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -523,6 +558,7 @@ const HomePage: React.FC = () => {
                             pendingReqs++;
                             rows.push({
                               key: ssub.gid, task: ssub,
+                              parentTaskGid: smat.gid,
                               projectName: project.name,
                               parentTaskName: nestedParentName,
                               sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -532,6 +568,7 @@ const HomePage: React.FC = () => {
                           } else if (subIsApproved) {
                             approvedRows.push({
                               key: ssub.gid, task: ssub,
+                              parentTaskGid: smat.gid,
                               projectName: project.name,
                               parentTaskName: nestedParentName,
                               sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -541,6 +578,7 @@ const HomePage: React.FC = () => {
                           } else if (subIsObserved) {
                             observedRows.push({
                               key: ssub.gid, task: ssub,
+                              parentTaskGid: smat.gid,
                               projectName: project.name,
                               parentTaskName: nestedParentName,
                               sectionName: parentTask.memberships?.[0]?.section?.name ?? '',
@@ -1042,7 +1080,10 @@ const HomePage: React.FC = () => {
     key: 'acciones',
     width: 140,
     fixed: 'right' as const,
-    render: (_: unknown, row: SolicitudRow) => (
+    render: (_: unknown, row: SolicitudRow) => {
+      const jd = extractJsonData(row.task.notes);
+      const esObservada = !!(jd?.motivoObservacion && jd?.fechaObservacion);
+      return (
       <Space size={4}>
         <Tooltip title="Ver detalle">
           <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
@@ -1050,6 +1091,17 @@ const HomePage: React.FC = () => {
         <Tooltip title="Imprimir PDF">
           <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
         </Tooltip>
+        {esObservada && (
+          <Tooltip title="Crear nueva solicitud con estos datos">
+            <Button
+              size="small"
+              icon={<CopyOutlined />}
+              loading={loadingDupGid === row.task.gid}
+              style={{ color: '#0369a1', borderColor: '#7dd3fc' }}
+              onClick={() => handleDuplicarSolicitud(row)}
+            />
+          </Tooltip>
+        )}
         {row.tipo === 'Solicitud de Material' && !!(extractJsonData(row.task.notes)?.fechaAprobacion) && (
           <Tooltip title="Agregar Solicitud de Fondos">
             <Button
@@ -1080,7 +1132,8 @@ const HomePage: React.FC = () => {
           </Tooltip>
         </Popconfirm>
       </Space>
-    ),
+      );
+    },
   };
 
   const colFechaRespuesta = {
@@ -2216,6 +2269,57 @@ const HomePage: React.FC = () => {
             setSfonFromSmat(null);
             loadSolicitudes();
           }}
+        />
+      )}
+
+      {duplicarSol?.tipo === 'material' && (
+        <MaterialRequestModal
+          task={duplicarSol.task}
+          projectName={duplicarSol.task.projects?.[0]?.name}
+          initialData={{
+            titulo: duplicarSol.data.titulo as string | undefined,
+            area: duplicarSol.data.area as string | undefined,
+            lugar: duplicarSol.data.lugar as string | undefined,
+            fechaInicio: toDateInput(duplicarSol.data.fechaInicio as string | undefined),
+            fechaFinalizacion: toDateInput(duplicarSol.data.fechaFinalizacion as string | undefined),
+            materiales: duplicarSol.data.materiales as MaterialItem[] | undefined,
+          }}
+          onClose={() => setDuplicarSol(null)}
+          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
+        />
+      )}
+
+      {duplicarSol?.tipo === 'fondos' && (
+        <FundsRequestModal
+          task={duplicarSol.task}
+          projectName={duplicarSol.task.projects?.[0]?.name}
+          initialData={{
+            titulo: duplicarSol.data.titulo as string | undefined,
+            area: duplicarSol.data.area as string | undefined,
+            lugar: duplicarSol.data.lugar as string | undefined,
+            fechaInicio: toDateInput(duplicarSol.data.fechaInicio as string | undefined),
+            fechaFinalizacion: toDateInput(duplicarSol.data.fechaFinalizacion as string | undefined),
+            fondos: ((duplicarSol.data.fondos as { id: number; descripcion: string; importeBolivianos?: string }[] | undefined) ?? [])
+              .map((f, idx) => ({ id: f.id ?? idx + 1, descripcion: f.descripcion ?? '', importeBolivianos: String(f.importeBolivianos ?? '') })),
+          }}
+          onClose={() => setDuplicarSol(null)}
+          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
+        />
+      )}
+
+      {duplicarSol?.tipo === 'devolucion' && (
+        <MaterialReturnModal
+          task={duplicarSol.task}
+          projectName={duplicarSol.task.projects?.[0]?.name}
+          initialData={{
+            titulo: duplicarSol.data.titulo as string | undefined,
+            area: duplicarSol.data.area as string | undefined,
+            lugar: duplicarSol.data.lugar as string | undefined,
+            fechaDevolucion: toDateInput(duplicarSol.data.fechaDevolucion as string | undefined),
+            materiales: duplicarSol.data.materiales as MaterialItem[] | undefined,
+          }}
+          onClose={() => setDuplicarSol(null)}
+          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
         />
       )}
 

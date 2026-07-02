@@ -20,7 +20,7 @@ interface SfonInitialData {
   lugar?: string;
   fechaInicio?: string;
   fechaFinalizacion?: string;
-  fondos?: { id: number; descripcion: string }[];
+  fondos?: { id: number; descripcion: string; importeBolivianos?: string }[];
 }
 
 interface FundsRequestModalProps {
@@ -40,7 +40,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
   const [fechaFinalizacion, setFechaFinalizacion] = useState(initialData?.fechaFinalizacion ?? '');
   const [fondos, setFondos] = useState<FundItem[]>(
     initialData?.fondos && initialData.fondos.length > 0
-      ? initialData.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: '' }))
+      ? initialData.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: f.importeBolivianos ?? '' }))
       : [{ id: 1, descripcion: '', importeBolivianos: '' }]
   );
   const [loading, setLoading] = useState(false);

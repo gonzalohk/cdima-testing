@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, List, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
 import { AsanaTask, AsanaAttachment, TaskStatistics } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -30,6 +30,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [duplicarTarget, setDuplicarTarget] = useState<{ tipo: 'material' | 'fondos' | 'devolucion'; record: AsanaTask } | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showContratacionModal, setShowContratacionModal] = useState(false);
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
@@ -451,6 +452,24 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
         cargo
       });
     }
+  };
+
+  // Convierte fechas DD/MM/YYYY a YYYY-MM-DD para inputs type="date" (deja pasar ISO)
+  const toDateInput = (val?: string): string => {
+    if (!val || val === '-') return '';
+    const m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return val;
+  };
+
+  // Duplicar una solicitud observada: abre el form de creación con los datos prellenados
+  const handleDuplicarRequest = (record: AsanaTask) => {
+    const tipoSolicitud = getCustomFieldValue(record, 'Tipo de Solicitud');
+    let tipo: 'material' | 'fondos' | 'devolucion';
+    if (tipoSolicitud === 'Solicitud de Fondos') tipo = 'fondos';
+    else if (tipoSolicitud === 'Solicitud de Material') tipo = 'material';
+    else tipo = 'devolucion';
+    setDuplicarTarget({ tipo, record });
   };
 
   // Filtrar solicitudes de las subtareas (solo Fondos y Devolución)
@@ -1490,6 +1509,16 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                             onClick={() => handlePrintRequest(record)}
                           />
                         </Tooltip>
+                        {extractObservacion(record.notes).observado && (
+                          <Tooltip title="Crear nueva solicitud con estos datos">
+                            <Button
+                              size="small"
+                              icon={<CopyOutlined />}
+                              style={{ color: '#0369a1', borderColor: '#7dd3fc' }}
+                              onClick={() => handleDuplicarRequest(record)}
+                            />
+                          </Tooltip>
+                        )}
                         <Popconfirm
                           title="¿Eliminar esta solicitud?"
                           onConfirm={() => handleDeleteRequest(record)}
@@ -1876,6 +1905,65 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
           }}
         />
       )}
+
+      {duplicarTarget?.tipo === 'material' && (() => {
+        const d = parseMaterialRequest(duplicarTarget.record);
+        return (
+          <MaterialRequestModal
+            task={task}
+            projectName={projectName}
+            initialData={{
+              titulo: d.taskName,
+              area: d.area,
+              lugar: d.lugar,
+              fechaInicio: toDateInput(d.fechaInicio),
+              fechaFinalizacion: toDateInput(d.fechaFinalizacion),
+              materiales: d.materiales,
+            }}
+            onClose={() => setDuplicarTarget(null)}
+            onSuccess={() => { setDuplicarTarget(null); onSubtaskCreated?.(); }}
+          />
+        );
+      })()}
+
+      {duplicarTarget?.tipo === 'fondos' && (() => {
+        const d = parseFundsRequest(duplicarTarget.record);
+        return (
+          <FundsRequestModal
+            task={task}
+            projectName={projectName}
+            initialData={{
+              titulo: d.taskName,
+              area: d.area,
+              lugar: d.lugar,
+              fechaInicio: toDateInput(d.fechaInicio),
+              fechaFinalizacion: toDateInput(d.fechaFinalizacion),
+              fondos: d.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: f.importeBolivianos })),
+            }}
+            onClose={() => setDuplicarTarget(null)}
+            onSuccess={() => { setDuplicarTarget(null); onSubtaskCreated?.(); }}
+          />
+        );
+      })()}
+
+      {duplicarTarget?.tipo === 'devolucion' && (() => {
+        const d = parseMaterialReturn(duplicarTarget.record);
+        return (
+          <MaterialReturnModal
+            task={task}
+            projectName={projectName}
+            initialData={{
+              titulo: d.taskName,
+              area: d.area,
+              lugar: d.lugar,
+              fechaDevolucion: toDateInput(d.fechaDevolucion),
+              materiales: d.materiales,
+            }}
+            onClose={() => setDuplicarTarget(null)}
+            onSuccess={() => { setDuplicarTarget(null); onSubtaskCreated?.(); }}
+          />
+        );
+      })()}
 
       {showVerificationModal && (
         <VerificationSourcesModal
