@@ -294,6 +294,10 @@ const HomePage: React.FC = () => {
   const [informeNombre, setInformeNombre] = useState('');
   const [informeUrl, setInformeUrl] = useState('');
   const [informeSaving, setInformeSaving] = useState(false);
+  const [informeFinalModal, setInformeFinalModal] = useState<SolicitudRow | null>(null);
+  const [informeFinalNombre, setInformeFinalNombre] = useState('');
+  const [informeFinalUrl, setInformeFinalUrl] = useState('');
+  const [informeFinalSaving, setInformeFinalSaving] = useState(false);
 
   const [contrataciones, setContrataciones] = useState<ContratacionRow[]>([]);
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
@@ -790,6 +794,57 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleSaveInformeFinal = async () => {
+    if (!informeFinalModal) return;
+    const trimmedUrl = informeFinalUrl.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      alert('El enlace debe comenzar con http:// o https://');
+      return;
+    }
+    setInformeFinalSaving(true);
+    try {
+      const data = extractJsonData(informeFinalModal.task.notes) ?? {};
+      const updatedData = { ...data, informe_final: { nombre: informeFinalNombre.trim(), url: trimmedUrl } };
+      const notasBase = (informeFinalModal.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      const updated = await asanaService.updateTask(informeFinalModal.task.gid, { notes: newNotes });
+      const updateRow = (prev: SolicitudRow[]) =>
+        prev.map(r => r.key === informeFinalModal.key ? { ...r, task: { ...r.task, notes: updated.notes ?? newNotes } } : r);
+      setSolicitudes(updateRow);
+      setSolicitudesAprobadas(updateRow);
+      setSolicitudesObservadas(updateRow);
+      setInformeFinalModal(null);
+    } catch (err) {
+      alert('Error al guardar el informe final.');
+      console.error(err);
+    } finally {
+      setInformeFinalSaving(false);
+    }
+  };
+
+  const handleDeleteInformeFinal = async () => {
+    if (!informeFinalModal) return;
+    setInformeFinalSaving(true);
+    try {
+      const data = extractJsonData(informeFinalModal.task.notes) ?? {};
+      const { informe_final: _removed, ...rest } = data as Record<string, unknown> & { informe_final?: unknown };
+      const notasBase = (informeFinalModal.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(rest, null, 2)}\n===FIN_DATOS_JSON===`;
+      const updated = await asanaService.updateTask(informeFinalModal.task.gid, { notes: newNotes });
+      const updateRow = (prev: SolicitudRow[]) =>
+        prev.map(r => r.key === informeFinalModal.key ? { ...r, task: { ...r.task, notes: updated.notes ?? newNotes } } : r);
+      setSolicitudes(updateRow);
+      setSolicitudesAprobadas(updateRow);
+      setSolicitudesObservadas(updateRow);
+      setInformeFinalModal(null);
+    } catch (err) {
+      alert('Error al eliminar el informe final.');
+      console.error(err);
+    } finally {
+      setInformeFinalSaving(false);
+    }
+  };
+
   const handleDeleteSolicitud = async (row: SolicitudRow) => {
     try {
       await asanaService.deleteTask(row.task.gid);
@@ -1051,7 +1106,7 @@ const HomePage: React.FC = () => {
   };
 
   const colInforme = {
-    title: 'Plan',
+    title: 'Planificación',
     key: 'informe',
     width: 90,
     render: (_: unknown, row: SolicitudRow) => {
@@ -1066,7 +1121,7 @@ const HomePage: React.FC = () => {
               <LinkOutlined style={{ marginRight: 3 }} />{informe.nombre || 'Ver'}
             </a>
           ) : null}
-          <Tooltip title="Agregar / editar informe">
+          <Tooltip title="Agregar / editar planificación">
             <button
               onClick={() => {
                 const d = extractJsonData(row.task.notes);
@@ -1082,6 +1137,45 @@ const HomePage: React.FC = () => {
               }}
             >
               <LinkOutlined />{informe?.url ? '✎' : '+'}
+            </button>
+          </Tooltip>
+        </div>
+      );
+    },
+  };
+
+  const colInformeFinal = {
+    title: 'Informe',
+    key: 'informe_final',
+    width: 90,
+    render: (_: unknown, row: SolicitudRow) => {
+      const data = extractJsonData(row.task.notes);
+      const informeFinal = data?.informe_final as { nombre?: string; url?: string } | undefined;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          {informeFinal?.url ? (
+            <a href={informeFinal.url} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, color: '#2563eb', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+              title={informeFinal.nombre || informeFinal.url}>
+              <LinkOutlined style={{ marginRight: 3 }} />{informeFinal.nombre || 'Ver'}
+            </a>
+          ) : null}
+          <Tooltip title="Agregar / editar informe">
+            <button
+              onClick={() => {
+                const d = extractJsonData(row.task.notes);
+                const inf = d?.informe_final as { nombre?: string; url?: string } | undefined;
+                setInformeFinalNombre(inf?.nombre ?? '');
+                setInformeFinalUrl(inf?.url ?? '');
+                setInformeFinalModal(row);
+              }}
+              style={{
+                background: 'none', border: '1px solid #d1d5db', borderRadius: 6,
+                cursor: 'pointer', padding: '2px 6px', color: '#6b7280', fontSize: 11,
+                display: 'flex', alignItems: 'center', gap: 3,
+              }}
+            >
+              <LinkOutlined />{informeFinal?.url ? '✎' : '+'}
             </button>
           </Tooltip>
         </div>
@@ -1149,9 +1243,9 @@ const HomePage: React.FC = () => {
     },
   };
 
-  const columns = [colSolicitudInfo, colFechaSolicitud, colInforme, colAccionesPendientes];
-  const columnsAprobadas = [colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colAccionesHistorico];
-  const columnsObservadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colMotivoObservacion, colAccionesHistorico];
+  const columns = [colSolicitudInfo, colFechaSolicitud, colInforme, colInformeFinal, colAccionesPendientes];
+  const columnsAprobadas = [colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colInformeFinal, colAccionesHistorico];
+  const columnsObservadas = [colSolicitudInfo, colFechaSolicitud, colFechaRespuesta, colInforme, colInformeFinal, colMotivoObservacion, colAccionesHistorico];
 
   const CONTRATACION_PASOS = [
     'Elaboración de TDRs',
@@ -1888,7 +1982,7 @@ const HomePage: React.FC = () => {
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: 0 }}>
             <HtmlModalHeader
               icon="🔗"
-              title="Informe / Documento"
+              title="Planificación / Documento"
               subtitle={informeModal.task.name}
               onClose={() => setInformeModal(null)}
             />
@@ -1899,7 +1993,7 @@ const HomePage: React.FC = () => {
                   type="text"
                   value={informeNombre}
                   onChange={e => setInformeNombre(e.target.value)}
-                  placeholder="Ej: Informe de actividad abril 2026"
+                  placeholder="Ej: Planificación de actividad abril 2026"
                   disabled={informeSaving}
                   autoFocus
                   style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
@@ -1924,7 +2018,7 @@ const HomePage: React.FC = () => {
                   const hasInforme = !!(d?.informe as { url?: string } | undefined)?.url;
                   return hasInforme ? (
                     <Popconfirm
-                      title="¿Borrar informe?"
+                      title="¿Borrar planificación?"
                       description="Se eliminará el enlace guardado."
                       onConfirm={handleDeleteInforme}
                       okText="Borrar"
@@ -1935,7 +2029,7 @@ const HomePage: React.FC = () => {
                         type="button"
                         disabled={informeSaving}
                         style={{ padding: '0.5rem 1rem', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fff5f5', cursor: 'pointer', fontSize: '0.9rem', color: '#dc2626' }}
-                      >🗑️ Borrar informe</button>
+                      >🗑️ Borrar planificación</button>
                     </Popconfirm>
                   ) : null;
                 })()}
@@ -1954,6 +2048,83 @@ const HomePage: React.FC = () => {
                   className="button-primary"
                   style={{ padding: '0.5rem 1.25rem', opacity: informeSaving ? 0.6 : 1 }}
                 >{informeSaving ? 'Guardando...' : 'Guardar'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {informeFinalModal && (
+        <div className="modal-overlay" onClick={() => setInformeFinalModal(null)} style={{ zIndex: 1002 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: 0 }}>
+            <HtmlModalHeader
+              icon="🔗"
+              title="Informe / Documento"
+              subtitle={informeFinalModal.task.name}
+              onClose={() => setInformeFinalModal(null)}
+            />
+            <div className="modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+              <div style={{ marginBottom: '0.875rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Nombre del documento</label>
+                <input
+                  type="text"
+                  value={informeFinalNombre}
+                  onChange={e => setInformeFinalNombre(e.target.value)}
+                  placeholder="Ej: Informe de actividad abril 2026"
+                  disabled={informeFinalSaving}
+                  autoFocus
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>🔗 Enlace (URL)</label>
+                <input
+                  type="url"
+                  value={informeFinalUrl}
+                  onChange={e => setInformeFinalUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  disabled={informeFinalSaving}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', gap: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {(() => {
+                  const d = extractJsonData(informeFinalModal.task.notes);
+                  const hasInformeFinal = !!(d?.informe_final as { url?: string } | undefined)?.url;
+                  return hasInformeFinal ? (
+                    <Popconfirm
+                      title="¿Borrar informe?"
+                      description="Se eliminará el enlace guardado."
+                      onConfirm={handleDeleteInformeFinal}
+                      okText="Borrar"
+                      cancelText="Cancelar"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <button
+                        type="button"
+                        disabled={informeFinalSaving}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fff5f5', cursor: 'pointer', fontSize: '0.9rem', color: '#dc2626' }}
+                      >🗑️ Borrar informe</button>
+                    </Popconfirm>
+                  ) : null;
+                })()}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setInformeFinalModal(null)}
+                  disabled={informeFinalSaving}
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '7px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '0.9rem', color: '#374151' }}
+                >Cancelar</button>
+                <button
+                  type="button"
+                  onClick={handleSaveInformeFinal}
+                  disabled={informeFinalSaving}
+                  className="button-primary"
+                  style={{ padding: '0.5rem 1.25rem', opacity: informeFinalSaving ? 0.6 : 1 }}
+                >{informeFinalSaving ? 'Guardando...' : 'Guardar'}</button>
               </div>
             </div>
           </div>
