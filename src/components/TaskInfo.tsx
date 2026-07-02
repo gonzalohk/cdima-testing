@@ -1390,7 +1390,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                   title: 'Fecha Respuesta',
                   key: 'fechaAprobacion',
                   render: (_: unknown, record: AsanaTask) => {
-                    const fecha = extractFechaAprobacion(record.notes);
+                    const fechaAprobacion = extractFechaAprobacion(record.notes);
+                    const fecha = fechaAprobacion || extractObservacion(record.notes).fecha;
                     return (
                       <Typography.Text style={{ fontSize: '0.8rem', color: fecha ? '#2e7d32' : '#bbb' }}>
                         {fecha || '—'}
