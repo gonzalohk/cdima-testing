@@ -128,8 +128,12 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
    Observaciones: ${m.observaciones || '-'}`
       ).join('\n\n');
 
-      const fechaInicioStr = new Date(fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
-      const fechaFinalizacionStr = new Date(fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
+      const formatDateStr = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}/${month}/${year}`;
+      };
+      const fechaInicioStr = formatDateStr(fechaInicio);
+      const fechaFinalizacionStr = formatDateStr(fechaFinalizacion);
 
       const jsonData = {
         tipo: 'Solicitud de Material',

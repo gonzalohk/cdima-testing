@@ -115,12 +115,18 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
    Observaciones: ${m.observaciones || '-'}`
       ).join('\n\n');
 
+      const formatDateStr = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}/${month}/${year}`;
+      };
+      const fechaDevolucionStr = formatDateStr(fechaDevolucion);
+
       const jsonData = {
         tipo: 'Devolucion de Material',
         titulo,
         area,
         lugar,
-        fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
+        fechaDevolucion: fechaDevolucionStr,
         fechaSolicitud,
         fechaAprobacion: '',
         usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
@@ -141,7 +147,7 @@ Actividad: ${titulo}
 INFORMACIÓN GENERAL:
 • Área: ${area}
 • Lugar de devolución: ${lugar}
-• Fecha de devolución: ${new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES')}
+• Fecha de devolución: ${fechaDevolucionStr}
 • Fecha de solicitud: ${fechaSolicitud}
 
 MATERIALES A DEVOLVER:
@@ -194,7 +200,7 @@ ${JSON.stringify(jsonData, null, 2)}
           taskName: titulo,
           area,
           lugar,
-          fechaDevolucion: new Date(fechaDevolucion + 'T12:00:00').toLocaleDateString('es-ES'),
+          fechaDevolucion: fechaDevolucionStr,
           materiales: materialesValidos,
           projectName,
           parentTaskName: task.name,

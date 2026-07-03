@@ -119,8 +119,12 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
    Importe: Bs. ${f.importeBolivianos || '0'}`
       ).join('\n\n');
 
-      const fechaInicioStr = new Date(fechaInicio).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
-      const fechaFinalizacionStr = new Date(fechaFinalizacion).toLocaleDateString('es-ES', { timeZone: 'America/La_Paz' });
+      const formatDateStr = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}/${month}/${year}`;
+      };
+      const fechaInicioStr = formatDateStr(fechaInicio);
+      const fechaFinalizacionStr = formatDateStr(fechaFinalizacion);
 
       const jsonData = {
         tipo: 'Solicitud de Fondos',
