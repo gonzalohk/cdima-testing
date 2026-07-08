@@ -1075,6 +1075,12 @@ const HomePage: React.FC = () => {
     ),
   };
 
+  // Una SMAT solo puede tener una SFON asociada (relación 1 a 1)
+  const smatTieneSfon = (smatGid: string): boolean =>
+    [...solicitudes, ...solicitudesAprobadas, ...solicitudesObservadas].some(
+      r => r.tipo === 'Solicitud de Fondos' && r.parentTaskGid === smatGid
+    );
+
   const colAccionesHistorico = {
     title: 'Acciones',
     key: 'acciones',
@@ -1102,17 +1108,25 @@ const HomePage: React.FC = () => {
             />
           </Tooltip>
         )}
-        {row.tipo === 'Solicitud de Material' && !!(extractJsonData(row.task.notes)?.fechaAprobacion) && (
-          <Tooltip title="Agregar Solicitud de Fondos">
-            <Button
-              size="small"
-              icon={<DollarOutlined />}
-              loading={loadingSfonGid === row.task.gid}
-              style={{ color: '#1d4ed8', borderColor: '#93c5fd' }}
-              onClick={() => handleCrearSfonDesdeSmat(row)}
-            />
-          </Tooltip>
-        )}
+        {row.tipo === 'Solicitud de Material' && !!(extractJsonData(row.task.notes)?.fechaAprobacion) && (() => {
+          const yaTieneSfon = smatTieneSfon(row.task.gid);
+          return (
+            <Tooltip title={yaTieneSfon
+              ? 'Ya existe una Solicitud de Fondos para este material'
+              : 'Agregar Solicitud de Fondos'}>
+              <span>
+                <Button
+                  size="small"
+                  icon={<DollarOutlined />}
+                  loading={loadingSfonGid === row.task.gid}
+                  disabled={yaTieneSfon}
+                  style={yaTieneSfon ? undefined : { color: '#1d4ed8', borderColor: '#93c5fd' }}
+                  onClick={() => handleCrearSfonDesdeSmat(row)}
+                />
+              </span>
+            </Tooltip>
+          );
+        })()}
         <Popconfirm
           title="¿Eliminar solicitud?"
           description="Esta acción no se puede deshacer."
