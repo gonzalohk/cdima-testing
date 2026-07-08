@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Badge,
   Button,
   Card,
+  Pagination,
   Popconfirm,
   Space,
   Spin,
@@ -281,6 +282,35 @@ function extractJsonData(notes: string | undefined): Record<string, unknown> | n
   try { return JSON.parse(match[1]); } catch { return null; }
 }
 
+// Agrupa filas aprobadas por su SMAT (una SMAT y sus SFON hijas forman un grupo)
+// y empaqueta los grupos en páginas sin partir ninguno entre páginas distintas.
+function buildGroupedPages(rows: SolicitudRow[], targetSize = 10): SolicitudRow[][] {
+  const groups: SolicitudRow[][] = [];
+  const indexByKey = new Map<string, number>();
+  for (const row of rows) {
+    const isNested = row.parentTaskName.includes(' › ');
+    const key = isNested ? row.parentTaskGid : row.task.gid;
+    let gi = indexByKey.get(key);
+    if (gi === undefined) {
+      gi = groups.length;
+      indexByKey.set(key, gi);
+      groups.push([]);
+    }
+    groups[gi].push(row);
+  }
+  const pages: SolicitudRow[][] = [];
+  let page: SolicitudRow[] = [];
+  for (const g of groups) {
+    if (page.length > 0 && page.length + g.length > targetSize) {
+      pages.push(page);
+      page = [];
+    }
+    page.push(...g);
+  }
+  if (page.length) pages.push(page);
+  return pages.length ? pages : [[]];
+}
+
 
 
 const HomePage: React.FC = () => {
@@ -292,6 +322,7 @@ const HomePage: React.FC = () => {
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
   const [solicitudesObservadas, setSolicitudesObservadas] = useState<SolicitudRow[]>([]);
   const [solTab, setSolTab] = useState('pendientes');
+  const [aprobadasPage, setAprobadasPage] = useState(1);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1416,6 +1447,10 @@ const HomePage: React.FC = () => {
     },
   ];
 
+  // Páginas de aprobadas agrupadas: una SMAT y sus SFON hijas nunca se separan
+  const aprobadasPages = useMemo(() => buildGroupedPages(solicitudesAprobadas), [solicitudesAprobadas]);
+  const aprobadasSafePage = Math.min(aprobadasPage, aprobadasPages.length);
+
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
       {/* Header */}
@@ -1522,15 +1557,33 @@ const HomePage: React.FC = () => {
                   </Space>
                 ),
                 children: (
-                  <Table
-                    columns={columnsAprobadas}
-                    dataSource={solicitudesAprobadas}
-                    size="middle"
-                    bordered
-                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-                    locale={{ emptyText: 'No hay solicitudes aprobadas' }}
-                    rowClassName={() => 'ant-table-row-aprobada'}
-                  />
+                  <>
+                    <Table
+                      columns={columnsAprobadas}
+                      dataSource={aprobadasPages[aprobadasSafePage - 1] ?? []}
+                      size="middle"
+                      bordered
+                      pagination={false}
+                      locale={{ emptyText: 'No hay solicitudes aprobadas' }}
+                      rowClassName={() => 'ant-table-row-aprobada'}
+                    />
+                    {solicitudesAprobadas.length > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '12px 0' }}>
+                        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                          {solicitudesAprobadas.length} solicitudes
+                        </Typography.Text>
+                        {aprobadasPages.length > 1 && (
+                          <Pagination
+                            current={aprobadasSafePage}
+                            total={aprobadasPages.length}
+                            pageSize={1}
+                            showSizeChanger={false}
+                            onChange={setAprobadasPage}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </>
                 ),
               },
               {
