@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Card,
+  Input,
   Pagination,
   Popconfirm,
   Space,
@@ -30,6 +31,7 @@ import {
   PlusOutlined,
   PrinterOutlined,
   ReloadOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
@@ -315,6 +317,24 @@ function buildGroupedPages(rows: SolicitudRow[], groupsPerPage = 10): SolicitudR
   return pages.length ? pages : [[]];
 }
 
+// Coincidencia de búsqueda: revisa actividad, proyecto, tipo, fecha y solicitante.
+function matchSolicitud(row: SolicitudRow, term: string): boolean {
+  const t = term.trim().toLowerCase();
+  if (!t) return true;
+  const data = extractJsonData(row.task.notes);
+  const solicitante = data?.usuario as { nombre?: string; email?: string } | undefined;
+  return [
+    row.task.name,
+    row.projectName,
+    row.parentTaskName,
+    row.sectionName,
+    row.tipo,
+    row.fecha,
+    solicitante?.nombre,
+    solicitante?.email,
+  ].filter(Boolean).join(' ').toLowerCase().includes(t);
+}
+
 
 
 const HomePage: React.FC = () => {
@@ -326,6 +346,9 @@ const HomePage: React.FC = () => {
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
   const [solicitudesObservadas, setSolicitudesObservadas] = useState<SolicitudRow[]>([]);
   const [solTab, setSolTab] = useState('pendientes');
+  const [searchPendientes, setSearchPendientes] = useState('');
+  const [searchAprobadas, setSearchAprobadas] = useState('');
+  const [searchObservadas, setSearchObservadas] = useState('');
   const [aprobadasPage, setAprobadasPage] = useState(1);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1451,8 +1474,39 @@ const HomePage: React.FC = () => {
     },
   ];
 
+  // ── Filtros de búsqueda por pestaña ──────────────────────────────
+  const filteredPendientes = useMemo(
+    () => solicitudes.filter(r => matchSolicitud(r, searchPendientes)),
+    [solicitudes, searchPendientes]
+  );
+
+  // Aprobadas: filtra por grupo (si la SMAT o su SFON coincide, se conserva el grupo completo)
+  const filteredAprobadas = useMemo(() => {
+    const term = searchAprobadas.trim();
+    if (!term) return solicitudesAprobadas;
+    const groups = new Map<string, SolicitudRow[]>();
+    const order: string[] = [];
+    for (const row of solicitudesAprobadas) {
+      const isNested = row.parentTaskName.includes(' › ');
+      const key = isNested ? row.parentTaskGid : row.task.gid;
+      if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+      groups.get(key)!.push(row);
+    }
+    const result: SolicitudRow[] = [];
+    for (const key of order) {
+      const g = groups.get(key)!;
+      if (g.some(r => matchSolicitud(r, term))) result.push(...g);
+    }
+    return result;
+  }, [solicitudesAprobadas, searchAprobadas]);
+
+  const filteredObservadas = useMemo(
+    () => solicitudesObservadas.filter(r => matchSolicitud(r, searchObservadas)),
+    [solicitudesObservadas, searchObservadas]
+  );
+
   // Páginas de aprobadas agrupadas: una SMAT y sus SFON hijas nunca se separan
-  const aprobadasPages = useMemo(() => buildGroupedPages(solicitudesAprobadas), [solicitudesAprobadas]);
+  const aprobadasPages = useMemo(() => buildGroupedPages(filteredAprobadas), [filteredAprobadas]);
   const aprobadasSafePage = Math.min(aprobadasPage, aprobadasPages.length);
   const currentAprobadasRows = aprobadasPages[aprobadasSafePage - 1] ?? [];
 
@@ -1475,14 +1529,14 @@ const HomePage: React.FC = () => {
   const observadasGroupIndex = useMemo(() => {
     const map = new Map<string, number>();
     let g = -1;
-    for (const row of solicitudesObservadas) {
+    for (const row of filteredObservadas) {
       const isNested = row.parentTaskName.includes(' › ');
       if (!isNested) g++;
       else if (g < 0) g = 0;
       map.set(row.key, g);
     }
     return map;
-  }, [solicitudesObservadas]);
+  }, [filteredObservadas]);
 
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
@@ -1560,6 +1614,23 @@ const HomePage: React.FC = () => {
             activeKey={solTab}
             onChange={setSolTab}
             style={{ padding: '0 1.25rem' }}
+            tabBarExtraContent={{
+              right: (
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+                  placeholder="Buscar por actividad, proyecto, solicitante..."
+                  value={solTab === 'aprobadas' ? searchAprobadas : solTab === 'observadas' ? searchObservadas : searchPendientes}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (solTab === 'aprobadas') { setSearchAprobadas(v); setAprobadasPage(1); }
+                    else if (solTab === 'observadas') setSearchObservadas(v);
+                    else setSearchPendientes(v);
+                  }}
+                  style={{ width: 300 }}
+                />
+              ),
+            }}
             items={[
               {
                 key: 'pendientes',
@@ -1572,7 +1643,7 @@ const HomePage: React.FC = () => {
                 children: (
                   <Table
                     columns={columns}
-                    dataSource={solicitudes}
+                    dataSource={filteredPendientes}
                     size="middle"
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
@@ -1606,10 +1677,10 @@ const HomePage: React.FC = () => {
                         return classes.join(' ');
                       }}
                     />
-                    {solicitudesAprobadas.length > 0 && (
+                    {filteredAprobadas.length > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '12px 0' }}>
                         <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                          {solicitudesAprobadas.length} solicitudes
+                          {filteredAprobadas.length} solicitudes
                         </Typography.Text>
                         {aprobadasPages.length > 1 && (
                           <Pagination
@@ -1636,7 +1707,7 @@ const HomePage: React.FC = () => {
                 children: (
                   <Table
                     columns={columnsObservadas}
-                    dataSource={solicitudesObservadas}
+                    dataSource={filteredObservadas}
                     size="middle"
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
