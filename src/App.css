@@ -3616,13 +3616,24 @@ select.form-input {
 .ant-table-row-stripe > .ant-table-cell {
   background-color: #f7fafc !important;
 }
-/* ── Aprobadas: verde ───────────────────────────────────────────── */
+/* ── Aprobadas: alternar tono por grupo (SMAT + SFON) ───────────── */
 .ant-table-row-aprobada > .ant-table-cell {
   background-color: #f0fdf4 !important;
   color: #15803d !important;
 }
 .ant-table-row-aprobada > .ant-table-cell * {
   color: #15803d !important;
+}
+.ant-table-row-aprobada-alt > .ant-table-cell {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+.ant-table-row-aprobada-alt > .ant-table-cell * {
+  color: #15803d !important;
+}
+/* Separador visual al inicio de cada solicitud */
+.ant-table-row-aprobada-start > .ant-table-cell {
+  border-top: 1px solid #bbf7d0 !important;
 }
 /* ── Observadas: gris ───────────────────────────────────────────── */
 .ant-table-row-observada > .ant-table-cell {
@@ -3631,6 +3642,17 @@ select.form-input {
 }
 .ant-table-row-observada > .ant-table-cell * {
   color: #9ca3af !important;
+}
+.ant-table-row-observada-alt > .ant-table-cell {
+  background-color: #eef0f2 !important;
+  color: #9ca3af !important;
+}
+.ant-table-row-observada-alt > .ant-table-cell * {
+  color: #9ca3af !important;
+}
+/* Separador visual al inicio de cada solicitud observada */
+.ant-table-row-observada-start > .ant-table-cell {
+  border-top: 1px solid #e5e7eb !important;
 }
 .section-card__table tbody tr:nth-child(even) {
   background-color: #f7fafc;

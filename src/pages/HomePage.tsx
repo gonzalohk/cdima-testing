@@ -284,7 +284,8 @@ function extractJsonData(notes: string | undefined): Record<string, unknown> | n
 
 // Agrupa filas aprobadas por su SMAT (una SMAT y sus SFON hijas forman un grupo)
 // y empaqueta los grupos en páginas sin partir ninguno entre páginas distintas.
-function buildGroupedPages(rows: SolicitudRow[], targetSize = 10): SolicitudRow[][] {
+// Cada grupo (una SMAT sola, o una SMAT junto a su SFON) cuenta como una sola fila.
+function buildGroupedPages(rows: SolicitudRow[], groupsPerPage = 10): SolicitudRow[][] {
   const groups: SolicitudRow[][] = [];
   const indexByKey = new Map<string, number>();
   for (const row of rows) {
@@ -300,12 +301,15 @@ function buildGroupedPages(rows: SolicitudRow[], targetSize = 10): SolicitudRow[
   }
   const pages: SolicitudRow[][] = [];
   let page: SolicitudRow[] = [];
+  let groupsInPage = 0;
   for (const g of groups) {
-    if (page.length > 0 && page.length + g.length > targetSize) {
+    if (groupsInPage >= groupsPerPage) {
       pages.push(page);
       page = [];
+      groupsInPage = 0;
     }
     page.push(...g);
+    groupsInPage++;
   }
   if (page.length) pages.push(page);
   return pages.length ? pages : [[]];
@@ -1450,6 +1454,35 @@ const HomePage: React.FC = () => {
   // Páginas de aprobadas agrupadas: una SMAT y sus SFON hijas nunca se separan
   const aprobadasPages = useMemo(() => buildGroupedPages(solicitudesAprobadas), [solicitudesAprobadas]);
   const aprobadasSafePage = Math.min(aprobadasPage, aprobadasPages.length);
+  const currentAprobadasRows = aprobadasPages[aprobadasSafePage - 1] ?? [];
+
+  // Índice de grupo por fila: una SMAT y sus SFON anidadas comparten grupo,
+  // de modo que podamos alternar el tono de color por solicitud completa.
+  const aprobadasGroupIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    let g = -1;
+    for (const row of currentAprobadasRows) {
+      const isNested = row.parentTaskName.includes(' › ');
+      if (!isNested) g++;
+      else if (g < 0) g = 0;
+      map.set(row.key, g);
+    }
+    return map;
+  }, [currentAprobadasRows]);
+
+  // Índice de grupo para observadas: misma lógica que aprobadas para
+  // alternar el tono y diferenciar cada solicitud.
+  const observadasGroupIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    let g = -1;
+    for (const row of solicitudesObservadas) {
+      const isNested = row.parentTaskName.includes(' › ');
+      if (!isNested) g++;
+      else if (g < 0) g = 0;
+      map.set(row.key, g);
+    }
+    return map;
+  }, [solicitudesObservadas]);
 
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
@@ -1560,12 +1593,18 @@ const HomePage: React.FC = () => {
                   <>
                     <Table
                       columns={columnsAprobadas}
-                      dataSource={aprobadasPages[aprobadasSafePage - 1] ?? []}
+                      dataSource={currentAprobadasRows}
                       size="middle"
                       bordered
                       pagination={false}
                       locale={{ emptyText: 'No hay solicitudes aprobadas' }}
-                      rowClassName={() => 'ant-table-row-aprobada'}
+                      rowClassName={(row: SolicitudRow) => {
+                        const g = aprobadasGroupIndex.get(row.key) ?? 0;
+                        const isNested = row.parentTaskName.includes(' › ');
+                        const classes = [g % 2 === 0 ? 'ant-table-row-aprobada' : 'ant-table-row-aprobada-alt'];
+                        if (!isNested) classes.push('ant-table-row-aprobada-start');
+                        return classes.join(' ');
+                      }}
                     />
                     {solicitudesAprobadas.length > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '12px 0' }}>
@@ -1602,7 +1641,13 @@ const HomePage: React.FC = () => {
                     bordered
                     pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
                     locale={{ emptyText: 'No hay solicitudes observadas' }}
-                    rowClassName={() => 'ant-table-row-observada'}
+                    rowClassName={(row: SolicitudRow) => {
+                      const g = observadasGroupIndex.get(row.key) ?? 0;
+                      const isNested = row.parentTaskName.includes(' › ');
+                      const classes = [g % 2 === 0 ? 'ant-table-row-observada' : 'ant-table-row-observada-alt'];
+                      if (!isNested) classes.push('ant-table-row-observada-start');
+                      return classes.join(' ');
+                    }}
                   />
                 ),
               },
