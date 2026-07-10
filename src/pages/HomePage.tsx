@@ -368,6 +368,8 @@ const HomePage: React.FC = () => {
   const [informeFinalSaving, setInformeFinalSaving] = useState(false);
 
   const [contrataciones, setContrataciones] = useState<ContratacionRow[]>([]);
+  const [contratacionesExpanded, setContratacionesExpanded] = useState(false);
+  const [atrasadasExpanded, setAtrasadasExpanded] = useState(false);
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
@@ -509,8 +511,12 @@ const HomePage: React.FC = () => {
             };
 
             // Collect overdue top-level activities and build a lookup map
+            // Excluir el proyecto "Administración" del conteo de atrasadas
+            const isAdministracion = project.name
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase().includes('administracion');
             const atrasadasMap = new Map<string, number>();
-            if (!isTecnico) {
+            if (!isTecnico && !isAdministracion) {
               topLevel
                 .filter(t => !isEjecutado(t) && t.due_on && t.due_on < today)
                 .forEach(t => {
@@ -657,7 +663,7 @@ const HomePage: React.FC = () => {
             );
 
             // Build stats for this project
-            if (!isTecnico) {
+            if (!isTecnico && !isAdministracion) {
               const completed = topLevel.filter(isEjecutado).length;
               const overdue = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on < today).length;
               const dueSoon = topLevel.filter(t => !isEjecutado(t) && t.due_on && t.due_on >= today && t.due_on <= nextWeek).length;
@@ -1732,7 +1738,19 @@ const HomePage: React.FC = () => {
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
-          <Space>
+          <Space
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setContratacionesExpanded(v => !v)}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: '#888',
+                display: 'inline-block',
+                transition: 'transform 0.2s',
+                transform: contratacionesExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              }}
+            >▶</span>
             <span style={{ fontSize: 16 }}>📋</span>
             <Typography.Text strong style={{ fontSize: 15 }}>Contrataciones Activas</Typography.Text>
             {!loading && (
@@ -1744,7 +1762,7 @@ const HomePage: React.FC = () => {
           </Space>
         }
       >
-        {loading ? (
+        {contratacionesExpanded && (loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}><Spin /></div>
         ) : contrataciones.length === 0 ? (
           <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic', fontSize: '0.9rem' }}>
@@ -1922,7 +1940,7 @@ const HomePage: React.FC = () => {
               );
             })}
           </div>
-        )}
+        ))}
       </Card>}
 
       {/* ── Actividades Atrasadas ───────────────────────────────────────── */}
@@ -1930,7 +1948,19 @@ const HomePage: React.FC = () => {
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
-          <Space>
+          <Space
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setAtrasadasExpanded(v => !v)}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: '#888',
+                display: 'inline-block',
+                transition: 'transform 0.2s',
+                transform: atrasadasExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              }}
+            >▶</span>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <Typography.Text strong style={{ fontSize: 15 }}>Actividades Atrasadas</Typography.Text>
             {!loading && (
@@ -1942,7 +1972,7 @@ const HomePage: React.FC = () => {
           </Space>
         }
       >
-        {loading ? (
+        {atrasadasExpanded && (loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}><Spin /></div>
         ) : (
           <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
@@ -1957,7 +1987,7 @@ const HomePage: React.FC = () => {
               rowClassName={(_, idx) => idx % 2 !== 0 ? 'ant-table-row-stripe' : ''}
             />
           </div>
-        )}
+        ))}
       </Card>}
 
       {/* ── KPI Strip ───────────────────────────────────────────────────── */}
