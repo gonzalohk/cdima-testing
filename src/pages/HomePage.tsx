@@ -6,10 +6,12 @@ import {
   Input,
   Pagination,
   Popconfirm,
+  Select,
   Space,
   Spin,
   Table,
   Tabs,
+  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -43,7 +45,7 @@ import {
 } from '../services/pdf.service';
 
 interface FundItem { id: number; descripcion: string; importeBolivianos: string; }
-interface MaterialItem { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string; }
+interface MaterialItem { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string; almacen?: string; }
 
 function parseFundsRequest(task: AsanaTask) {
   const data = extractJsonData(task.notes);
@@ -174,6 +176,15 @@ function parseMaterialReturn(task: AsanaTask) {
 }
 
 const SOLICITUD_PREFIXES = ['SFON', 'SMAT', 'DMAT'] as const;
+
+const ALMACEN_OPCIONES = ['ENTREGADO', 'NO AUTORIZADO', 'NO EXISTENTE'] as const;
+
+function almacenColor(v: string): string {
+  if (v === 'ENTREGADO') return 'green';
+  if (v === 'NO AUTORIZADO') return 'red';
+  if (v === 'NO EXISTENTE') return 'orange';
+  return 'default';
+}
 
 function getSolicitudPrefix(name: string): 'SFON' | 'SMAT' | 'DMAT' | null {
   const upper = name.trim().toUpperCase();
@@ -373,6 +384,7 @@ const HomePage: React.FC = () => {
   const [atrasadas, setAtrasadas] = useState<AtrasadaRow[]>([]);
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
+  const [almacenSaving, setAlmacenSaving] = useState<number | null>(null);
 
   // ── Crear SFON desde SMAT aprobada ──────────────────────────────────────
   const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string; initialData?: { titulo?: string; area?: string; lugar?: string; fechaInicio?: string; fechaFinalizacion?: string } } | null>(null);
@@ -842,6 +854,32 @@ const HomePage: React.FC = () => {
       ));
     } catch (err) {
       console.error('Error al eliminar entrada del historial:', err);
+    }
+  };
+
+  const handleSaveAlmacen = async (row: SolicitudRow, materialId: number, value: string) => {
+    setAlmacenSaving(materialId);
+    try {
+      const data = extractJsonData(row.task.notes) ?? {};
+      const materiales = ((data.materiales as MaterialItem[]) ?? []).map(m =>
+        m.id === materialId ? { ...m, almacen: value } : m
+      );
+      const updatedData = { ...data, materiales };
+      const notasBase = (row.task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+      const updated = await asanaService.updateTask(row.task.gid, { notes: newNotes });
+      const finalNotes = updated.notes ?? newNotes;
+      const updateRow = (prev: SolicitudRow[]) =>
+        prev.map(r => r.key === row.key ? { ...r, task: { ...r.task, notes: finalNotes } } : r);
+      setSolicitudes(updateRow);
+      setSolicitudesAprobadas(updateRow);
+      setSolicitudesObservadas(updateRow);
+      setDetailModal(prev => prev && prev.key === row.key ? { ...prev, task: { ...prev.task, notes: finalNotes } } : prev);
+    } catch (err) {
+      alert('Error al guardar el estado de almacén.');
+      console.error(err);
+    } finally {
+      setAlmacenSaving(null);
     }
   };
 
@@ -2138,7 +2176,7 @@ const HomePage: React.FC = () => {
 
         return (
           <div className="modal-overlay" onClick={() => setDetailModal(null)} style={{ zIndex: 1001 }}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: (!isFondos && !isDevolucion && isDetailApproved) ? '880px' : '680px', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
               <HtmlModalHeader
                 icon={icon}
                 title={detailModal.tipo}
@@ -2216,6 +2254,31 @@ const HomePage: React.FC = () => {
                         { title: 'Cantidad', dataIndex: 'cantidad', width: 80, align: 'center' as const },
                         { title: 'Unidad', dataIndex: 'unidad', width: 90 },
                         { title: 'Observaciones', dataIndex: 'observaciones' },
+                        ...(!isDevolucion && isDetailApproved ? [{
+                          title: 'Almacén',
+                          key: 'almacen',
+                          width: 160,
+                          render: (_: unknown, m: MaterialItem) => {
+                            const current = m.almacen || '';
+                            if (canApprove) {
+                              return (
+                                <Select
+                                  size="small"
+                                  style={{ width: '100%' }}
+                                  placeholder="Seleccionar"
+                                  value={current || undefined}
+                                  loading={almacenSaving === m.id}
+                                  allowClear
+                                  onChange={(val) => handleSaveAlmacen(detailModal, m.id, val ?? '')}
+                                  options={ALMACEN_OPCIONES.map(o => ({ value: o, label: o }))}
+                                />
+                              );
+                            }
+                            return current
+                              ? <Tag color={almacenColor(current)}>{current}</Tag>
+                              : <Typography.Text type="secondary" style={{ fontSize: 12 }}>–</Typography.Text>;
+                          },
+                        }] : []),
                       ]}
                     />
                   </>
