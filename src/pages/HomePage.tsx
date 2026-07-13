@@ -728,7 +728,19 @@ const HomePage: React.FC = () => {
       // Agrupar aprobadas: cada SMAT va seguida inmediatamente de sus SFONs anidados
       const nestedApproved = allApproved.filter(r => r.parentTaskName.includes(' › '));
       const standaloneApproved = allApproved.filter(r => !r.parentTaskName.includes(' › '));
-      standaloneApproved.sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a));
+      // SMAT que ya tienen una Solicitud de Fondos asociada (en cualquier estado)
+      const smatConSfon = new Set<string>();
+      [...allApproved, ...allRows, ...allObserved].forEach(r => {
+        if (r.tipo === 'Solicitud de Fondos') smatConSfon.add(r.parentTaskGid);
+      });
+      // Orden: las SMAT ya con SFON (finalizadas) van al final; dentro de cada
+      // grupo se ordena por fecha de respuesta (desc)
+      standaloneApproved.sort((a, b) => {
+        const aFin = a.tipo === 'Solicitud de Material' && smatConSfon.has(a.task.gid);
+        const bFin = b.tipo === 'Solicitud de Material' && smatConSfon.has(b.task.gid);
+        if (aFin !== bFin) return aFin ? 1 : -1;
+        return parseFechaRespuesta(b) - parseFechaRespuesta(a);
+      });
       const groupedApproved: SolicitudRow[] = [];
       for (const row of standaloneApproved) {
         groupedApproved.push(row);
@@ -1568,6 +1580,20 @@ const HomePage: React.FC = () => {
     return map;
   }, [currentAprobadasRows]);
 
+  // Número de registro por grupo para Aprobadas: una SMAT y sus SFON anidadas
+  // comparten un único número (cuentan como un solo registro), continuo en toda la lista.
+  const aprobadasRowNumber = useMemo(() => {
+    const map = new Map<string, number>();
+    let n = 0;
+    for (const row of filteredAprobadas) {
+      const isNested = row.parentTaskName.includes(' › ');
+      if (!isNested) n++;
+      else if (n === 0) n = 1;
+      map.set(row.key, n);
+    }
+    return map;
+  }, [filteredAprobadas]);
+
   // Índice de grupo para observadas: misma lógica que aprobadas para
   // alternar el tono y diferenciar cada solicitud.
   const observadasGroupIndex = useMemo(() => {
@@ -1581,6 +1607,45 @@ const HomePage: React.FC = () => {
     }
     return map;
   }, [filteredObservadas]);
+
+  // Columnas de numeración (posición continua dentro de cada listado)
+  const colIndexPendientes = {
+    title: '#',
+    key: 'num',
+    width: 48,
+    align: 'center' as const,
+    render: (_: unknown, row: SolicitudRow) => (
+      <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+        {filteredPendientes.findIndex(r => r.key === row.key) + 1}
+      </Typography.Text>
+    ),
+  };
+  const colIndexAprobadas = {
+    title: '#',
+    key: 'num',
+    width: 48,
+    align: 'center' as const,
+    render: (_: unknown, row: SolicitudRow) => {
+      const isNested = row.parentTaskName.includes(' › ');
+      if (isNested) return null;
+      return (
+        <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+          {aprobadasRowNumber.get(row.key)}
+        </Typography.Text>
+      );
+    },
+  };
+  const colIndexObservadas = {
+    title: '#',
+    key: 'num',
+    width: 48,
+    align: 'center' as const,
+    render: (_: unknown, row: SolicitudRow) => (
+      <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+        {filteredObservadas.findIndex(r => r.key === row.key) + 1}
+      </Typography.Text>
+    ),
+  };
 
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
@@ -1686,7 +1751,7 @@ const HomePage: React.FC = () => {
                 ),
                 children: (
                   <Table
-                    columns={columns}
+                    columns={[colIndexPendientes, ...columns]}
                     dataSource={filteredPendientes}
                     size="middle"
                     bordered
@@ -1707,7 +1772,7 @@ const HomePage: React.FC = () => {
                 children: (
                   <>
                     <Table
-                      columns={columnsAprobadas}
+                      columns={[colIndexAprobadas, ...columnsAprobadas]}
                       dataSource={currentAprobadasRows}
                       size="middle"
                       bordered
@@ -1750,7 +1815,7 @@ const HomePage: React.FC = () => {
                 ),
                 children: (
                   <Table
-                    columns={columnsObservadas}
+                    columns={[colIndexObservadas, ...columnsObservadas]}
                     dataSource={filteredObservadas}
                     size="middle"
                     bordered
