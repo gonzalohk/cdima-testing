@@ -104,6 +104,11 @@ export const getCargoByEmail = (email?: string): string | undefined => {
   return USERS.find((u) => u.email.toLowerCase() === email.toLowerCase())?.cargo;
 };
 
+// Devuelve los emails de los usuarios aprobadores (director + administrador).
+// Se usa como destinatarios de las notificaciones de nuevas solicitudes.
+export const getAprobadorEmails = (): string[] =>
+  USERS.filter((u) => u.role === 'director' || u.role === 'administrador').map((u) => u.email);
+
 const STORAGE_KEY = 'cdima_auth_user';
 
 const AuthContext = createContext<AuthContextType | null>(null);

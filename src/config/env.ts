@@ -10,6 +10,7 @@ interface Config {
   asanaWorkspaceId?: string;
   asanaProjectId?: string;
   apiUrl?: string;
+  notificacionesEnabled: boolean;
 }
 
 const config: Config = {
@@ -17,6 +18,9 @@ const config: Config = {
   asanaWorkspaceId: import.meta.env.VITE_ASANA_WORKSPACE_ID,
   asanaProjectId: import.meta.env.VITE_ASANA_PROJECT_ID,
   apiUrl: import.meta.env.VITE_API_URL,
+  // Bandera de notificaciones: desactivada por defecto. Solo se activa si
+  // VITE_NOTIFICACIONES_ENABLED es exactamente la cadena "true".
+  notificacionesEnabled: import.meta.env.VITE_NOTIFICACIONES_ENABLED === 'true',
 };
 
 export default config;

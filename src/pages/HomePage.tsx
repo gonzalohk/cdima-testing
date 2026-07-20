@@ -3,9 +3,12 @@ import {
   Badge,
   Button,
   Card,
+  Empty,
   Input,
+  List,
   Pagination,
   Popconfirm,
+  Popover,
   Select,
   Space,
   Spin,
@@ -37,7 +40,9 @@ import {
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
-import { useAuth, getSolicitanteByEmail, getCargoByEmail } from '../context/AuthContext';
+import { useAuth, getSolicitanteByEmail, getCargoByEmail, getAprobadorEmails } from '../context/AuthContext';
+import { notificationsService } from '../services/notifications.service';
+import { AppNotification } from '../types/notification.types';
 import {
   exportFundsRequestToPDF,
   exportMaterialRequestToPDF,
@@ -398,22 +403,116 @@ const HomePage: React.FC = () => {
   const [showNuevaSolModal, setShowNuevaSolModal] = useState(false);
   const [nuevaSolTask, setNuevaSolTask]           = useState<AsanaTask | null>(null);
   const [nuevaSolType, setNuevaSolType]           = useState<SolicitudType | ''>('');
+  const [nuevaSolMeta, setNuevaSolMeta]           = useState<{ projectName?: string; sectionName?: string }>({});
 
-  const handleNuevaSolConfirm = (task: AsanaTask, type: SolicitudType) => {
+  // ── Notificaciones (protegidas por bandera, desactivadas por defecto) ────
+  const notifsEnabled = notificationsService.isEnabled();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const loadNotifications = useCallback(async () => {
+    if (!notifsEnabled || !user?.email) return;
+    const list = await notificationsService.list(user.email);
+    setNotifications(list);
+  }, [notifsEnabled, user?.email]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter(n => !n.read).length,
+    [notifications]
+  );
+
+  useEffect(() => {
+    if (!notifsEnabled) return;
+    loadNotifications();
+    const id = setInterval(loadNotifications, 30_000); // refresco cada 30s
+    // Refresco inmediato al volver a la pestaña / enfocar la ventana
+    const onFocus = () => loadNotifications();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadNotifications();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [notifsEnabled, loadNotifications]);
+
+  // Marca todas las no leídas como leídas al abrir la campana.
+  const handleNotifOpenChange = async (open: boolean) => {
+    setNotifOpen(open);
+    if (!open) return;
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await Promise.all(unread.map(n => notificationsService.markRead(n.gid)));
+  };
+
+  const handleNotifClick = (_n: AppNotification) => {
+    setNotifOpen(false);
+    setSolTab('pendientes');
+  };
+
+  // Notifica a los aprobadores que se creó una nueva solicitud.
+  const notifySolicitudCreada = (opts: {
+    tipo: SolicitudType;
+    titulo?: string;
+    projectName?: string;
+    sectionName?: string;
+    taskName?: string;
+    sourceTaskGid: string;
+  }) => {
+    if (!notifsEnabled) return;
+    const { tipo, titulo, projectName, sectionName, taskName, sourceTaskGid } = opts;
+    const tipoLabel =
+      tipo === 'material' ? 'Solicitud de Material'
+      : tipo === 'fondos' ? 'Solicitud de Fondos'
+      : 'Devolución de Material';
+    const tituloTxt = (titulo ?? '').trim();
+    // Jerarquía: Proyecto › Sección › Tarea › Subtarea (la solicitud)
+    const jerarquia = [projectName, sectionName, taskName, tituloTxt]
+      .map(s => (s ?? '').trim())
+      .filter(Boolean)
+      .join(' › ');
+    notificationsService.notify({
+      type: 'solicitud_creada',
+      title: tituloTxt ? `Nueva ${tipoLabel}: ${tituloTxt}` : `Nueva ${tipoLabel}`,
+      description: jerarquia,
+      sourceTaskGid,
+      targetEmails: getAprobadorEmails(),
+    });
+  };
+
+  const handleNuevaSolConfirm = (task: AsanaTask, type: SolicitudType, meta?: { projectName?: string; sectionName?: string }) => {
     setShowNuevaSolModal(false);
     setNuevaSolTask(task);
     setNuevaSolType(type);
+    setNuevaSolMeta(meta ?? {});
   };
 
   const handleNuevaSolClose = () => {
     setNuevaSolTask(null);
     setNuevaSolType('');
+    setNuevaSolMeta({});
   };
 
-  const handleNuevaSolSuccess = () => {
+  const handleNuevaSolSuccess = (titulo?: string) => {
+    if (notifsEnabled && nuevaSolTask && nuevaSolType) {
+      notifySolicitudCreada({
+        tipo: nuevaSolType,
+        titulo,
+        projectName: nuevaSolMeta.projectName ?? nuevaSolTask.projects?.[0]?.name,
+        sectionName: nuevaSolMeta.sectionName,
+        taskName: nuevaSolTask.name,
+        sourceTaskGid: nuevaSolTask.gid,
+      });
+    }
     setNuevaSolTask(null);
     setNuevaSolType('');
+    setNuevaSolMeta({});
     loadSolicitudes();
+    loadNotifications();
   };
 
   const handleCrearSfonDesdeSmat = async (row: SolicitudRow) => {
@@ -476,8 +575,10 @@ const HomePage: React.FC = () => {
       if (!cdima) throw new Error('No se encontró el workspace CDIMA');
 
       const projects = await asanaService.getProjects(cdima.gid);
-      // Excluir proyectos cuyo nombre contenga "CDIMA"
-      const filteredProjects = projects.filter(p => !p.name.toUpperCase().includes('CDIMA'));
+      // Excluir proyectos cuyo nombre contenga "CDIMA" y el proyecto de NOTIFICACIONES
+      const filteredProjects = projects.filter(
+        p => !p.name.toUpperCase().includes('CDIMA') && p.name.toUpperCase() !== 'NOTIFICACIONES'
+      );
 
       const allRows: SolicitudRow[] = [];
       const allContrataciones: ContratacionRow[] = [];
@@ -812,6 +913,19 @@ const HomePage: React.FC = () => {
       const updatedRow: SolicitudRow = { ...row, task: { ...row.task, notes: newNotes } };
       setSolicitudes(prev => prev.filter(r => r.key !== row.key));
       setSolicitudesAprobadas(prev => insertApprovedRow(prev, updatedRow));
+      if (notifsEnabled) {
+        const solEmail = (data.usuario as { email?: string } | undefined)?.email;
+        if (solEmail) {
+          notificationsService.notify({
+            type: 'solicitud_aprobada',
+            title: 'Solicitud aprobada',
+            description: `${row.tipo} · ${row.projectName} › ${row.parentTaskName}`,
+            sourceTaskGid: row.task.gid,
+            targetEmails: [solEmail],
+          });
+        }
+        loadNotifications();
+      }
     } catch (err) {
       console.error('Error al aprobar:', err);
     } finally {
@@ -836,6 +950,19 @@ const HomePage: React.FC = () => {
       const updatedRow: SolicitudRow = { ...observeModal, task: { ...observeModal.task, notes: newNotes } };
       setSolicitudes(prev => prev.filter(r => r.key !== observeModal.task.gid));
       setSolicitudesObservadas(prev => [updatedRow, ...prev]);
+      if (notifsEnabled) {
+        const solEmail = (data.usuario as { email?: string } | undefined)?.email;
+        if (solEmail) {
+          notificationsService.notify({
+            type: 'solicitud_observada',
+            title: 'Solicitud observada',
+            description: `${observeModal.tipo} · ${observeModal.projectName} › ${observeModal.parentTaskName}`,
+            sourceTaskGid: observeModal.task.gid,
+            targetEmails: [solEmail],
+          });
+        }
+        loadNotifications();
+      }
       setObserveModal(null);
       setObserveText('');
     } catch (err) {
@@ -1670,6 +1797,55 @@ const HomePage: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {notifsEnabled && (
+            <Popover
+              open={notifOpen}
+              onOpenChange={handleNotifOpenChange}
+              trigger="click"
+              placement="bottomRight"
+              title="Notificaciones"
+              content={
+                <div style={{ width: 340, maxHeight: 400, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <Empty description="Sin notificaciones" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  ) : (
+                    <List
+                      size="small"
+                      dataSource={notifications}
+                      renderItem={(n) => (
+                        <List.Item
+                          onClick={() => handleNotifClick(n)}
+                          style={{
+                            cursor: 'pointer',
+                            background: n.read ? 'transparent' : '#eff6ff',
+                            borderRadius: 6,
+                            padding: '8px 10px',
+                          }}
+                        >
+                          <List.Item.Meta
+                            title={
+                              <Typography.Text strong={!n.read} style={{ fontSize: 13 }}>
+                                {n.title}
+                              </Typography.Text>
+                            }
+                            description={
+                              <Typography.Text style={{ fontSize: 12, color: '#6b7280' }}>
+                                {n.description}
+                              </Typography.Text>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  )}
+                </div>
+              }
+            >
+              <Badge count={unreadCount} size="small">
+                <Button icon={<BellOutlined />} />
+              </Badge>
+            </Popover>
+          )}
           <Button
             icon={<ReloadOutlined />}
             onClick={loadSolicitudes}
@@ -2606,7 +2782,8 @@ const HomePage: React.FC = () => {
           parentTaskName={sfonFromSmat.parentTaskName}
           initialData={sfonFromSmat.initialData}
           onClose={() => setSfonFromSmat(null)}
-          onSuccess={() => {
+          onSuccess={(titulo) => {
+            notifySolicitudCreada({ tipo: 'fondos', titulo, projectName: sfonFromSmat.projectName, taskName: sfonFromSmat.parentTaskName, sourceTaskGid: sfonFromSmat.task.gid });
             setSfonFromSmat(null);
             loadSolicitudes();
           }}
@@ -2626,7 +2803,11 @@ const HomePage: React.FC = () => {
             materiales: duplicarSol.data.materiales as MaterialItem[] | undefined,
           }}
           onClose={() => setDuplicarSol(null)}
-          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
+          onSuccess={(titulo) => {
+            notifySolicitudCreada({ tipo: 'material', titulo, projectName: duplicarSol.task.projects?.[0]?.name, taskName: duplicarSol.task.name, sourceTaskGid: duplicarSol.task.gid });
+            setDuplicarSol(null);
+            loadSolicitudes();
+          }}
         />
       )}
 
@@ -2644,7 +2825,11 @@ const HomePage: React.FC = () => {
               .map((f, idx) => ({ id: f.id ?? idx + 1, descripcion: f.descripcion ?? '', importeBolivianos: String(f.importeBolivianos ?? '') })),
           }}
           onClose={() => setDuplicarSol(null)}
-          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
+          onSuccess={(titulo) => {
+            notifySolicitudCreada({ tipo: 'fondos', titulo, projectName: duplicarSol.task.projects?.[0]?.name, taskName: duplicarSol.task.name, sourceTaskGid: duplicarSol.task.gid });
+            setDuplicarSol(null);
+            loadSolicitudes();
+          }}
         />
       )}
 
@@ -2660,7 +2845,11 @@ const HomePage: React.FC = () => {
             materiales: duplicarSol.data.materiales as MaterialItem[] | undefined,
           }}
           onClose={() => setDuplicarSol(null)}
-          onSuccess={() => { setDuplicarSol(null); loadSolicitudes(); }}
+          onSuccess={(titulo) => {
+            notifySolicitudCreada({ tipo: 'devolucion', titulo, projectName: duplicarSol.task.projects?.[0]?.name, taskName: duplicarSol.task.name, sourceTaskGid: duplicarSol.task.gid });
+            setDuplicarSol(null);
+            loadSolicitudes();
+          }}
         />
       )}
 

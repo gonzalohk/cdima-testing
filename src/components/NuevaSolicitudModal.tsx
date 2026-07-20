@@ -16,7 +16,7 @@ export type SolicitudType = 'material' | 'fondos' | 'devolucion';
 interface NuevaSolicitudModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (task: AsanaTask, type: SolicitudType) => void;
+  onConfirm: (task: AsanaTask, type: SolicitudType, meta?: { projectName?: string; sectionName?: string }) => void;
   /** Área restringida para técnicos, p.ej. "Erradicación de Violencia" o "Empoderamiento Político" */
   tecnicoArea?: string | null;
 }
@@ -138,7 +138,9 @@ const NuevaSolicitudModal: React.FC<NuevaSolicitudModalProps> = ({ open, onClose
     setError('');
     try {
       const fullTask = await asanaService.getTask(selectedTask);
-      onConfirm(fullTask, solType as SolicitudType);
+      const projectName = projects.find(p => p.gid === selectedProject)?.name;
+      const sectionName = sections.find(s => s.gid === selectedSection)?.name;
+      onConfirm(fullTask, solType as SolicitudType, { projectName, sectionName });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar la actividad');
     } finally {

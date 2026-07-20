@@ -26,7 +26,7 @@ interface SfonInitialData {
 interface FundsRequestModalProps {
   task: AsanaTask;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (titulo?: string) => void;
   projectName?: string;
   parentTaskName?: string;
   initialData?: SfonInitialData;
@@ -220,7 +220,7 @@ ${JSON.stringify(jsonData, null, 2)}
       }, 500);
       
       setTimeout(() => {
-        onSuccess();
+        onSuccess(titulo);
         onClose();
       }, 2000);
     } catch (err) {
