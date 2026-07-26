@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Row, Select, Space, Typography } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Typography } from 'antd';
+import dayjs from 'dayjs';
 import {
   DeleteOutlined, PlusOutlined,
   EnvironmentOutlined, AppstoreOutlined, InfoCircleOutlined,
@@ -217,12 +218,14 @@ ${JSON.stringify(jsonData, null, 2)}
           taskName: titulo,
           area,
           lugar,
-          fechaInicio,
-          fechaFinalizacion,
+          fechaInicio: fechaInicioStr,
+          fechaFinalizacion: fechaFinalizacionStr,
           materiales: materialesValidos,
           projectName,
           parentTaskName: task.name,
           fechaGeneracion: fechaSolicitud,
+          aprobado: false,
+          observado: false,
           solicitante,
           cargo,
         });
@@ -329,12 +332,12 @@ ${JSON.stringify(jsonData, null, 2)}
                   label={<Typography.Text style={{ fontSize: 12, color: '#6b7280' }}>Fecha de inicio</Typography.Text>}
                   required
                 >
-                  <Input
-                    type="date"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    style={{ borderRadius: 8 }}
-                    lang="es"
+                  <DatePicker
+                    format="DD/MM/YYYY"
+                    value={fechaInicio ? dayjs(fechaInicio) : null}
+                    onChange={(d) => setFechaInicio(d ? d.format('YYYY-MM-DD') : '')}
+                    style={{ borderRadius: 8, width: '100%' }}
+                    placeholder="Seleccione una fecha"
                   />
                 </Form.Item>
               </Col>
@@ -343,13 +346,13 @@ ${JSON.stringify(jsonData, null, 2)}
                   label={<Typography.Text style={{ fontSize: 12, color: '#6b7280' }}>Fecha de finalización</Typography.Text>}
                   required
                 >
-                  <Input
-                    type="date"
-                    value={fechaFinalizacion}
-                    onChange={(e) => setFechaFinalizacion(e.target.value)}
-                    min={fechaInicio || undefined}
-                    style={{ borderRadius: 8 }}
-                    lang="es"
+                  <DatePicker
+                    format="DD/MM/YYYY"
+                    value={fechaFinalizacion ? dayjs(fechaFinalizacion) : null}
+                    onChange={(d) => setFechaFinalizacion(d ? d.format('YYYY-MM-DD') : '')}
+                    disabledDate={fechaInicio ? (current) => !!current && current < dayjs(fechaInicio).startOf('day') : undefined}
+                    style={{ borderRadius: 8, width: '100%' }}
+                    placeholder="Seleccione una fecha"
                   />
                 </Form.Item>
               </Col>

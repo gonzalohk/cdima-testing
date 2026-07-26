@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Row, Select, Typography } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, Row, Select, Typography } from 'antd';
+import dayjs from 'dayjs';
 import { DeleteOutlined, DollarOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { SectionHeader, HtmlModalHeader } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
@@ -208,12 +209,14 @@ ${JSON.stringify(jsonData, null, 2)}
           taskName: titulo,
           area,
           lugar,
-          fechaInicio,
-          fechaFinalizacion,
+          fechaInicio: fechaInicioStr,
+          fechaFinalizacion: fechaFinalizacionStr,
           fondos: fondosValidos,
           projectName,
           parentTaskName: task.name,
           fechaGeneracion: fechaSolicitud,
+          aprobado: false,
+          observado: false,
           solicitante,
           cargo,
         });
@@ -304,12 +307,12 @@ ${JSON.stringify(jsonData, null, 2)}
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="Fecha de inicio" required>
-                <Input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+                <DatePicker format="DD/MM/YYYY" value={fechaInicio ? dayjs(fechaInicio) : null} onChange={(d) => setFechaInicio(d ? d.format('YYYY-MM-DD') : '')} style={{ width: '100%' }} placeholder="Seleccione una fecha" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item label="Fecha de finalización" required>
-                <Input type="date" value={fechaFinalizacion} onChange={(e) => setFechaFinalizacion(e.target.value)} />
+                <DatePicker format="DD/MM/YYYY" value={fechaFinalizacion ? dayjs(fechaFinalizacion) : null} onChange={(d) => setFechaFinalizacion(d ? d.format('YYYY-MM-DD') : '')} disabledDate={fechaInicio ? (current) => !!current && current < dayjs(fechaInicio).startOf('day') : undefined} style={{ width: '100%' }} placeholder="Seleccione una fecha" />
               </Form.Item>
             </Col>
           </Row>

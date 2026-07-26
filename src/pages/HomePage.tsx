@@ -2459,7 +2459,7 @@ const HomePage: React.FC = () => {
                       pagination={false}
                       dataSource={fondos.map(f => ({ ...f, key: f.id }))}
                       columns={[
-                        { title: '#', dataIndex: 'id', width: 36 },
+                        { title: '#', key: 'idx', width: 36, render: (_: unknown, __: unknown, index: number) => index + 1 },
                         { title: 'Descripción', dataIndex: 'descripcion' },
                         { title: 'Importe (Bs.)', dataIndex: 'importeBolivianos', width: 120, align: 'right' as const,
                           render: (v: string) => <Typography.Text strong style={{ color: '#1a5c2a' }}>Bs. {v}</Typography.Text> },
@@ -2490,7 +2490,7 @@ const HomePage: React.FC = () => {
                       pagination={false}
                       dataSource={materiales.map(m => ({ ...m, key: m.id }))}
                       columns={[
-                        { title: '#', dataIndex: 'id', width: 36 },
+                        { title: '#', key: 'idx', width: 36, render: (_: unknown, __: unknown, index: number) => index + 1 },
                         { title: 'Detalle', dataIndex: 'detalle' },
                         { title: 'Cantidad', dataIndex: 'cantidad', width: 80, align: 'center' as const },
                         { title: 'Unidad', dataIndex: 'unidad', width: 90 },

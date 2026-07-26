@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Row, Select, Typography } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, Row, Select, Typography } from 'antd';
+import dayjs from 'dayjs';
 import { DeleteOutlined, PlusOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { SectionHeader, HtmlModalHeader } from './ModalShared';
 import { AsanaTask } from '../types/asana.types';
@@ -205,6 +206,8 @@ ${JSON.stringify(jsonData, null, 2)}
           projectName,
           parentTaskName: task.name,
           fechaGeneracion: fechaSolicitud,
+          aprobado: false,
+          observado: false,
           solicitante,
           cargo,
         });
@@ -293,11 +296,12 @@ ${JSON.stringify(jsonData, null, 2)}
           </Row>
 
           <Form.Item label="Fecha de devolución" required>
-            <Input
-              type="date"
-              value={fechaDevolucion}
-              onChange={(e) => setFechaDevolucion(e.target.value)}
-              style={{ maxWidth: 220 }}
+            <DatePicker
+              format="DD/MM/YYYY"
+              value={fechaDevolucion ? dayjs(fechaDevolucion) : null}
+              onChange={(d) => setFechaDevolucion(d ? d.format('YYYY-MM-DD') : '')}
+              style={{ maxWidth: 220, width: '100%' }}
+              placeholder="Seleccione una fecha"
             />
           </Form.Item>
 
