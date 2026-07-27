@@ -1119,9 +1119,11 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   const hasBoth1 = !!(data.projectName && data.parentTaskName);
   let metaY1 = margins.top + (hasBoth1 ? 19 : hasExtra1 ? 16 : 12);
 
-  const solicitudLabel1 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
-  doc.text(`SOLICITUD: ${solicitudLabel1}`, metaX1, metaY1, { align: 'right' });
-  metaY1 += 5;
+  const solicitudLines1 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
+  solicitudLines1.forEach((line: string, idx: number) => {
+    doc.text(line, metaX1, metaY1 + idx * 5, { align: 'right' });
+  });
+  metaY1 += solicitudLines1.length * 5;
   doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
   doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
@@ -1309,9 +1311,11 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   const hasBoth2 = !!(data.projectName && data.parentTaskName);
   let metaY2 = margins.top + (hasBoth2 ? 19 : hasExtra2 ? 16 : 12);
 
-  const solicitudLabel2 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
-  doc.text(`SOLICITUD: ${solicitudLabel2}`, metaX2, metaY2, { align: 'right' });
-  metaY2 += 5;
+  const solicitudLines2 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
+  solicitudLines2.forEach((line: string, idx: number) => {
+    doc.text(line, metaX2, metaY2 + idx * 5, { align: 'right' });
+  });
+  metaY2 += solicitudLines2.length * 5;
   doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
   doc.text(`FECHA DE DEVOLUCIÓN: ${data.fechaDevolucion}`, metaX2, metaY2, { align: 'right' });
@@ -1505,9 +1509,11 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   const hasBoth3 = !!(data.projectName && data.parentTaskName);
   let metaY3 = margins.top + (hasBoth3 ? 19 : hasExtra3 ? 16 : 12);
 
-  const solicitudLabel3 = data.taskName.length > 70 ? data.taskName.substring(0, 70) + '...' : data.taskName;
-  doc.text(`SOLICITUD: ${solicitudLabel3}`, metaX3, metaY3, { align: 'right' });
-  metaY3 += 5;
+  const solicitudLines3 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
+  solicitudLines3.forEach((line: string, idx: number) => {
+    doc.text(line, metaX3, metaY3 + idx * 5, { align: 'right' });
+  });
+  metaY3 += solicitudLines3.length * 5;
   doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
   doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
