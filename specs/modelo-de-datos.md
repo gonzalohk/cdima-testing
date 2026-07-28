@@ -114,6 +114,8 @@ Delimitadas por `===DATOS_JSON=== ... ===FIN_DATOS_JSON===` y parseadas por `ext
 | `fechaSolicitud` | string | timestamp La Paz |
 | `fechaAprobacion` | string | presente ⇒ **estado=Aprobada** |
 | `observado`, `motivoObservacion`, `fechaObservacion` | bool/string | presentes ⇒ **estado=Observada** |
+| `archivado` | bool | `true` ⇒ **estado=Archivada** (solo válido en solicitud Aprobada con ciclo SMAT↔SFON aprobado); ausente ⇒ no archivada |
+| `fechaArchivado` | string | timestamp La Paz del archivado (`DD/MM/YYYY, HH:mm`); presente si `archivado === true` |
 | `usuario` 🔗 | `{ nombre, email, rol }` | FK lógica → `usuario.email` |
 | `solicitante`, `cargo` | string | datos de PDF |
 | `materiales[]` | MaterialItem | SMAT/DMAT |

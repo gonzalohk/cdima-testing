@@ -336,6 +336,16 @@
 - **Excepciones**: `'default'` si no coincide.
 - **Dependencias**: `ALMACEN_OPCIONES`.
 
+## RN-34 · Archivado / Desarchivado de solicitudes por mes
+- **Descripción**: Una solicitud aprobada cuyo ciclo SMAT↔SFON está aprobado puede archivarse: se marca `archivado=true` y `fechaArchivado` en el JSON de **ambas** subtareas (SMAT y su SFON anidada), retirándola de "Aprobadas" y mostrándola en la pestaña "Archivadas". El archivado es reversible (desarchivar ⇒ `archivado=false`). En "Archivadas" las solicitudes se agrupan en secciones colapsables por mes según `fechaAprobacion` de la SMAT (sección "Sin fecha" si falta), ordenadas de más reciente a más antigua. Las archivadas se excluyen del conteo de "Aprobadas".
+- **Ubicación**: [src/pages/HomePage.tsx](../src/pages/HomePage.tsx) (`isArchivada`, `mesKeyFromFecha`, `mesLabelFromKey`, `writeArchivadoFlag`, `puedeArchivar`, `handleArchivar`, `handleDesarchivar`, `seccionesArchivadasPorMes`)
+- **Método**: `handleArchivar(row)` / `handleDesarchivar(row)` + `writeArchivadoFlag(task, archivado)`
+- **Entradas**: `row: SolicitudRow` (SMAT del grupo).
+- **Salidas**: `updateTask` (PUT) en SMAT y SFON con el JSON actualizado; actualización local de listas.
+- **Validaciones**: solo roles aprobadores (`canApprove`); `puedeArchivar` exige SMAT aprobada con SFON anidada aprobada; reescribe el bloque JSON preservando el texto legible (patrón RN-30).
+- **Excepciones**: `alert('Error al archivar/desarchivar…')` + `console.error`; el estado local no cambia si falla.
+- **Dependencias**: `asanaService.updateTask`, `extractJsonData`, `insertApprovedRow`, `matchSolicitud`. Fecha en `America/La_Paz`.
+
 ---
 
 ## Índice de reglas
@@ -375,6 +385,7 @@
 | RN-31 | Ordenamiento por fecha | HomePage |
 | RN-32 | PDF automático | Modales |
 | RN-33 | Color de almacén | HomePage |
+| RN-34 | Archivado/Desarchivado por mes | HomePage |
 
 ---
 

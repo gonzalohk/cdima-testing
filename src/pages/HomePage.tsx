@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Card,
+  Collapse,
   Empty,
   Input,
   List,
@@ -32,10 +33,12 @@ import {
   DeleteOutlined,
   DollarOutlined,
   EyeOutlined,
+  InboxOutlined,
   LinkOutlined,
   PlusOutlined,
   PrinterOutlined,
   ReloadOutlined,
+  RollbackOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
@@ -219,6 +222,34 @@ function extractFechaSolicitud(notes: string | undefined): string {
   return match ? match[1] : '-';
 }
 
+// ── Archivado de solicitudes ────────────────────────────────────────────────
+// Una solicitud está archivada si su JSON tiene `archivado === true`.
+function isArchivada(task: AsanaTask): boolean {
+  return extractJsonData(task.notes)?.archivado === true;
+}
+
+const MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+// Clave de mes estable (YYYY-MM) a partir de una fecha "DD/MM/YYYY, HH:mm".
+function mesKeyFromFecha(fecha: string | undefined): string {
+  if (!fecha || fecha === '-') return 'sin-fecha';
+  const datePart = fecha.split(',')[0].trim();
+  const m = datePart.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return 'sin-fecha';
+  return `${m[3]}-${m[2].padStart(2, '0')}`;
+}
+
+// Etiqueta legible en español a partir de la clave de mes.
+function mesLabelFromKey(key: string): string {
+  if (key === 'sin-fecha') return 'Sin fecha';
+  const [y, m] = key.split('-');
+  const idx = parseInt(m, 10) - 1;
+  return `${MESES_ES[idx] ?? ''} ${y}`.trim();
+}
+
 interface SolicitudRow {
   key: string;
   task: AsanaTask;
@@ -361,10 +392,15 @@ const HomePage: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
   const [solicitudesObservadas, setSolicitudesObservadas] = useState<SolicitudRow[]>([]);
+  const [solicitudesArchivadas, setSolicitudesArchivadas] = useState<SolicitudRow[]>([]);
   const [solTab, setSolTab] = useState('pendientes');
   const [searchPendientes, setSearchPendientes] = useState('');
   const [searchAprobadas, setSearchAprobadas] = useState('');
   const [searchObservadas, setSearchObservadas] = useState('');
+  const [searchArchivadas, setSearchArchivadas] = useState('');
+  const [mesesExpandidos, setMesesExpandidos] = useState<string[]>([]);
+  const [archivandoKey, setArchivandoKey] = useState<string | null>(null);
+  const [desarchivandoKey, setDesarchivandoKey] = useState<string | null>(null);
   const [aprobadasPage, setAprobadasPage] = useState(1);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
@@ -853,7 +889,11 @@ const HomePage: React.FC = () => {
       }
       const usedKeys = new Set(groupedApproved.map(r => r.key));
       nestedApproved.filter(n => !usedKeys.has(n.key)).forEach(n => groupedApproved.push(n));
-      setSolicitudesAprobadas(filterByOwner(groupedApproved));
+      // Separar archivadas de aprobadas activas (una vez archivadas dejan de contar como aprobadas)
+      const archivadasRows = groupedApproved.filter(r => isArchivada(r.task));
+      const aprobadasActivas = groupedApproved.filter(r => !isArchivada(r.task));
+      setSolicitudesAprobadas(filterByOwner(aprobadasActivas));
+      setSolicitudesArchivadas(filterByOwner(archivadasRows));
       setSolicitudesObservadas(filterByOwner([...allObserved].sort((a, b) => parseFechaRespuesta(b) - parseFechaRespuesta(a))));
       setContrataciones(allContrataciones);
       setAtrasadas(allAtrasadas.sort((a, b) => b.daysLate - a.daysLate));
@@ -930,6 +970,91 @@ const HomePage: React.FC = () => {
       console.error('Error al aprobar:', err);
     } finally {
       setApprovingGid(null);
+    }
+  };
+
+  // ── Archivar / Desarchivar ─────────────────────────────────────────────
+  // Reescribe el bloque JSON de una tarea fijando/limpiando el estado de archivado,
+  // preservando el texto legible. Devuelve las notas actualizadas.
+  const writeArchivadoFlag = async (task: AsanaTask, archivado: boolean): Promise<string> => {
+    const data = extractJsonData(task.notes) ?? {};
+    const updatedData: Record<string, unknown> = { ...data, archivado };
+    if (archivado) {
+      updatedData.fechaArchivado = new Date().toLocaleString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/La_Paz',
+      });
+    } else {
+      delete updatedData.fechaArchivado;
+    }
+    const notasBase = (task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+    const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updatedData, null, 2)}\n===FIN_DATOS_JSON===`;
+    const updated = await asanaService.updateTask(task.gid, { notes: newNotes });
+    return updated.notes ?? newNotes;
+  };
+
+  // Solo se archiva una SMAT aprobada cuya SFON anidada también está aprobada (ciclo completo).
+  const puedeArchivar = (row: SolicitudRow): boolean => {
+    if (!canApprove) return false;
+    if (row.tipo !== 'Solicitud de Material') return false;
+    if (!extractJsonData(row.task.notes)?.fechaAprobacion) return false;
+    return solicitudesAprobadas.some(
+      r => r.tipo === 'Solicitud de Fondos' &&
+           r.parentTaskGid === row.task.gid &&
+           !!(extractJsonData(r.task.notes)?.fechaAprobacion)
+    );
+  };
+
+  const handleArchivar = async (row: SolicitudRow) => {
+    setArchivandoKey(row.key);
+    try {
+      const sfonChild = solicitudesAprobadas.find(
+        r => r.tipo === 'Solicitud de Fondos' && r.parentTaskGid === row.task.gid
+      );
+      const smatNotes = await writeArchivadoFlag(row.task, true);
+      const updatedSmat: SolicitudRow = { ...row, task: { ...row.task, notes: smatNotes } };
+      let updatedSfon: SolicitudRow | null = null;
+      if (sfonChild) {
+        const sfonNotes = await writeArchivadoFlag(sfonChild.task, true);
+        updatedSfon = { ...sfonChild, task: { ...sfonChild.task, notes: sfonNotes } };
+      }
+      const removeKeys = new Set([row.key, sfonChild?.key].filter(Boolean) as string[]);
+      setSolicitudesAprobadas(prev => prev.filter(r => !removeKeys.has(r.key)));
+      setSolicitudesArchivadas(prev => [updatedSmat, ...(updatedSfon ? [updatedSfon] : []), ...prev]);
+    } catch (err) {
+      alert('Error al archivar la solicitud.');
+      console.error(err);
+    } finally {
+      setArchivandoKey(null);
+    }
+  };
+
+  const handleDesarchivar = async (row: SolicitudRow) => {
+    setDesarchivandoKey(row.key);
+    try {
+      const sfonChild = solicitudesArchivadas.find(
+        r => r.tipo === 'Solicitud de Fondos' && r.parentTaskGid === row.task.gid
+      );
+      const smatNotes = await writeArchivadoFlag(row.task, false);
+      const updatedSmat: SolicitudRow = { ...row, task: { ...row.task, notes: smatNotes } };
+      let updatedSfon: SolicitudRow | null = null;
+      if (sfonChild) {
+        const sfonNotes = await writeArchivadoFlag(sfonChild.task, false);
+        updatedSfon = { ...sfonChild, task: { ...sfonChild.task, notes: sfonNotes } };
+      }
+      const removeKeys = new Set([row.key, sfonChild?.key].filter(Boolean) as string[]);
+      setSolicitudesArchivadas(prev => prev.filter(r => !removeKeys.has(r.key)));
+      setSolicitudesAprobadas(prev => {
+        let next = insertApprovedRow(prev, updatedSmat);
+        if (updatedSfon) next = insertApprovedRow(next, updatedSfon);
+        return next;
+      });
+    } catch (err) {
+      alert('Error al desarchivar la solicitud.');
+      console.error(err);
+    } finally {
+      setDesarchivandoKey(null);
     }
   };
 
@@ -1368,6 +1493,24 @@ const HomePage: React.FC = () => {
             </Tooltip>
           );
         })()}
+        {puedeArchivar(row) && (
+          <Popconfirm
+            title="¿Archivar solicitud?"
+            description="Se moverá a la pestaña Archivadas."
+            onConfirm={() => handleArchivar(row)}
+            okText="Archivar"
+            cancelText="Cancelar"
+          >
+            <Tooltip title="Archivar solicitud">
+              <Button
+                size="small"
+                icon={<InboxOutlined />}
+                loading={archivandoKey === row.key}
+                style={{ color: '#b45309', borderColor: '#fcd34d' }}
+              />
+            </Tooltip>
+          </Popconfirm>
+        )}
         <Popconfirm
           title="¿Eliminar solicitud?"
           description="Esta acción no se puede deshacer."
@@ -1688,6 +1831,40 @@ const HomePage: React.FC = () => {
     [solicitudesObservadas, searchObservadas]
   );
 
+  // Archivadas: filtro de búsqueda reutilizando matchSolicitud
+  const filteredArchivadas = useMemo(
+    () => solicitudesArchivadas.filter(r => matchSolicitud(r, searchArchivadas)),
+    [solicitudesArchivadas, searchArchivadas]
+  );
+
+  // Agrupación de archivadas por mes según la fecha de aprobación de la SMAT del grupo.
+  const seccionesArchivadasPorMes = useMemo(() => {
+    const fechaAprobDeGrupo = (row: SolicitudRow): string | undefined => {
+      if (!row.parentTaskName.includes(' › ')) {
+        return extractJsonData(row.task.notes)?.fechaAprobacion as string | undefined;
+      }
+      const parent = solicitudesArchivadas.find(r => r.task.gid === row.parentTaskGid);
+      return extractJsonData((parent ?? row).task.notes)?.fechaAprobacion as string | undefined;
+    };
+    const buckets = new Map<string, SolicitudRow[]>();
+    const order: string[] = [];
+    for (const row of filteredArchivadas) {
+      const key = mesKeyFromFecha(fechaAprobDeGrupo(row));
+      if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
+      buckets.get(key)!.push(row);
+    }
+    order.sort((a, b) => {
+      if (a === 'sin-fecha') return 1;
+      if (b === 'sin-fecha') return -1;
+      return a < b ? 1 : a > b ? -1 : 0; // descendente (más reciente primero)
+    });
+    return order.map(key => {
+      const rows = buckets.get(key)!;
+      const conteo = rows.filter(r => !r.parentTaskName.includes(' › ')).length || rows.length;
+      return { clave: key, etiqueta: mesLabelFromKey(key), solicitudes: rows, conteo };
+    });
+  }, [filteredArchivadas, solicitudesArchivadas]);
+
   // Páginas de aprobadas agrupadas: una SMAT y sus SFON hijas nunca se separan
   const aprobadasPages = useMemo(() => buildGroupedPages(filteredAprobadas), [filteredAprobadas]);
   const aprobadasSafePage = Math.min(aprobadasPage, aprobadasPages.length);
@@ -1773,6 +1950,61 @@ const HomePage: React.FC = () => {
       </Typography.Text>
     ),
   };
+
+  const colIndexArchivadas = {
+    title: '#',
+    key: 'num',
+    width: 48,
+    align: 'center' as const,
+    render: (_: unknown, row: SolicitudRow, index: number) => {
+      if (row.parentTaskName.includes(' › ')) return null;
+      return (
+        <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+          {index + 1}
+        </Typography.Text>
+      );
+    },
+  };
+
+  const colAccionesArchivadas = {
+    title: 'Acciones',
+    key: 'acciones',
+    width: 140,
+    fixed: 'right' as const,
+    render: (_: unknown, row: SolicitudRow) => {
+      const isNested = row.parentTaskName.includes(' › ');
+      return (
+        <Space size={4}>
+          <Tooltip title="Ver detalle">
+            <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailModal(row)} />
+          </Tooltip>
+          <Tooltip title="Imprimir PDF">
+            <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintSolicitud(row)} />
+          </Tooltip>
+          {canApprove && !isNested && (
+            <Popconfirm
+              title="¿Desarchivar solicitud?"
+              description="Volverá a la pestaña Aprobadas."
+              onConfirm={() => handleDesarchivar(row)}
+              okText="Desarchivar"
+              cancelText="Cancelar"
+            >
+              <Tooltip title="Desarchivar (volver a Aprobadas)">
+                <Button
+                  size="small"
+                  icon={<RollbackOutlined />}
+                  loading={desarchivandoKey === row.key}
+                  style={{ color: '#0369a1', borderColor: '#7dd3fc' }}
+                />
+              </Tooltip>
+            </Popconfirm>
+          )}
+        </Space>
+      );
+    },
+  };
+
+  const columnsArchivadas = [colIndexArchivadas, colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colInformeFinal, colAccionesArchivadas];
 
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
@@ -1905,11 +2137,12 @@ const HomePage: React.FC = () => {
                   allowClear
                   prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
                   placeholder="Buscar por actividad, proyecto, solicitante..."
-                  value={solTab === 'aprobadas' ? searchAprobadas : solTab === 'observadas' ? searchObservadas : searchPendientes}
+                  value={solTab === 'aprobadas' ? searchAprobadas : solTab === 'observadas' ? searchObservadas : solTab === 'archivadas' ? searchArchivadas : searchPendientes}
                   onChange={e => {
                     const v = e.target.value;
                     if (solTab === 'aprobadas') { setSearchAprobadas(v); setAprobadasPage(1); }
                     else if (solTab === 'observadas') setSearchObservadas(v);
+                    else if (solTab === 'archivadas') setSearchArchivadas(v);
                     else setSearchPendientes(v);
                   }}
                   style={{ width: 300 }}
@@ -2005,6 +2238,47 @@ const HomePage: React.FC = () => {
                       return classes.join(' ');
                     }}
                   />
+                ),
+              },
+              {
+                key: 'archivadas',
+                label: (
+                  <Space size={6}>
+                    <span>🗄️ Archivadas</span>
+                    <Badge count={solicitudesArchivadas.length} style={{ background: solicitudesArchivadas.length > 0 ? '#64748b' : '#9ca3af' }} />
+                  </Space>
+                ),
+                children: (
+                  seccionesArchivadasPorMes.length === 0 ? (
+                    <div style={{ padding: '2rem' }}>
+                      <Empty description="No hay solicitudes archivadas" />
+                    </div>
+                  ) : (
+                    <Collapse
+                      activeKey={mesesExpandidos}
+                      onChange={keys => setMesesExpandidos(Array.isArray(keys) ? keys : [keys])}
+                      style={{ margin: '0.5rem 0 1rem', background: 'transparent' }}
+                      items={seccionesArchivadasPorMes.map(sec => ({
+                        key: sec.clave,
+                        label: (
+                          <Space size={8}>
+                            <Typography.Text strong>{sec.etiqueta}</Typography.Text>
+                            <Badge count={sec.conteo} style={{ background: '#64748b' }} />
+                          </Space>
+                        ),
+                        children: (
+                          <Table
+                            columns={columnsArchivadas}
+                            dataSource={sec.solicitudes}
+                            size="middle"
+                            bordered
+                            pagination={false}
+                            locale={{ emptyText: 'No hay solicitudes archivadas' }}
+                          />
+                        ),
+                      }))}
+                    />
+                  )
                 ),
               },
             ]}
