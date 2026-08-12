@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, List, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
+import { Badge, Button, Card, Col, Collapse, Dropdown, Empty, Input, List, Modal, Popconfirm, Progress, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CarryOutOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, DeploymentUnitOutlined, DollarCircleOutlined, EnvironmentOutlined, FileSearchOutlined, FileTextOutlined, FileWordOutlined, HeartOutlined, InboxOutlined, LinkOutlined, MoreOutlined, PaperClipOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined, TeamOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
 import { AsanaTask, AsanaAttachment, TaskStatistics } from '../types/asana.types';
 import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF, exportMaterialRequestToPDF, exportMaterialReturnToPDF } from '../services/pdf.service';
@@ -13,7 +13,7 @@ import VerificationSourcesModal, { FuentesJsonData, FuenteEntry } from './Verifi
 import ContratacionModal from './ContratacionModal';
 import ContratacionUpdateModal, { ContratacionJsonData } from './ContratacionUpdateModal';
 import { HtmlModalHeader } from './ModalShared';
-import { useAuth, getSolicitanteByEmail, getCargoByEmail } from '../context/AuthContext';
+import { useAuth, getSolicitanteByEmail, getCargoByEmail, getRoleByEmail } from '../context/AuthContext';
 
 interface TaskInfoProps {
   task: AsanaTask;
@@ -25,6 +25,14 @@ interface TaskInfoProps {
   onSubtaskCreated?: () => void;
 }
 
+interface HistorialEntry {
+  estado: string;
+  fecha: string;
+  observaciones: string;
+  archivos: { nombre: string; link: string }[];
+  usuario?: { nombre: string; email: string };
+}
+
 const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, statistics, projectName = 'Proyecto', onSubtaskDeleted, onSubtaskCreated }) => {
   const { user } = useAuth();
   const [showMaterialModal, setShowMaterialModal] = useState(false);
@@ -34,6 +42,13 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showContratacionModal, setShowContratacionModal] = useState(false);
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
+  const [eliminarContratacionTarget, setEliminarContratacionTarget] = useState<AsanaTask | null>(null);
+  const [eliminarContratacionTexto, setEliminarContratacionTexto] = useState('');
+  const [eliminandoContratacion, setEliminandoContratacion] = useState(false);
+  const [editHistorial, setEditHistorial] = useState<{ task: AsanaTask; entry: HistorialEntry } | null>(null);
+  const [editHistorialObservaciones, setEditHistorialObservaciones] = useState('');
+  const [editHistorialArchivos, setEditHistorialArchivos] = useState<{ id: number; nombre: string; link: string }[]>([]);
+  const [editHistorialSaving, setEditHistorialSaving] = useState(false);
   const [verificationAttachments, setVerificationAttachments] = useState<AsanaAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [observeTarget, setObserveTarget] = useState<AsanaTask | null>(null);
@@ -483,14 +498,24 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     return taskItem.name.startsWith('CPER - ');
   });
 
+  // El director puede editar/eliminar cualquier entrada; el resto solo las
+  // creadas por un usuario de su mismo rol (igual que en la pantalla de Inicio).
+  const puedeEditarHistorial = (entry: HistorialEntry): boolean => {
+    if (!user) return false;
+    if (user.role === 'director') return true;
+    const entryRole = getRoleByEmail(entry.usuario?.email);
+    return entryRole === user.role;
+  };
+
   // Eliminar una entrada del historial de una contratación
-  const handleDeleteHistorialEntry = async (contratacion: AsanaTask, entryFecha: string, entryEstado: string) => {
-    const confirmed = window.confirm(`¿Eliminar la actualización "${entryEstado}" (${entryFecha})? Esta acción no se puede deshacer.`);
+  const handleDeleteHistorialEntry = async (contratacion: AsanaTask, entry: HistorialEntry) => {
+    if (!puedeEditarHistorial(entry)) { alert('No tienes permiso para eliminar esta actualización.'); return; }
+    const confirmed = window.confirm(`¿Eliminar la actualización "${entry.estado}" (${entry.fecha})? Esta acción no se puede deshacer.`);
     if (!confirmed) return;
     const data = extractJsonData(contratacion.notes) as ContratacionJsonData | null;
     if (!data) return;
     const remaining = (data.historialEstados ?? []).filter(
-      (e) => !(e.fecha === entryFecha && e.estado === entryEstado)
+      (e) => !(e.fecha === entry.fecha && e.estado === entry.estado)
     );
     const latest = remaining.length > 0 ? remaining[remaining.length - 1] : null;
     const updated: ContratacionJsonData = {
@@ -506,6 +531,76 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     } catch (err) {
       alert('Error al eliminar la entrada del historial.');
       console.error(err);
+    }
+  };
+
+  // Abrir modal para editar observaciones/archivos de una entrada del historial
+  const openEditHistorial = (contratacionTask: AsanaTask, entry: HistorialEntry) => {
+    setEditHistorial({ task: contratacionTask, entry });
+    setEditHistorialObservaciones(entry.observaciones || '');
+    setEditHistorialArchivos(entry.archivos.map((a, idx) => ({ id: idx + 1, nombre: a.nombre, link: a.link })));
+  };
+
+  const agregarEditHistorialArchivo = () => {
+    const newId = Math.max(...editHistorialArchivos.map(a => a.id), 0) + 1;
+    setEditHistorialArchivos(prev => [...prev, { id: newId, nombre: '', link: '' }]);
+  };
+
+  const eliminarEditHistorialArchivo = (id: number) => {
+    setEditHistorialArchivos(prev => prev.filter(a => a.id !== id));
+  };
+
+  const actualizarEditHistorialArchivo = (id: number, campo: 'nombre' | 'link', valor: string) => {
+    setEditHistorialArchivos(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
+  };
+
+  const handleSaveEditHistorial = async () => {
+    if (!editHistorial) return;
+    if (!puedeEditarHistorial(editHistorial.entry)) { alert('No tienes permiso para editar esta actualización.'); return; }
+    const archivosValidos = editHistorialArchivos.filter(a => a.nombre.trim() || a.link.trim());
+    for (const a of archivosValidos) {
+      if (!a.nombre.trim()) { alert('Cada archivo debe tener un nombre.'); return; }
+      if (!a.link.trim() || !/^https?:\/\//i.test(a.link.trim())) { alert(`El enlace de "${a.nombre}" debe comenzar con http:// o https://`); return; }
+    }
+    setEditHistorialSaving(true);
+    try {
+      const { task: contratacionTask, entry } = editHistorial;
+      const data = extractJsonData(contratacionTask.notes) as ContratacionJsonData | null;
+      if (!data) return;
+      const historialEstados = (data.historialEstados ?? []).map(e =>
+        (e.fecha === entry.fecha && e.estado === entry.estado)
+          ? { ...e, observaciones: editHistorialObservaciones.trim(), archivos: archivosValidos.map(({ nombre, link }) => ({ nombre: nombre.trim(), link: link.trim() })) }
+          : e
+      );
+      const updated: ContratacionJsonData = { ...data, historialEstados };
+      const notasBase = (contratacionTask.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updated, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(contratacionTask.gid, { notes: newNotes });
+      onSubtaskCreated?.();
+      setEditHistorial(null);
+    } catch (err) {
+      alert('Error al guardar los cambios del historial.');
+      console.error(err);
+    } finally {
+      setEditHistorialSaving(false);
+    }
+  };
+
+  // Eliminar una contratación (requiere escribir "eliminar" para confirmar)
+  const handleEliminarContratacion = async () => {
+    if (!eliminarContratacionTarget) return;
+    if (eliminarContratacionTexto.toLowerCase() !== 'eliminar') return;
+    setEliminandoContratacion(true);
+    try {
+      await asanaService.deleteTask(eliminarContratacionTarget.gid);
+      onSubtaskDeleted?.(eliminarContratacionTarget.gid);
+      setEliminarContratacionTarget(null);
+      setEliminarContratacionTexto('');
+    } catch (err) {
+      alert('Error al eliminar la contratación. Por favor, intenta de nuevo.');
+      console.error(err);
+    } finally {
+      setEliminandoContratacion(false);
     }
   };
 
@@ -1630,24 +1725,33 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                         <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
                           {nombreContratacion}
                         </h4>
-                        <button
-                          onClick={() => setUpdateContratacion({
-                            task: contratacion,
-                            data: contratacionData ?? {
-                              tipo: 'Contratacion',
-                              actividad: task.name,
-                              subarea: nombreContratacion,
-                              descripcion: null,
-                              fechaGeneracion: '',
-                              estadoActual: '',
-                              historialEstados: [],
-                            },
-                          })}
-                          className="button-secondary"
-                          style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap' }}
-                        >
-                          ✏️ Actualizar estado
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                          <button
+                            onClick={() => setUpdateContratacion({
+                              task: contratacion,
+                              data: contratacionData ?? {
+                                tipo: 'Contratacion',
+                                actividad: task.name,
+                                subarea: nombreContratacion,
+                                descripcion: null,
+                                fechaGeneracion: '',
+                                estadoActual: '',
+                                historialEstados: [],
+                              },
+                            })}
+                            className="button-secondary"
+                            style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap' }}
+                          >
+                            ✏️ Actualizar estado
+                          </button>
+                          <button
+                            onClick={() => { setEliminarContratacionTarget(contratacion); setEliminarContratacionTexto(''); }}
+                            className="button-secondary"
+                            style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap', color: '#dc2626', borderColor: '#fca5a5' }}
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </div>
                       </div>
                       {descripcionContratacion && (
                         <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#666' }}>
@@ -1780,7 +1884,6 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
 
                     {/* Historial de actualizaciones */}
                     {(() => {
-                      type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[]; usuario?: { nombre: string; email: string } };
                       const parseFecha = (f: string) => {
                         const clean = f.replace(',', '').trim();
                         const [datePart, timePart = '00:00'] = clean.split(/\s+/);
@@ -1811,7 +1914,9 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                           </div>
                           {historialExpanded && historial.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                              {historial.map((entry, i) => (
+                              {historial.map((entry, i) => {
+                                const canEditEntry = puedeEditarHistorial(entry);
+                                return (
                                 <div key={i} style={{ backgroundColor: '#f8f9fa', borderRadius: '4px', borderLeft: '3px solid #626262', fontSize: '0.8rem', padding: '0.55rem 0.75rem' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (entry.observaciones || entry.archivos?.length > 0) ? '0.35rem' : 0 }}>
                                     <span style={{ fontWeight: 600, color: '#333' }}>{entry.estado}</span>
@@ -1823,13 +1928,31 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                                       )}
                                       <span style={{ fontSize: '0.72rem', color: '#ccc' }}>·</span>
                                       <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteHistorialEntry(contratacion, entry.fecha, entry.estado); }}
-                                        title="Eliminar esta actualización"
-                                        style={{ background: 'none', border: '1px solid #f5c6cb', borderRadius: '4px', padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#c0392b', fontSize: '0.75rem', lineHeight: 1 }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                      >🗑️</button>
+                                      {canEditEntry && (
+                                        <Tooltip title="Editar observaciones y archivos">
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); openEditHistorial(contratacion, entry); }}
+                                            style={{ background: 'none', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#1d4ed8', fontSize: '0.75rem', lineHeight: 1 }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#eff6ff')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                          >✏️</button>
+                                        </Tooltip>
+                                      )}
+                                      <Tooltip title={canEditEntry ? 'Eliminar' : 'Solo puedes eliminar actualizaciones de tu mismo rol'}>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); if (canEditEntry) handleDeleteHistorialEntry(contratacion, entry); }}
+                                          disabled={!canEditEntry}
+                                          title="Eliminar esta actualización"
+                                          style={{
+                                            background: 'none', border: '1px solid #f5c6cb', borderRadius: '4px', padding: '0.15rem 0.35rem',
+                                            cursor: canEditEntry ? 'pointer' : 'not-allowed',
+                                            color: '#c0392b', fontSize: '0.75rem', lineHeight: 1,
+                                            opacity: canEditEntry ? 1 : 0.4,
+                                          }}
+                                          onMouseEnter={e => canEditEntry && (e.currentTarget.style.background = '#fdecea')}
+                                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                        >🗑️</button>
+                                      </Tooltip>
                                     </div>
                                   </div>
                                   {entry.observaciones && (
@@ -1851,7 +1974,8 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                                     </div>
                                   )}
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                           {historial.length === 0 && (
@@ -2000,6 +2124,116 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
             onSubtaskCreated?.();
           }}
         />
+      )}
+
+      {eliminarContratacionTarget && (
+        <div className="modal-overlay" onClick={() => { if (!eliminandoContratacion) { setEliminarContratacionTarget(null); setEliminarContratacionTexto(''); } }} style={{ zIndex: 1002 }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', backgroundColor: '#fff5f5' }}>
+              <h2 style={{ fontSize: '1.1rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🗑️ Eliminar contratación
+              </h2>
+              <button
+                onClick={() => { setEliminarContratacionTarget(null); setEliminarContratacionTexto(''); }}
+                disabled={eliminandoContratacion}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: '#6b7280', lineHeight: 1 }}
+              >×</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.95rem', color: '#374151' }}>
+                Estás a punto de eliminar <strong>{eliminarContratacionTarget.name.replace('CPER - ', '')}</strong>.
+              </p>
+              <p style={{ marginBottom: '1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Esta acción es <strong>irreversible</strong> y eliminará permanentemente la contratación y su historial en Asana.
+              </p>
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151', fontWeight: 600 }}>
+                Para confirmar, escribe <span style={{ color: '#dc2626', fontFamily: 'monospace' }}>eliminar</span> en el campo de abajo:
+              </p>
+              <input
+                type="text"
+                value={eliminarContratacionTexto}
+                onChange={e => setEliminarContratacionTexto(e.target.value)}
+                placeholder="eliminar"
+                autoFocus
+                disabled={eliminandoContratacion}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: `1px solid ${eliminarContratacionTexto.toLowerCase() === 'eliminar' ? '#dc2626' : '#d1d5db'}`, borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none' }}
+                onKeyDown={e => { if (e.key === 'Enter' && eliminarContratacionTexto.toLowerCase() === 'eliminar') handleEliminarContratacion(); }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                <button
+                  onClick={() => { setEliminarContratacionTarget(null); setEliminarContratacionTexto(''); }}
+                  disabled={eliminandoContratacion}
+                  style={{ padding: '0.5rem 1.25rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#374151', cursor: 'pointer', fontSize: '0.9rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEliminarContratacion}
+                  disabled={eliminandoContratacion || eliminarContratacionTexto.toLowerCase() !== 'eliminar'}
+                  style={{ padding: '0.5rem 1.25rem', border: 'none', borderRadius: '6px', background: eliminarContratacionTexto.toLowerCase() === 'eliminar' ? '#dc2626' : '#fca5a5', color: 'white', cursor: eliminarContratacionTexto.toLowerCase() === 'eliminar' ? 'pointer' : 'not-allowed', fontSize: '0.9rem', fontWeight: 600 }}
+                >
+                  {eliminandoContratacion ? 'Eliminando...' : '🗑️ Eliminar definitivamente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editHistorial && (
+        <Modal
+          open
+          title={`Editar actualización — ${editHistorial.entry.estado}`}
+          onCancel={() => setEditHistorial(null)}
+          width={620}
+          okText="Guardar cambios"
+          cancelText="Cancelar"
+          confirmLoading={editHistorialSaving}
+          onOk={handleSaveEditHistorial}
+        >
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Observaciones</label>
+            <Input.TextArea
+              value={editHistorialObservaciones}
+              onChange={e => setEditHistorialObservaciones(e.target.value)}
+              placeholder="Notas u observaciones sobre este cambio de estado..."
+              rows={3}
+              maxLength={1000}
+              showCount
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>Archivos (Google Drive)</label>
+            {editHistorialArchivos.length === 0 && (
+              <Typography.Text type="secondary" style={{ fontSize: '0.82rem' }}>
+                Sin archivos. Use el botón para agregar enlaces de Google Drive.
+              </Typography.Text>
+            )}
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {editHistorialArchivos.map(archivo => (
+                <Space key={archivo.id} style={{ width: '100%' }} align="start">
+                  <Input
+                    placeholder="Nombre del archivo"
+                    value={archivo.nombre}
+                    onChange={e => actualizarEditHistorialArchivo(archivo.id, 'nombre', e.target.value)}
+                    style={{ width: 180 }}
+                    maxLength={200}
+                  />
+                  <Input
+                    placeholder="https://drive.google.com/..."
+                    value={archivo.link}
+                    onChange={e => actualizarEditHistorialArchivo(archivo.id, 'link', e.target.value)}
+                    style={{ width: 260 }}
+                  />
+                  <Button danger icon={<DeleteOutlined />} onClick={() => eliminarEditHistorialArchivo(archivo.id)} />
+                </Space>
+              ))}
+              <Button icon={<PlusOutlined />} onClick={agregarEditHistorialArchivo} size="small">
+                Agregar archivo
+              </Button>
+            </Space>
+          </div>
+        </Modal>
       )}
     </>
   );

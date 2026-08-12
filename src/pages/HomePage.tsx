@@ -398,6 +398,7 @@ const HomePage: React.FC = () => {
   const { user } = useAuth();
   const canApprove = user?.role === 'administrador' || user?.role === 'director';
   const isTecnico = user?.role === 'tecnico ev' || user?.role === 'tecnico ep' || user?.role === 'comunicacion';
+  const isRolTecnico = user?.role === 'tecnico ev' || user?.role === 'tecnico ep';
   const tecnicoArea = user?.role === 'tecnico ev' ? 'Erradicación de Violencia' : user?.role === 'tecnico ep' ? 'Empoderamiento Político' : null;
   const [solicitudes, setSolicitudes] = useState<SolicitudRow[]>([]);
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState<SolicitudRow[]>([]);
@@ -2393,6 +2394,7 @@ const HomePage: React.FC = () => {
       </Card>
 
       {/* ── Contrataciones Activas ──────────────────────────────────────── */}
+      {!isRolTecnico && (
       <Card
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
@@ -2619,6 +2621,7 @@ const HomePage: React.FC = () => {
           </div>
         ))}
       </Card>
+      )}
 
       {/* ── Actividades Atrasadas ───────────────────────────────────────── */}
       {!isTecnico && <Card
