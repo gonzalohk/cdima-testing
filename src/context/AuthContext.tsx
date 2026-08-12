@@ -104,6 +104,12 @@ export const getCargoByEmail = (email?: string): string | undefined => {
   return USERS.find((u) => u.email.toLowerCase() === email.toLowerCase())?.cargo;
 };
 
+// Devuelve el rol asociado a un email registrado.
+export const getRoleByEmail = (email?: string): UserRole | undefined => {
+  if (!email) return undefined;
+  return USERS.find((u) => u.email.toLowerCase() === email.toLowerCase())?.role;
+};
+
 // Devuelve los emails de los usuarios aprobadores (director + administrador).
 // Se usa como destinatarios de las notificaciones de nuevas solicitudes.
 export const getAprobadorEmails = (): string[] =>

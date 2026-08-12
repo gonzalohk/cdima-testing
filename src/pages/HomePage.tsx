@@ -7,6 +7,7 @@ import {
   Empty,
   Input,
   List,
+  Modal,
   Pagination,
   Popconfirm,
   Popover,
@@ -43,12 +44,13 @@ import {
 } from '@ant-design/icons';
 import { asanaService } from '../services/asana.service';
 import { AsanaTask } from '../types/asana.types';
-import { useAuth, getSolicitanteByEmail, getCargoByEmail, getAprobadorEmails } from '../context/AuthContext';
+import { useAuth, getSolicitanteByEmail, getCargoByEmail, getAprobadorEmails, getRoleByEmail } from '../context/AuthContext';
 import { notificationsService } from '../services/notifications.service';
 import { AppNotification } from '../types/notification.types';
 import {
   exportFundsRequestToPDF,
   exportMaterialRequestToPDF,
+  exportMaterialRequestDetailToPDF,
   exportMaterialReturnToPDF,
 } from '../services/pdf.service';
 
@@ -289,6 +291,14 @@ interface AtrasadaRow {
   subActividades: AsanaTask[];
 }
 
+interface HistorialEntry {
+  estado: string;
+  fecha: string;
+  observaciones: string;
+  archivos: { nombre: string; link: string }[];
+  usuario?: { nombre: string; email: string };
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 const PROJECT_PALETTE = [
   '#3b82f6','#10b981','#f59e0b','#6366f1','#ef4444',
@@ -426,6 +436,12 @@ const HomePage: React.FC = () => {
   const [updateContratacion, setUpdateContratacion] = useState<{ task: AsanaTask; data: ContratacionJsonData } | null>(null);
   const [expandedHistoriales, setExpandedHistoriales] = useState<Set<string>>(new Set());
   const [almacenSaving, setAlmacenSaving] = useState<number | null>(null);
+
+  // ── Editar entrada del historial de una contratación ────────────────────
+  const [editHistorial, setEditHistorial] = useState<{ task: AsanaTask; entry: HistorialEntry } | null>(null);
+  const [editHistorialObservaciones, setEditHistorialObservaciones] = useState('');
+  const [editHistorialArchivos, setEditHistorialArchivos] = useState<{ id: number; nombre: string; link: string }[]>([]);
+  const [editHistorialSaving, setEditHistorialSaving] = useState(false);
 
   // ── Crear SFON desde SMAT aprobada ──────────────────────────────────────
   const [sfonFromSmat, setSfonFromSmat] = useState<{ task: AsanaTask; projectName: string; parentTaskName: string; initialData?: { titulo?: string; area?: string; lugar?: string; fechaInicio?: string; fechaFinalizacion?: string } } | null>(null);
@@ -739,7 +755,7 @@ const HomePage: React.FC = () => {
                       });
                     }
                     // Collect CPER contrataciones
-                    if (!isTecnico && sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
+                    if (sub.name.trim().toUpperCase().startsWith('CPER') && !sub.completed && !isEjecutado(sub)) {
                       contRows.push({
                         key: sub.gid,
                         task: sub,
@@ -1097,11 +1113,12 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleDeleteHistorialEntry = async (task: AsanaTask, entryFecha: string, entryEstado: string) => {
+  const handleDeleteHistorialEntry = async (task: AsanaTask, entry: HistorialEntry) => {
+    if (!puedeEditarHistorial(entry)) { alert('No tienes permiso para eliminar esta actualización.'); return; }
     const data = extractJsonData(task.notes) as ContratacionJsonData | null;
     if (!data) return;
     const remaining = (data.historialEstados ?? []).filter(
-      (e) => !(e.fecha === entryFecha && e.estado === entryEstado)
+      (e) => !(e.fecha === entry.fecha && e.estado === entry.estado)
     );
     const latest = remaining.length > 0 ? remaining[remaining.length - 1] : null;
     const updated: ContratacionJsonData = {
@@ -1118,6 +1135,69 @@ const HomePage: React.FC = () => {
       ));
     } catch (err) {
       console.error('Error al eliminar entrada del historial:', err);
+    }
+  };
+
+  // ── Editar entrada del historial (observaciones y archivos) ─────────────
+  // El director puede editar cualquier entrada; el resto solo las creadas/editadas
+  // por un usuario de su mismo rol.
+  const puedeEditarHistorial = (entry: HistorialEntry): boolean => {
+    if (!user) return false;
+    if (user.role === 'director') return true;
+    const entryRole = getRoleByEmail(entry.usuario?.email);
+    return entryRole === user.role;
+  };
+
+  const openEditHistorial = (task: AsanaTask, entry: HistorialEntry) => {
+    setEditHistorial({ task, entry });
+    setEditHistorialObservaciones(entry.observaciones || '');
+    setEditHistorialArchivos(entry.archivos.map((a, idx) => ({ id: idx + 1, nombre: a.nombre, link: a.link })));
+  };
+
+  const agregarEditHistorialArchivo = () => {
+    const newId = Math.max(...editHistorialArchivos.map(a => a.id), 0) + 1;
+    setEditHistorialArchivos(prev => [...prev, { id: newId, nombre: '', link: '' }]);
+  };
+
+  const eliminarEditHistorialArchivo = (id: number) => {
+    setEditHistorialArchivos(prev => prev.filter(a => a.id !== id));
+  };
+
+  const actualizarEditHistorialArchivo = (id: number, campo: 'nombre' | 'link', valor: string) => {
+    setEditHistorialArchivos(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
+  };
+
+  const handleSaveEditHistorial = async () => {
+    if (!editHistorial) return;
+    if (!puedeEditarHistorial(editHistorial.entry)) { alert('No tienes permiso para editar esta actualización.'); return; }
+    const archivosValidos = editHistorialArchivos.filter(a => a.nombre.trim() || a.link.trim());
+    for (const a of archivosValidos) {
+      if (!a.nombre.trim()) { alert('Cada archivo debe tener un nombre.'); return; }
+      if (!a.link.trim() || !/^https?:\/\//i.test(a.link.trim())) { alert(`El enlace de "${a.nombre}" debe comenzar con http:// o https://`); return; }
+    }
+    setEditHistorialSaving(true);
+    try {
+      const { task, entry } = editHistorial;
+      const data = extractJsonData(task.notes) as ContratacionJsonData | null;
+      if (!data) return;
+      const historialEstados = (data.historialEstados ?? []).map(e =>
+        (e.fecha === entry.fecha && e.estado === entry.estado)
+          ? { ...e, observaciones: editHistorialObservaciones.trim(), archivos: archivosValidos.map(({ nombre, link }) => ({ nombre: nombre.trim(), link: link.trim() })) }
+          : e
+      );
+      const updated: ContratacionJsonData = { ...data, historialEstados };
+      const notasBase = (task.notes ?? '').replace(/\n*===DATOS_JSON===\s*[\s\S]*?===FIN_DATOS_JSON===/g, '').trim();
+      const newNotes = `${notasBase}\n\n===DATOS_JSON===\n${JSON.stringify(updated, null, 2)}\n===FIN_DATOS_JSON===`;
+      await asanaService.updateTask(task.gid, { notes: newNotes });
+      setContrataciones(prev => prev.map(row =>
+        row.key === task.gid ? { ...row, task: { ...row.task, notes: newNotes } } : row
+      ));
+      setEditHistorial(null);
+    } catch (err) {
+      alert('Error al guardar los cambios del historial.');
+      console.error(err);
+    } finally {
+      setEditHistorialSaving(false);
     }
   };
 
@@ -1287,7 +1367,7 @@ const HomePage: React.FC = () => {
         lugar: (data?.lugar as string) ?? '',
         fechaInicio: (data?.fechaInicio as string) ?? '',
         fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
-        materiales: (data?.materiales as { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string }[]) ?? [],
+        materiales: (data?.materiales as MaterialItem[]) ?? [],
         projectName: row.projectName,
         parentTaskName: row.parentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
@@ -1312,6 +1392,32 @@ const HomePage: React.FC = () => {
         cargo: (data?.cargo as string) || getCargoByEmail((data?.usuario as { email?: string } | undefined)?.email),
       });
     }
+  };
+
+  // Reporte con el detalle completo de una Solicitud de Material, incluyendo el estado de almacén.
+  const handlePrintDetalleSolicitudMaterial = (row: SolicitudRow) => {
+    const data = extractJsonData(row.task.notes);
+    const fechaGeneracion = extractFechaSolicitud(row.task.notes);
+    const fechaGeneracionOpt = fechaGeneracion !== '-' ? fechaGeneracion : undefined;
+    const fechaSolicitud = extractFechaSolicitud(row.task.notes);
+    exportMaterialRequestDetailToPDF({
+      taskName: (data?.titulo as string) ?? row.task.name,
+      area: (data?.area as string) ?? '',
+      lugar: (data?.lugar as string) ?? '',
+      fechaInicio: (data?.fechaInicio as string) ?? '',
+      fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
+      materiales: (data?.materiales as MaterialItem[]) ?? [],
+      projectName: row.projectName,
+      parentTaskName: row.parentTaskName,
+      fechaGeneracion: fechaGeneracionOpt,
+      fechaSolicitud: fechaSolicitud !== '-' ? fechaSolicitud : undefined,
+      fechaRespuesta: (data?.fechaAprobacion as string) || (data?.fechaObservacion as string) || undefined,
+      motivoObservacion: (data?.motivoObservacion as string) || undefined,
+      aprobado: !!data?.fechaAprobacion,
+      observado: !!(data?.motivoObservacion && data?.fechaObservacion),
+      solicitante: (data?.solicitante as string) || getSolicitanteByEmail((data?.usuario as { email?: string } | undefined)?.email),
+      cargo: (data?.cargo as string) || getCargoByEmail((data?.usuario as { email?: string } | undefined)?.email),
+    });
   };
 
   // Columna info reutilizable
@@ -2287,7 +2393,7 @@ const HomePage: React.FC = () => {
       </Card>
 
       {/* ── Contrataciones Activas ──────────────────────────────────────── */}
-      {!isTecnico && <Card
+      <Card
         style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1.5rem' }}
         styles={{ body: { padding: 0 } }}
         title={
@@ -2324,7 +2430,6 @@ const HomePage: React.FC = () => {
         ) : (
           <div style={{ padding: '0.75rem 1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {contrataciones.map((row) => {
-              type HistorialEntry = { estado: string; fecha: string; observaciones: string; archivos: { nombre: string; link: string }[]; usuario?: { nombre: string; email: string } };
               const contratacionData = extractJsonData(row.task.notes) as ContratacionJsonData | null;
               const estadoActual = (contratacionData?.estadoActual as string) || '';
               const pasoActualIndex = estadoActual
@@ -2453,18 +2558,37 @@ const HomePage: React.FC = () => {
                                 )}
                                 <span style={{ fontSize: '0.72rem', color: '#ccc' }}>·</span>
                                 <span style={{ fontSize: '0.72rem', color: '#888' }}>{entry.fecha}</span>
+                                {puedeEditarHistorial(entry) && (
+                                  <Tooltip title="Editar observaciones y archivos">
+                                    <button
+                                      onClick={() => openEditHistorial(row.task, entry)}
+                                      style={{ background: 'none', border: '1px solid #bfdbfe', borderRadius: 4, padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#1d4ed8', fontSize: '0.75rem', lineHeight: 1 }}
+                                      onMouseEnter={e => (e.currentTarget.style.background = '#eff6ff')}
+                                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >✏️</button>
+                                  </Tooltip>
+                                )}
                                 <Popconfirm
                                   title="¿Eliminar esta actualización?"
-                                  onConfirm={() => handleDeleteHistorialEntry(row.task, entry.fecha, entry.estado)}
+                                  onConfirm={() => handleDeleteHistorialEntry(row.task, entry)}
                                   okText="Eliminar"
                                   cancelText="Cancelar"
                                   okButtonProps={{ danger: true }}
+                                  disabled={!puedeEditarHistorial(entry)}
                                 >
-                                  <button
-                                    style={{ background: 'none', border: '1px solid #f5c6cb', borderRadius: 4, padding: '0.15rem 0.35rem', cursor: 'pointer', color: '#c0392b', fontSize: '0.75rem', lineHeight: 1 }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = '#fdecea')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                  >🗑️</button>
+                                  <Tooltip title={puedeEditarHistorial(entry) ? 'Eliminar' : 'Solo puedes eliminar actualizaciones de tu mismo rol'}>
+                                    <button
+                                      disabled={!puedeEditarHistorial(entry)}
+                                      style={{
+                                        background: 'none', border: '1px solid #f5c6cb', borderRadius: 4, padding: '0.15rem 0.35rem',
+                                        cursor: puedeEditarHistorial(entry) ? 'pointer' : 'not-allowed',
+                                        color: '#c0392b', fontSize: '0.75rem', lineHeight: 1,
+                                        opacity: puedeEditarHistorial(entry) ? 1 : 0.4,
+                                      }}
+                                      onMouseEnter={e => puedeEditarHistorial(entry) && (e.currentTarget.style.background = '#fdecea')}
+                                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >🗑️</button>
+                                  </Tooltip>
                                 </Popconfirm>
                               </div>
                             </div>
@@ -2494,7 +2618,7 @@ const HomePage: React.FC = () => {
             })}
           </div>
         ))}
-      </Card>}
+      </Card>
 
       {/* ── Actividades Atrasadas ───────────────────────────────────────── */}
       {!isTecnico && <Card
@@ -2801,7 +2925,15 @@ const HomePage: React.FC = () => {
               </div>
 
               <div className="modal-footer" style={{ borderTop: '1px solid #e0e0e0', padding: '1rem 1.5rem', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-                <div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {detailModal.tipo === 'Solicitud de Material' && (
+                    <Button
+                      icon={<PrinterOutlined />}
+                      onClick={() => handlePrintDetalleSolicitudMaterial(detailModal)}
+                    >
+                      Detalle del Solicitud de Material
+                    </Button>
+                  )}
                   {detailModal.tipo === 'Solicitud de Material' && isDetailApproved && (
                     <Button
                       icon={<DollarOutlined />}
@@ -3144,6 +3276,62 @@ const HomePage: React.FC = () => {
             setUpdateContratacion(null);
           }}
         />
+      )}
+
+      {editHistorial && (
+        <Modal
+          open
+          title={`Editar actualización — ${editHistorial.entry.estado}`}
+          onCancel={() => setEditHistorial(null)}
+          width={620}
+          okText="Guardar cambios"
+          cancelText="Cancelar"
+          confirmLoading={editHistorialSaving}
+          onOk={handleSaveEditHistorial}
+        >
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Observaciones</label>
+            <Input.TextArea
+              value={editHistorialObservaciones}
+              onChange={e => setEditHistorialObservaciones(e.target.value)}
+              placeholder="Notas u observaciones sobre este cambio de estado..."
+              rows={3}
+              maxLength={1000}
+              showCount
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>Archivos (Google Drive)</label>
+            {editHistorialArchivos.length === 0 && (
+              <Typography.Text type="secondary" style={{ fontSize: '0.82rem' }}>
+                Sin archivos. Use el botón para agregar enlaces de Google Drive.
+              </Typography.Text>
+            )}
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {editHistorialArchivos.map(archivo => (
+                <Space key={archivo.id} style={{ width: '100%' }} align="start">
+                  <Input
+                    placeholder="Nombre del archivo"
+                    value={archivo.nombre}
+                    onChange={e => actualizarEditHistorialArchivo(archivo.id, 'nombre', e.target.value)}
+                    style={{ width: 180 }}
+                    maxLength={200}
+                  />
+                  <Input
+                    placeholder="https://drive.google.com/..."
+                    value={archivo.link}
+                    onChange={e => actualizarEditHistorialArchivo(archivo.id, 'link', e.target.value)}
+                    style={{ width: 260 }}
+                  />
+                  <Button danger icon={<DeleteOutlined />} onClick={() => eliminarEditHistorialArchivo(archivo.id)} />
+                </Space>
+              ))}
+              <Button icon={<PlusOutlined />} onClick={agregarEditHistorialArchivo} size="small">
+                Agregar archivo
+              </Button>
+            </Space>
+          </div>
+        </Modal>
       )}
     </div>
   );

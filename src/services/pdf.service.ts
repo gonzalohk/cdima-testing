@@ -1057,6 +1057,7 @@ interface MaterialItem {
   cantidad: string;
   unidad: string;
   observaciones: string;
+  almacen?: string;
 }
 
 // Interfaz para datos de solicitud de material
@@ -1143,12 +1144,18 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text('MATERIALES SOLICITADOS', margins.left, yPos1);
   yPos1 += 6;
 
+  // La columna Almacén solo se muestra en solicitudes ya aprobadas.
+  const showAlmacen1 = !!data.aprobado;
+
   autoTable(doc, {
     startY: yPos1,
-    head: [['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES']],
-    body: data.materiales.map((m, i) => [
-      (i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-',
-    ]),
+    head: [showAlmacen1
+      ? ['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES', 'ALMACÉN']
+      : ['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES']],
+    body: data.materiales.map((m, i) => showAlmacen1
+      ? [(i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-', m.almacen || '-']
+      : [(i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-']
+    ),
     theme: 'plain',
     headStyles: {
       fillColor: [220, 220, 220] as [number, number, number],
@@ -1168,13 +1175,22 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
       lineColor: [180, 180, 180] as [number, number, number],
       lineWidth: 0.2,
     },
-    columnStyles: {
-      0: { cellWidth: 12, halign: 'center' as const },
-      1: { cellWidth: 'auto' as const },
-      2: { cellWidth: 18, halign: 'center' as const },
-      3: { cellWidth: 20, halign: 'center' as const },
-      4: { cellWidth: 'auto' as const },
-    },
+    columnStyles: showAlmacen1
+      ? {
+          0: { cellWidth: 10, halign: 'center' as const },
+          1: { cellWidth: 'auto' as const },
+          2: { cellWidth: 16, halign: 'center' as const },
+          3: { cellWidth: 18, halign: 'center' as const },
+          4: { cellWidth: 'auto' as const },
+          5: { cellWidth: 24, halign: 'center' as const },
+        }
+      : {
+          0: { cellWidth: 12, halign: 'center' as const },
+          1: { cellWidth: 'auto' as const },
+          2: { cellWidth: 18, halign: 'center' as const },
+          3: { cellWidth: 20, halign: 'center' as const },
+          4: { cellWidth: 'auto' as const },
+        },
     margin: { left: margins.left, right: margins.right },
   });
 
@@ -1250,6 +1266,183 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   const pdfBlob1 = doc.output('blob');
   const url1 = URL.createObjectURL(pdfBlob1);
   window.open(url1, '_blank');
+};
+
+// Interfaz para datos del detalle de solicitud de material (incluye estado de almacén)
+interface MaterialRequestDetailData {
+  taskName: string;
+  area: string;
+  lugar: string;
+  fechaInicio: string;
+  fechaFinalizacion: string;
+  materiales: (MaterialItem & { almacen?: string })[];
+  fechaGeneracion?: string;
+  fechaSolicitud?: string;
+  fechaRespuesta?: string;
+  motivoObservacion?: string;
+  projectName?: string;
+  parentTaskName?: string;
+  aprobado?: boolean;
+  observado?: boolean;
+  solicitante?: string;
+  cargo?: string;
+}
+
+export const exportMaterialRequestDetailToPDF = (data: MaterialRequestDetailData) => {
+  const margins = { top: 20, bottom: 20, left: 20, right: 20 };
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // ============ ENCABEZADO - ESTILO PLANNING ============
+  try {
+    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
+  } catch (error) {
+    console.error('Error al cargar logo:', error);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('CDIMA', margins.left, margins.top + 8);
+  }
+
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('DETALLE DE SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
+  if (data.projectName) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
+  }
+  if (data.parentTaskName) {
+    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+  }
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const metaXD = pageWidth - margins.right;
+  const hasExtraD = !!(data.projectName || data.parentTaskName);
+  const hasBothD = !!(data.projectName && data.parentTaskName);
+  let metaYD = margins.top + (hasBothD ? 19 : hasExtraD ? 16 : 12);
+
+  const solicitudLinesD = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
+  solicitudLinesD.forEach((line: string, idx: number) => {
+    doc.text(line, metaXD, metaYD + idx * 5, { align: 'right' });
+  });
+  metaYD += solicitudLinesD.length * 5;
+  doc.text(`ÁREA: ${data.area}`, metaXD, metaYD, { align: 'right' });
+  metaYD += 5;
+  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaXD, metaYD, { align: 'right' });
+  metaYD += 5;
+  doc.text(`LUGAR: ${data.lugar}`, metaXD, metaYD, { align: 'right' });
+
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, metaYD + 6, pageWidth - margins.right, metaYD + 6);
+  let yPosD = metaYD + 16;
+  // ============ FIN ENCABEZADO ============
+
+  // ---- INFORMACIÓN DE LA SOLICITUD ----
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('INFORMACIÓN DE LA SOLICITUD', margins.left, yPosD);
+  yPosD += 6;
+
+  const estadoLabel = data.aprobado ? 'APROBADO' : data.observado ? 'OBSERVADA' : 'EN PROCESO';
+  const infoRows: [string, string][] = [
+    ['Estado', estadoLabel],
+    ['Fecha de solicitud', data.fechaSolicitud || '-'],
+    ...(data.fechaRespuesta ? [['Fecha de respuesta', data.fechaRespuesta] as [string, string]] : []),
+    ...(data.motivoObservacion ? [['Motivo de observación', data.motivoObservacion] as [string, string]] : []),
+  ];
+
+  autoTable(doc, {
+    startY: yPosD,
+    body: infoRows,
+    theme: 'plain',
+    styles: {
+      fontSize: 8.5,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      textColor: [0, 0, 0] as [number, number, number],
+    },
+    columnStyles: {
+      0: { cellWidth: 45, fontStyle: 'bold' as const },
+      1: { cellWidth: 'auto' as const },
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+  yPosD = (doc as any).lastAutoTable.finalY + 10;
+
+  // ---- MATERIALES SOLICITADOS ----
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('MATERIALES SOLICITADOS', margins.left, yPosD);
+  yPosD += 6;
+
+  autoTable(doc, {
+    startY: yPosD,
+    head: [['#', 'DETALLE', 'CANT.', 'UNIDAD', 'OBSERVACIONES', 'ALMACÉN']],
+    body: data.materiales.map((m, i) => [
+      (i + 1).toString(), m.detalle, m.cantidad || '-', m.unidad || '-', m.observaciones || '-', m.almacen || '-',
+    ]),
+    theme: 'plain',
+    headStyles: {
+      fillColor: [220, 220, 220] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+      fontStyle: 'bold' as const,
+      halign: 'left' as const,
+      fontSize: 8.5,
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+    },
+    bodyStyles: { fillColor: [255, 255, 255] as [number, number, number] },
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      overflow: 'linebreak' as const,
+      valign: 'middle' as const,
+      textColor: [0, 0, 0] as [number, number, number],
+      lineColor: [180, 180, 180] as [number, number, number],
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' as const },
+      1: { cellWidth: 'auto' as const },
+      2: { cellWidth: 16, halign: 'center' as const },
+      3: { cellWidth: 18, halign: 'center' as const },
+      4: { cellWidth: 'auto' as const },
+      5: { cellWidth: 26, halign: 'center' as const },
+    },
+    margin: { left: margins.left, right: margins.right },
+  });
+
+ 
+  if (data.aprobado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'APROBADO');
+  } else if (data.observado) {
+    drawStampWatermark(doc, pageWidth - margins.right, pageHeight - margins.bottom - 4, 'OBSERVADA');
+  }
+
+  // ---- PIE DE PÁGINA ----
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const nowD = new Date();
+  const footerDateTimeD = `${format(nowD, 'dd/MM/yyyy', { locale: es })} ${format(nowD, 'HH:mm', { locale: es })}`;
+  doc.text(`Generación de reporte: ${footerDateTimeD}`, margins.left, pageHeight - margins.bottom + 10);
+  doc.text('CDIMA - Detalle de Solicitud de Material', pageWidth - margins.right, pageHeight - margins.bottom + 10, { align: 'right' });
+
+  const pdfBlobD = doc.output('blob');
+  const urlD = URL.createObjectURL(pdfBlobD);
+  window.open(urlD, '_blank');
 };
 
 // Interfaz para datos de solicitud de devolución
