@@ -1104,21 +1104,24 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
     doc.setTextColor(150, 150, 150);
     doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
   }
+  let parentTaskLines1: string[] = [];
   if (data.parentTaskName) {
-    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+    parentTaskLines1 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
+    const pStartY1 = margins.top + (data.projectName ? 13 : 10);
+    parentTaskLines1.forEach((line: string, idx: number) => {
+      doc.text(line, pageWidth - margins.right, pStartY1 + idx * 3.6, { align: 'right' });
+    });
   }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX1 = pageWidth - margins.right;
-  const hasExtra1 = !!(data.projectName || data.parentTaskName);
-  const hasBoth1 = !!(data.projectName && data.parentTaskName);
-  let metaY1 = margins.top + (hasBoth1 ? 19 : hasExtra1 ? 16 : 12);
+  const extraLines1 = (data.projectName ? 1 : 0) + parentTaskLines1.length;
+  let metaY1 = margins.top + 12 + extraLines1 * 3.6;
 
   const solicitudLines1 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
   solicitudLines1.forEach((line: string, idx: number) => {
@@ -1315,21 +1318,24 @@ export const exportMaterialRequestDetailToPDF = (data: MaterialRequestDetailData
     doc.setTextColor(150, 150, 150);
     doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
   }
+  let parentTaskLinesD: string[] = [];
   if (data.parentTaskName) {
-    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+    parentTaskLinesD = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
+    const pStartYD = margins.top + (data.projectName ? 13 : 10);
+    parentTaskLinesD.forEach((line: string, idx: number) => {
+      doc.text(line, pageWidth - margins.right, pStartYD + idx * 3.6, { align: 'right' });
+    });
   }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaXD = pageWidth - margins.right;
-  const hasExtraD = !!(data.projectName || data.parentTaskName);
-  const hasBothD = !!(data.projectName && data.parentTaskName);
-  let metaYD = margins.top + (hasBothD ? 19 : hasExtraD ? 16 : 12);
+  const extraLinesD = (data.projectName ? 1 : 0) + parentTaskLinesD.length;
+  let metaYD = margins.top + 12 + extraLinesD * 3.6;
 
   const solicitudLinesD = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
   solicitudLinesD.forEach((line: string, idx: number) => {
@@ -1488,21 +1494,24 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
     doc.setTextColor(150, 150, 150);
     doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
   }
+  let parentTaskLines2: string[] = [];
   if (data.parentTaskName) {
-    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+    parentTaskLines2 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
+    const pStartY2 = margins.top + (data.projectName ? 13 : 10);
+    parentTaskLines2.forEach((line: string, idx: number) => {
+      doc.text(line, pageWidth - margins.right, pStartY2 + idx * 3.6, { align: 'right' });
+    });
   }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX2 = pageWidth - margins.right;
-  const hasExtra2 = !!(data.projectName || data.parentTaskName);
-  const hasBoth2 = !!(data.projectName && data.parentTaskName);
-  let metaY2 = margins.top + (hasBoth2 ? 19 : hasExtra2 ? 16 : 12);
+  const extraLines2 = (data.projectName ? 1 : 0) + parentTaskLines2.length;
+  let metaY2 = margins.top + 12 + extraLines2 * 3.6;
 
   const solicitudLines2 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
   solicitudLines2.forEach((line: string, idx: number) => {
@@ -1686,21 +1695,24 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
     doc.setTextColor(150, 150, 150);
     doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
   }
+  let parentTaskLines3: string[] = [];
   if (data.parentTaskName) {
-    const pLabel = data.parentTaskName.length > 90 ? data.parentTaskName.substring(0, 90) + '...' : data.parentTaskName;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text(pLabel, pageWidth - margins.right, margins.top + (data.projectName ? 13 : 10), { align: 'right' });
+    parentTaskLines3 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
+    const pStartY3 = margins.top + (data.projectName ? 13 : 10);
+    parentTaskLines3.forEach((line: string, idx: number) => {
+      doc.text(line, pageWidth - margins.right, pStartY3 + idx * 3.6, { align: 'right' });
+    });
   }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   const metaX3 = pageWidth - margins.right;
-  const hasExtra3 = !!(data.projectName || data.parentTaskName);
-  const hasBoth3 = !!(data.projectName && data.parentTaskName);
-  let metaY3 = margins.top + (hasBoth3 ? 19 : hasExtra3 ? 16 : 12);
+  const extraLines3 = (data.projectName ? 1 : 0) + parentTaskLines3.length;
+  let metaY3 = margins.top + 12 + extraLines3 * 3.6;
 
   const solicitudLines3 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
   solicitudLines3.forEach((line: string, idx: number) => {

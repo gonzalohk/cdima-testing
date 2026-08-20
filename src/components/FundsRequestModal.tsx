@@ -33,7 +33,7 @@ interface FundsRequestModalProps {
   initialData?: SfonInitialData;
 }
 
-const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess, projectName, initialData }) => {
+const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, onSuccess, projectName, parentTaskName, initialData }) => {
   const [area, setArea] = useState(initialData?.area ?? '');
   const [titulo, setTitulo] = useState(initialData?.titulo ?? '');
   const [lugar, setLugar] = useState(initialData?.lugar ?? '');
@@ -204,6 +204,8 @@ ${JSON.stringify(jsonData, null, 2)}
       setNotification({ message: '¡Solicitud de fondos creada exitosamente!', type: 'success' });
       
       // Generar PDF automáticamente
+      // Si es de tercer nivel (SFON dentro de un SMAT), solo se muestra la actividad padre, no el SMAT (hija).
+      const fondosParentTaskName = parentTaskName?.includes(' › ') ? parentTaskName.split(' › ')[0] : (parentTaskName ?? task.name);
       setTimeout(() => {
         exportFundsRequestToPDF({
           taskName: titulo,
@@ -213,7 +215,7 @@ ${JSON.stringify(jsonData, null, 2)}
           fechaFinalizacion: fechaFinalizacionStr,
           fondos: fondosValidos,
           projectName,
-          parentTaskName: task.name,
+          parentTaskName: fondosParentTaskName,
           fechaGeneracion: fechaSolicitud,
           aprobado: false,
           observado: false,

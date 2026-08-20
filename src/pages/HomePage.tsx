@@ -1346,6 +1346,10 @@ const HomePage: React.FC = () => {
     const fechaGeneracion = extractFechaSolicitud(row.task.notes);
     const fechaGeneracionOpt = fechaGeneracion !== '-' ? fechaGeneracion : undefined;
     if (row.tipo === 'Solicitud de Fondos') {
+      // Si es de tercer nivel (SFON dentro de un SMAT), solo se muestra la actividad padre, no el SMAT (hija).
+      const fondosParentTaskName = row.parentTaskName.includes(' › ')
+        ? row.parentTaskName.split(' › ')[0]
+        : row.parentTaskName;
       exportFundsRequestToPDF({
         taskName: (data?.titulo as string) ?? row.task.name,
         area: (data?.area as string) ?? '',
@@ -1354,7 +1358,7 @@ const HomePage: React.FC = () => {
         fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
         fondos: (data?.fondos as { id: number; descripcion: string; importeBolivianos: string }[]) ?? [],
         projectName: row.projectName,
-        parentTaskName: row.parentTaskName,
+        parentTaskName: fondosParentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
         aprobado: !!data?.fechaAprobacion,
         observado: !!data?.observado,
