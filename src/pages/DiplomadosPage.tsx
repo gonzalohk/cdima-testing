@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Dropdown, Select, Tabs } from 'antd';
 
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { asanaService } from '../services/asana.service';
 import { AsanaSection, AsanaTask } from '../types/asana.types';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -95,6 +96,9 @@ const _buildDocNotes = (originalNotes: string | undefined | null, documentos: Do
 const DiplomadosPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  // El rol administrador solo tiene acceso de lectura a Diplomados
+  const isReadOnly = user?.role === 'administrador';
   const [diplomados, setDiplomados] = useState<AsanaSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1158,13 +1162,15 @@ const DiplomadosPage: React.FC = () => {
             </span>
           )}
         </div>
+        {!isReadOnly && (
         <button
           className="btn-export-ghost"
           onClick={() => { setEditMode(false); setDiplomadoToEdit(null); setShowCreateModal(true); }}
         >
           ➕ Nuevo Diplomado
         </button>
-        {selectedDiplomado && (
+        )}
+        {!isReadOnly && selectedDiplomado && (
           <Dropdown
             menu={{ items: [
               { key: 'editar', label: '✏️ Editar Diplomado', onClick: handleEditDiplomado },
@@ -1301,12 +1307,14 @@ const DiplomadosPage: React.FC = () => {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <input type="text" placeholder="🔍 Buscar..." value={busquedaDocente} onChange={e => { setBusquedaDocente(e.target.value); setPaginaDocentes(1); }} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+                                {!isReadOnly && (
                                 <button
                                   onClick={() => setShowAgregarDocenteModal(true)}
                                   style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                                 >＋ Inscribir Docente</button>
+                                )}
                               </div>
                             </div>
                             {docentes.length === 0 ? (
@@ -1352,7 +1360,9 @@ const DiplomadosPage: React.FC = () => {
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
                                           <div className="row-acts" style={{ display: 'flex', gap: '0.15rem', justifyContent: 'center' }}>
                                             <button onClick={() => handleShowInfo(docente, 'Docente')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                            {!isReadOnly && (
                                             <button onClick={() => { setEliminarPersonaTarget({ task: docente, tipo: 'Docente' }); setEliminarTextoConfirm(''); }} title="Eliminar docente" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#dc2626', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#fee2e2'} onMouseLeave={e => e.currentTarget.style.background='none'}>🗑️</button>
+                                            )}
                                           </div>
                                         </td>
                                       </tr>
@@ -1415,12 +1425,14 @@ const DiplomadosPage: React.FC = () => {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <input type="text" placeholder="🔍 Buscar..." value={busquedaEstudiante} onChange={e => { setBusquedaEstudiante(e.target.value); setPaginaEstudiantes(1); }} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
+                                {!isReadOnly && (
                                 <button
                                   onClick={() => setShowAgregarEstudianteModal(true)}
                                   style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1.5px solid transparent', borderRadius: '7px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4 }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                                 >＋ Inscribir Estudiante</button>
+                                )}
                                 <button
                                   onClick={handleExportDiplomadoGeneralWord}
                                   className="button-secondary"
@@ -1485,7 +1497,9 @@ const DiplomadosPage: React.FC = () => {
                                             <button onClick={() => setEstudianteSeleccionadoNotas(estudiante)} title="Ver notas" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#e0e7ff'} onMouseLeave={e => e.currentTarget.style.background='none'}>📊</button>
                                             <button onClick={() => setEstudianteSeleccionadoAsistencia(estudiante)} title="Ver asistencia" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#dcfce7'} onMouseLeave={e => e.currentTarget.style.background='none'}>✓</button>
                                             <button onClick={() => handleShowInfo(estudiante, 'Estudiante')} title="Ver perfil" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#64748b', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background='none'}>👤</button>
+                                            {!isReadOnly && (
                                             <button onClick={() => { setEliminarPersonaTarget({ task: estudiante, tipo: 'Estudiante' }); setEliminarTextoConfirm(''); }} title="Eliminar estudiante" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0.25rem 0.3rem', borderRadius: '4px', color: '#dc2626', lineHeight: 1 }} onMouseEnter={e => e.currentTarget.style.background='#fee2e2'} onMouseLeave={e => e.currentTarget.style.background='none'}>🗑️</button>
+                                            )}
                                           </div>
                                         </td>
                                         <td style={{ textAlign: 'center', padding: '0.7rem 0.5rem' }}>
@@ -1572,7 +1586,7 @@ const DiplomadosPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
                                   <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaCentralizador} onChange={e => setBusquedaCentralizador(e.target.value)} style={{ flex: 1, maxWidth: '280px', padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
                                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button onClick={handleAbrirRegistroNotas} className="button-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📝 Registrar Notas</button>
+                                    <button onClick={handleAbrirRegistroNotas} className="button-primary" disabled={isReadOnly} title={isReadOnly ? 'Solo lectura: el rol administrador no puede registrar notas' : undefined} style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: isReadOnly ? 0.5 : 1, cursor: isReadOnly ? 'not-allowed' : 'pointer' }}>📝 Registrar Notas</button>
                                     <button onClick={handleExportCentralizadorNotas} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Notas PDF</button>
                                     <button onClick={handleExportCentralizadorNotasWord} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Notas Word</button>
                                   </div>
@@ -1681,7 +1695,7 @@ const DiplomadosPage: React.FC = () => {
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.875rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <input type="text" placeholder="🔍 Buscar estudiante..." value={busquedaAsistencia} onChange={e => setBusquedaAsistencia(e.target.value)} style={{ padding: '0.4rem 0.65rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.85rem', width: '200px', outline: 'none' }} />
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button onClick={handleAbrirAsistencia} className="button-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>✓ Registrar Asistencia</button>
+                                  <button onClick={handleAbrirAsistencia} className="button-primary" disabled={isReadOnly} title={isReadOnly ? 'Solo lectura: el rol administrador no puede registrar asistencia' : undefined} style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', opacity: isReadOnly ? 0.5 : 1, cursor: isReadOnly ? 'not-allowed' : 'pointer' }}>✓ Registrar Asistencia</button>
                                   <button onClick={handleExportAsistenciaPDF} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>🖨️ Asistencia PDF</button>
                                   <button onClick={handleExportAsistenciaWord} className="button-secondary" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>📄 Asistencia Word</button>
                                 </div>
@@ -1695,6 +1709,7 @@ const DiplomadosPage: React.FC = () => {
                                     {fechasMostradas.map((fecha, idx) => fecha !== null ? (
                                       <th key={idx} style={{ textAlign: 'center', padding: '0.25rem 0.25rem 0.5rem', fontSize: '0.68rem', color: '#64748b', fontWeight: 600, width: '42px', minWidth: '42px', borderLeft: '1px solid #e5e7eb', verticalAlign: 'bottom' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                                          {!isReadOnly && (
                                           <button
                                             onClick={() => handleDeleteAsistenciaDia(fecha)}
                                             title={`Eliminar asistencia del ${fecha} para todos`}
@@ -1702,6 +1717,7 @@ const DiplomadosPage: React.FC = () => {
                                             onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
                                             onMouseLeave={e => { e.currentTarget.style.color = '#e2e8f0'; e.currentTarget.style.background = 'none'; }}
                                           >🗑️</button>
+                                          )}
                                           <span style={{ writingMode: 'vertical-lr' }}>{fecha}</span>
                                         </div>
                                       </th>
@@ -1788,7 +1804,9 @@ const DiplomadosPage: React.FC = () => {
                                             {/* Actions */}
                                             <div style={{ display: 'flex', gap: '2px', flexShrink: 0, alignItems: 'center' }}>
                                               <a href={doc.url} target="_blank" rel="noopener noreferrer" title="Ver" style={{ color: '#94a3b8', fontSize: '1rem', padding: '3px 4px', borderRadius: '4px', lineHeight: 1, textDecoration: 'none', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#1d4ed8'; (e.currentTarget as HTMLAnchorElement).style.background = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>👁️</a>
+                                              {!isReadOnly && (
                                               <button onClick={() => handleDeleteDocumento(documento, i)} title="Eliminar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.9rem', padding: '3px 4px', borderRadius: '4px', flexShrink: 0, lineHeight: 1 }} onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }} onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.background = 'none'; }}>🗑️</button>
+                                              )}
                                             </div>
                                           </div>
                                         );
@@ -1796,6 +1814,7 @@ const DiplomadosPage: React.FC = () => {
                                     )}
                                   </div>
                                   {/* Add button */}
+                                  {!isReadOnly && (
                                   <div style={{ padding: '0 0.75rem 0.75rem' }}>
                                     <button
                                       onClick={() => handleOpenDocModal(documento)}
@@ -1804,6 +1823,7 @@ const DiplomadosPage: React.FC = () => {
                                       onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent'; }}
                                     >＋ Agregar archivo</button>
                                   </div>
+                                  )}
                                 </div>
                               );
                             })}
