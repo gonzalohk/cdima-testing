@@ -8,9 +8,9 @@ import {
   Input,
   List,
   Modal,
-  Pagination,
   Popconfirm,
   Popover,
+  Segmented,
   Select,
   Space,
   Spin,
@@ -341,37 +341,18 @@ function extractJsonData(notes: string | undefined): Record<string, unknown> | n
   try { return JSON.parse(match[1]); } catch { return null; }
 }
 
-// Agrupa filas aprobadas por su SMAT (una SMAT y sus SFON hijas forman un grupo)
-// y empaqueta los grupos en páginas sin partir ninguno entre páginas distintas.
-// Cada grupo (una SMAT sola, o una SMAT junto a su SFON) cuenta como una sola fila.
-function buildGroupedPages(rows: SolicitudRow[], groupsPerPage = 10): SolicitudRow[][] {
-  const groups: SolicitudRow[][] = [];
-  const indexByKey = new Map<string, number>();
+// Índice de grupo por fila dentro de una lista ya renderizada: una SMAT y sus
+// SFON anidadas comparten grupo, para poder alternar el tono de color por solicitud completa.
+function buildRowGroupIndex(rows: SolicitudRow[]): Map<string, number> {
+  const map = new Map<string, number>();
+  let g = -1;
   for (const row of rows) {
     const isNested = row.parentTaskName.includes(' › ');
-    const key = isNested ? row.parentTaskGid : row.task.gid;
-    let gi = indexByKey.get(key);
-    if (gi === undefined) {
-      gi = groups.length;
-      indexByKey.set(key, gi);
-      groups.push([]);
-    }
-    groups[gi].push(row);
+    if (!isNested) g++;
+    else if (g < 0) g = 0;
+    map.set(row.key, g);
   }
-  const pages: SolicitudRow[][] = [];
-  let page: SolicitudRow[] = [];
-  let groupsInPage = 0;
-  for (const g of groups) {
-    if (groupsInPage >= groupsPerPage) {
-      pages.push(page);
-      page = [];
-      groupsInPage = 0;
-    }
-    page.push(...g);
-    groupsInPage++;
-  }
-  if (page.length) pages.push(page);
-  return pages.length ? pages : [[]];
+  return map;
 }
 
 // Coincidencia de búsqueda: revisa actividad, proyecto, tipo, fecha y solicitante.
@@ -412,7 +393,11 @@ const HomePage: React.FC = () => {
   const [mesesExpandidos, setMesesExpandidos] = useState<string[]>([]);
   const [archivandoKey, setArchivandoKey] = useState<string | null>(null);
   const [desarchivandoKey, setDesarchivandoKey] = useState<string | null>(null);
-  const [aprobadasPage, setAprobadasPage] = useState(1);
+  // Sub-pestaña de Aprobadas: separa Material (con sus SFON hijas), Fondos sueltos y Devolución
+  const [aprobadasSubTab, setAprobadasSubTab] = useState<'material' | 'fondos' | 'devolucion'>('material');
+  const [mesesExpandidosAprobadas, setMesesExpandidosAprobadas] = useState<string[]>([]);
+  // Sub-pestaña de Observadas: misma división por tipo que Aprobadas
+  const [mesesExpandidosObservadas, setMesesExpandidosObservadas] = useState<string[]>([]);
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1622,24 +1607,29 @@ const HomePage: React.FC = () => {
             </Tooltip>
           </Popconfirm>
         )}
-        <Popconfirm
-          title="¿Eliminar solicitud?"
-          description="Esta acción no se puede deshacer."
-          onConfirm={() => handleDeleteSolicitud(row)}
-          okText="Eliminar"
-          cancelText="Cancelar"
-          okButtonProps={{ danger: true }}
-          disabled={user?.role !== 'director'}
-        >
-          <Tooltip title={user?.role === 'director' ? 'Eliminar solicitud' : 'Solo el director puede eliminar'}>
-            <Button
-              size="small"
-              icon={<DeleteOutlined />}
-              danger
-              disabled={user?.role !== 'director'}
-            />
-          </Tooltip>
-        </Popconfirm>
+        {(() => {
+          const canDelHistorico = user?.role === 'director' || user?.role === 'administrador';
+          return (
+            <Popconfirm
+              title="¿Eliminar solicitud?"
+              description="Esta acción no se puede deshacer."
+              onConfirm={() => handleDeleteSolicitud(row)}
+              okText="Eliminar"
+              cancelText="Cancelar"
+              okButtonProps={{ danger: true }}
+              disabled={!canDelHistorico}
+            >
+              <Tooltip title={canDelHistorico ? 'Eliminar solicitud' : 'Solo el director o administrador puede eliminar'}>
+                <Button
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  danger
+                  disabled={!canDelHistorico}
+                />
+              </Tooltip>
+            </Popconfirm>
+          );
+        })()}
       </Space>
       );
     },
@@ -1917,13 +1907,38 @@ const HomePage: React.FC = () => {
     [solicitudes, searchPendientes]
   );
 
+  // Divide las aprobadas por tipo: Material (incluye sus SFON hijas), Fondos sueltos y Devolución
+  const solicitudesAprobadasPorTipo = useMemo(() => {
+    if (aprobadasSubTab === 'fondos') {
+      return solicitudesAprobadas.filter(r => r.tipo === 'Solicitud de Fondos' && !r.parentTaskName.includes(' › '));
+    }
+    if (aprobadasSubTab === 'devolucion') {
+      return solicitudesAprobadas.filter(r => r.tipo === 'Devolución de Material');
+    }
+    return solicitudesAprobadas.filter(r => r.tipo === 'Solicitud de Material' || r.parentTaskName.includes(' › '));
+  }, [solicitudesAprobadas, aprobadasSubTab]);
+
+  // Conteos de cada sub-pestaña (sobre el total de aprobadas, sin aplicar la búsqueda)
+  const aprobadasMaterialCount = useMemo(
+    () => solicitudesAprobadas.filter(r => r.tipo === 'Solicitud de Material').length,
+    [solicitudesAprobadas]
+  );
+  const aprobadasFondosSueltosCount = useMemo(
+    () => solicitudesAprobadas.filter(r => r.tipo === 'Solicitud de Fondos' && !r.parentTaskName.includes(' › ')).length,
+    [solicitudesAprobadas]
+  );
+  const aprobadasDevolucionCount = useMemo(
+    () => solicitudesAprobadas.filter(r => r.tipo === 'Devolución de Material').length,
+    [solicitudesAprobadas]
+  );
+
   // Aprobadas: filtra por grupo (si la SMAT o su SFON coincide, se conserva el grupo completo)
   const filteredAprobadas = useMemo(() => {
     const term = searchAprobadas.trim();
-    if (!term) return solicitudesAprobadas;
+    if (!term) return solicitudesAprobadasPorTipo;
     const groups = new Map<string, SolicitudRow[]>();
     const order: string[] = [];
-    for (const row of solicitudesAprobadas) {
+    for (const row of solicitudesAprobadasPorTipo) {
       const isNested = row.parentTaskName.includes(' › ');
       const key = isNested ? row.parentTaskGid : row.task.gid;
       if (!groups.has(key)) { groups.set(key, []); order.push(key); }
@@ -1935,7 +1950,7 @@ const HomePage: React.FC = () => {
       if (g.some(r => matchSolicitud(r, term))) result.push(...g);
     }
     return result;
-  }, [solicitudesAprobadas, searchAprobadas]);
+  }, [solicitudesAprobadasPorTipo, searchAprobadas]);
 
   const filteredObservadas = useMemo(
     () => solicitudesObservadas.filter(r => matchSolicitud(r, searchObservadas)),
@@ -1976,24 +1991,31 @@ const HomePage: React.FC = () => {
     });
   }, [filteredArchivadas, solicitudesArchivadas]);
 
-  // Páginas de aprobadas agrupadas: una SMAT y sus SFON hijas nunca se separan
-  const aprobadasPages = useMemo(() => buildGroupedPages(filteredAprobadas), [filteredAprobadas]);
-  const aprobadasSafePage = Math.min(aprobadasPage, aprobadasPages.length);
-  const currentAprobadasRows = aprobadasPages[aprobadasSafePage - 1] ?? [];
-
-  // Índice de grupo por fila: una SMAT y sus SFON anidadas comparten grupo,
-  // de modo que podamos alternar el tono de color por solicitud completa.
-  const aprobadasGroupIndex = useMemo(() => {
-    const map = new Map<string, number>();
-    let g = -1;
-    for (const row of currentAprobadasRows) {
-      const isNested = row.parentTaskName.includes(' › ');
-      if (!isNested) g++;
-      else if (g < 0) g = 0;
-      map.set(row.key, g);
+  // Agrupación de aprobadas por mes según la fecha de solicitud de la SMAT/solicitud del grupo.
+  const seccionesAprobadasPorMes = useMemo(() => {
+    const fechaSolicitudDeGrupo = (row: SolicitudRow): string | undefined => {
+      if (!row.parentTaskName.includes(' › ')) return row.fecha;
+      const parent = filteredAprobadas.find(r => r.task.gid === row.parentTaskGid);
+      return (parent ?? row).fecha;
+    };
+    const buckets = new Map<string, SolicitudRow[]>();
+    const order: string[] = [];
+    for (const row of filteredAprobadas) {
+      const key = mesKeyFromFecha(fechaSolicitudDeGrupo(row));
+      if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
+      buckets.get(key)!.push(row);
     }
-    return map;
-  }, [currentAprobadasRows]);
+    order.sort((a, b) => {
+      if (a === 'sin-fecha') return 1;
+      if (b === 'sin-fecha') return -1;
+      return a < b ? 1 : a > b ? -1 : 0; // descendente (más reciente primero)
+    });
+    return order.map(key => {
+      const rows = buckets.get(key)!;
+      const conteo = rows.filter(r => !r.parentTaskName.includes(' › ')).length || rows.length;
+      return { clave: key, etiqueta: mesLabelFromKey(key), solicitudes: rows, conteo };
+    });
+  }, [filteredAprobadas]);
 
   // Número de registro por grupo para Aprobadas: una SMAT y sus SFON anidadas
   // comparten un único número (cuentan como un solo registro), continuo en toda la lista.
@@ -2009,18 +2031,30 @@ const HomePage: React.FC = () => {
     return map;
   }, [filteredAprobadas]);
 
-  // Índice de grupo para observadas: misma lógica que aprobadas para
-  // alternar el tono y diferenciar cada solicitud.
-  const observadasGroupIndex = useMemo(() => {
-    const map = new Map<string, number>();
-    let g = -1;
+  // Agrupación de observadas por mes según la fecha de solicitud de la SMAT/solicitud del grupo.
+  const seccionesObservadasPorMes = useMemo(() => {
+    const fechaSolicitudDeGrupo = (row: SolicitudRow): string | undefined => {
+      if (!row.parentTaskName.includes(' › ')) return row.fecha;
+      const parent = filteredObservadas.find(r => r.task.gid === row.parentTaskGid);
+      return (parent ?? row).fecha;
+    };
+    const buckets = new Map<string, SolicitudRow[]>();
+    const order: string[] = [];
     for (const row of filteredObservadas) {
-      const isNested = row.parentTaskName.includes(' › ');
-      if (!isNested) g++;
-      else if (g < 0) g = 0;
-      map.set(row.key, g);
+      const key = mesKeyFromFecha(fechaSolicitudDeGrupo(row));
+      if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
+      buckets.get(key)!.push(row);
     }
-    return map;
+    order.sort((a, b) => {
+      if (a === 'sin-fecha') return 1;
+      if (b === 'sin-fecha') return -1;
+      return a < b ? 1 : a > b ? -1 : 0; // descendente (más reciente primero)
+    });
+    return order.map(key => {
+      const rows = buckets.get(key)!;
+      const conteo = rows.filter(r => !r.parentTaskName.includes(' › ')).length || rows.length;
+      return { clave: key, etiqueta: mesLabelFromKey(key), solicitudes: rows, conteo };
+    });
   }, [filteredObservadas]);
 
   // Columnas de numeración (posición continua dentro de cada listado)
@@ -2251,7 +2285,7 @@ const HomePage: React.FC = () => {
                   value={solTab === 'aprobadas' ? searchAprobadas : solTab === 'observadas' ? searchObservadas : solTab === 'archivadas' ? searchArchivadas : searchPendientes}
                   onChange={e => {
                     const v = e.target.value;
-                    if (solTab === 'aprobadas') { setSearchAprobadas(v); setAprobadasPage(1); }
+                    if (solTab === 'aprobadas') { setSearchAprobadas(v); }
                     else if (solTab === 'observadas') setSearchObservadas(v);
                     else if (solTab === 'archivadas') setSearchArchivadas(v);
                     else setSearchPendientes(v);
@@ -2291,36 +2325,88 @@ const HomePage: React.FC = () => {
                 ),
                 children: (
                   <>
-                    <Table
-                      columns={[colIndexAprobadas, ...columnsAprobadas]}
-                      dataSource={currentAprobadasRows}
-                      size="middle"
-                      bordered
-                      pagination={false}
-                      locale={{ emptyText: 'No hay solicitudes aprobadas' }}
-                      rowClassName={(row: SolicitudRow) => {
-                        const g = aprobadasGroupIndex.get(row.key) ?? 0;
-                        const isNested = row.parentTaskName.includes(' › ');
-                        const classes = [g % 2 === 0 ? 'ant-table-row-aprobada' : 'ant-table-row-aprobada-alt'];
-                        if (!isNested) classes.push('ant-table-row-aprobada-start');
-                        return classes.join(' ');
-                      }}
-                    />
-                    {filteredAprobadas.length > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '12px 0' }}>
-                        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                          {filteredAprobadas.length} solicitudes
-                        </Typography.Text>
-                        {aprobadasPages.length > 1 && (
-                          <Pagination
-                            current={aprobadasSafePage}
-                            total={aprobadasPages.length}
-                            pageSize={1}
-                            showSizeChanger={false}
-                            onChange={setAprobadasPage}
-                          />
-                        )}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                      margin: '0.75rem 0 1rem', padding: '0.6rem 0.85rem',
+                      background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+                    }}>
+                      <Typography.Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        ↳ Filtrar por tipo
+                      </Typography.Text>
+                      <Segmented
+                        size="small"
+                        value={aprobadasSubTab}
+                        onChange={(value) => setAprobadasSubTab(value as 'material' | 'fondos' | 'devolucion')}
+                        options={[
+                          {
+                            value: 'material',
+                            label: (
+                              <Space size={5} style={{ padding: '0 2px' }}>
+                                <span>📦 Material</span>
+                                <Badge count={aprobadasMaterialCount} style={{ background: aprobadasSubTab === 'material' && aprobadasMaterialCount > 0 ? '#9a3412' : '#9ca3af' }} />
+                              </Space>
+                            ),
+                          },
+                          {
+                            value: 'fondos',
+                            label: (
+                              <Space size={5} style={{ padding: '0 2px' }}>
+                                <span>💰 Fondos sueltos</span>
+                                <Badge count={aprobadasFondosSueltosCount} style={{ background: aprobadasSubTab === 'fondos' && aprobadasFondosSueltosCount > 0 ? '#1d4ed8' : '#9ca3af' }} />
+                              </Space>
+                            ),
+                          },
+                          {
+                            value: 'devolucion',
+                            label: (
+                              <Space size={5} style={{ padding: '0 2px' }}>
+                                <span>↩️ Devolución</span>
+                                <Badge count={aprobadasDevolucionCount} style={{ background: aprobadasSubTab === 'devolucion' && aprobadasDevolucionCount > 0 ? '#6b21a8' : '#9ca3af' }} />
+                              </Space>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                    {seccionesAprobadasPorMes.length === 0 ? (
+                      <div style={{ padding: '2rem' }}>
+                        <Empty description="No hay solicitudes aprobadas" />
                       </div>
+                    ) : (
+                      <Collapse
+                        activeKey={mesesExpandidosAprobadas}
+                        onChange={keys => setMesesExpandidosAprobadas(Array.isArray(keys) ? keys : [keys])}
+                        style={{ margin: '0.5rem 0 1rem', background: 'transparent' }}
+                        items={seccionesAprobadasPorMes.map(sec => {
+                          const groupIndex = buildRowGroupIndex(sec.solicitudes);
+                          return {
+                            key: sec.clave,
+                            label: (
+                              <Space size={8}>
+                                <Typography.Text strong>{sec.etiqueta}</Typography.Text>
+                                <Badge count={sec.conteo} style={{ background: '#16a34a' }} />
+                              </Space>
+                            ),
+                            children: (
+                              <Table
+                                columns={[colIndexAprobadas, ...columnsAprobadas]}
+                                dataSource={sec.solicitudes}
+                                size="middle"
+                                bordered
+                                pagination={false}
+                                locale={{ emptyText: 'No hay solicitudes aprobadas' }}
+                                rowClassName={(row: SolicitudRow) => {
+                                  const g = groupIndex.get(row.key) ?? 0;
+                                  const isNested = row.parentTaskName.includes(' › ');
+                                  const classes = [g % 2 === 0 ? 'ant-table-row-aprobada' : 'ant-table-row-aprobada-alt'];
+                                  if (!isNested) classes.push('ant-table-row-aprobada-start');
+                                  return classes.join(' ');
+                                }}
+                              />
+                            ),
+                          };
+                        })}
+                      />
                     )}
                   </>
                 ),
@@ -2334,21 +2420,46 @@ const HomePage: React.FC = () => {
                   </Space>
                 ),
                 children: (
-                  <Table
-                    columns={[colIndexObservadas, ...columnsObservadas]}
-                    dataSource={filteredObservadas}
-                    size="middle"
-                    bordered
-                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: t => `${t} solicitudes` }}
-                    locale={{ emptyText: 'No hay solicitudes observadas' }}
-                    rowClassName={(row: SolicitudRow) => {
-                      const g = observadasGroupIndex.get(row.key) ?? 0;
-                      const isNested = row.parentTaskName.includes(' › ');
-                      const classes = [g % 2 === 0 ? 'ant-table-row-observada' : 'ant-table-row-observada-alt'];
-                      if (!isNested) classes.push('ant-table-row-observada-start');
-                      return classes.join(' ');
-                    }}
-                  />
+                  seccionesObservadasPorMes.length === 0 ? (
+                    <div style={{ padding: '2rem' }}>
+                      <Empty description="No hay solicitudes observadas" />
+                    </div>
+                  ) : (
+                    <Collapse
+                      activeKey={mesesExpandidosObservadas}
+                      onChange={keys => setMesesExpandidosObservadas(Array.isArray(keys) ? keys : [keys])}
+                      style={{ margin: '0.5rem 0 1rem', background: 'transparent' }}
+                      items={seccionesObservadasPorMes.map(sec => {
+                        const groupIndex = buildRowGroupIndex(sec.solicitudes);
+                        return {
+                          key: sec.clave,
+                          label: (
+                            <Space size={8}>
+                              <Typography.Text strong>{sec.etiqueta}</Typography.Text>
+                              <Badge count={sec.conteo} style={{ background: '#6366f1' }} />
+                            </Space>
+                          ),
+                          children: (
+                            <Table
+                              columns={[colIndexObservadas, ...columnsObservadas]}
+                              dataSource={sec.solicitudes}
+                              size="middle"
+                              bordered
+                              pagination={false}
+                              locale={{ emptyText: 'No hay solicitudes observadas' }}
+                              rowClassName={(row: SolicitudRow) => {
+                                const g = groupIndex.get(row.key) ?? 0;
+                                const isNested = row.parentTaskName.includes(' › ');
+                                const classes = [g % 2 === 0 ? 'ant-table-row-observada' : 'ant-table-row-observada-alt'];
+                                if (!isNested) classes.push('ant-table-row-observada-start');
+                                return classes.join(' ');
+                              }}
+                            />
+                          ),
+                        };
+                      })}
+                    />
+                  )
                 ),
               },
               {
