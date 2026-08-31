@@ -2044,6 +2044,7 @@ const HomePage: React.FC = () => {
       </Typography.Text>
     ),
   };
+  
   // Numeración correlativa dentro de cada mes/grupo: recibe el índice de grupo
   // (0-based, ya calculado por mes con buildRowGroupIndex) y arma la columna "#".
   const makeColIndex = (groupIndex: Map<string, number>) => ({
