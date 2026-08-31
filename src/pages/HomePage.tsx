@@ -867,19 +867,8 @@ const HomePage: React.FC = () => {
       // Agrupar aprobadas: cada SMAT va seguida inmediatamente de sus SFONs anidados
       const nestedApproved = allApproved.filter(r => r.parentTaskName.includes(' › '));
       const standaloneApproved = allApproved.filter(r => !r.parentTaskName.includes(' › '));
-      // SMAT que ya tienen una Solicitud de Fondos asociada (en cualquier estado)
-      const smatConSfon = new Set<string>();
-      [...allApproved, ...allRows, ...allObserved].forEach(r => {
-        if (r.tipo === 'Solicitud de Fondos') smatConSfon.add(r.parentTaskGid);
-      });
-      // Orden: las SMAT ya con SFON (finalizadas) van al final; dentro de cada
-      // grupo se ordena por fecha de respuesta (desc)
-      standaloneApproved.sort((a, b) => {
-        const aFin = a.tipo === 'Solicitud de Material' && smatConSfon.has(a.task.gid);
-        const bFin = b.tipo === 'Solicitud de Material' && smatConSfon.has(b.task.gid);
-        if (aFin !== bFin) return aFin ? 1 : -1;
-        return parseFechaRespuesta(b) - parseFechaRespuesta(a);
-      });
+      // Orden: únicamente por fecha de solicitud (desc)
+      standaloneApproved.sort((a, b) => parseFechaSol(b.fecha) - parseFechaSol(a.fecha));
       const groupedApproved: SolicitudRow[] = [];
       for (const row of standaloneApproved) {
         groupedApproved.push(row);
@@ -2017,20 +2006,6 @@ const HomePage: React.FC = () => {
     });
   }, [filteredAprobadas]);
 
-  // Número de registro por grupo para Aprobadas: una SMAT y sus SFON anidadas
-  // comparten un único número (cuentan como un solo registro), continuo en toda la lista.
-  const aprobadasRowNumber = useMemo(() => {
-    const map = new Map<string, number>();
-    let n = 0;
-    for (const row of filteredAprobadas) {
-      const isNested = row.parentTaskName.includes(' › ');
-      if (!isNested) n++;
-      else if (n === 0) n = 1;
-      map.set(row.key, n);
-    }
-    return map;
-  }, [filteredAprobadas]);
-
   // Agrupación de observadas por mes según la fecha de solicitud de la SMAT/solicitud del grupo.
   const seccionesObservadasPorMes = useMemo(() => {
     const fechaSolicitudDeGrupo = (row: SolicitudRow): string | undefined => {
@@ -2069,47 +2044,22 @@ const HomePage: React.FC = () => {
       </Typography.Text>
     ),
   };
-  const colIndexAprobadas = {
+  // Numeración correlativa dentro de cada mes/grupo: recibe el índice de grupo
+  // (0-based, ya calculado por mes con buildRowGroupIndex) y arma la columna "#".
+  const makeColIndex = (groupIndex: Map<string, number>) => ({
     title: '#',
     key: 'num',
     width: 48,
     align: 'center' as const,
     render: (_: unknown, row: SolicitudRow) => {
-      const isNested = row.parentTaskName.includes(' › ');
-      if (isNested) return null;
-      return (
-        <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
-          {aprobadasRowNumber.get(row.key)}
-        </Typography.Text>
-      );
-    },
-  };
-  const colIndexObservadas = {
-    title: '#',
-    key: 'num',
-    width: 48,
-    align: 'center' as const,
-    render: (_: unknown, row: SolicitudRow) => (
-      <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
-        {filteredObservadas.findIndex(r => r.key === row.key) + 1}
-      </Typography.Text>
-    ),
-  };
-
-  const colIndexArchivadas = {
-    title: '#',
-    key: 'num',
-    width: 48,
-    align: 'center' as const,
-    render: (_: unknown, row: SolicitudRow, index: number) => {
       if (row.parentTaskName.includes(' › ')) return null;
       return (
         <Typography.Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
-          {index + 1}
+          {(groupIndex.get(row.key) ?? 0) + 1}
         </Typography.Text>
       );
     },
-  };
+  });
 
   const colAccionesArchivadas = {
     title: 'Acciones',
@@ -2149,7 +2099,7 @@ const HomePage: React.FC = () => {
     },
   };
 
-  const columnsArchivadas = [colIndexArchivadas, colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colInformeFinal, colAccionesArchivadas];
+  const columnsArchivadasBase = [colSolicitudInfoAprobadas, colFechaSolicitud, colFechaRespuesta, colInforme, colInformeFinal, colAccionesArchivadas];
 
   return (
     <div style={{padding: '2rem', backgroundColor: '#f2f2f2'}}>
@@ -2389,7 +2339,7 @@ const HomePage: React.FC = () => {
                             ),
                             children: (
                               <Table
-                                columns={[colIndexAprobadas, ...columnsAprobadas]}
+                                columns={[makeColIndex(groupIndex), ...columnsAprobadas]}
                                 dataSource={sec.solicitudes}
                                 size="middle"
                                 bordered
@@ -2441,7 +2391,7 @@ const HomePage: React.FC = () => {
                           ),
                           children: (
                             <Table
-                              columns={[colIndexObservadas, ...columnsObservadas]}
+                              columns={[makeColIndex(groupIndex), ...columnsObservadas]}
                               dataSource={sec.solicitudes}
                               size="middle"
                               bordered
@@ -2480,7 +2430,9 @@ const HomePage: React.FC = () => {
                       activeKey={mesesExpandidos}
                       onChange={keys => setMesesExpandidos(Array.isArray(keys) ? keys : [keys])}
                       style={{ margin: '0.5rem 0 1rem', background: 'transparent' }}
-                      items={seccionesArchivadasPorMes.map(sec => ({
+                      items={seccionesArchivadasPorMes.map(sec => {
+                        const groupIndex = buildRowGroupIndex(sec.solicitudes);
+                        return {
                         key: sec.clave,
                         label: (
                           <Space size={8}>
@@ -2490,7 +2442,7 @@ const HomePage: React.FC = () => {
                         ),
                         children: (
                           <Table
-                            columns={columnsArchivadas}
+                            columns={[makeColIndex(groupIndex), ...columnsArchivadasBase]}
                             dataSource={sec.solicitudes}
                             size="middle"
                             bordered
@@ -2498,7 +2450,7 @@ const HomePage: React.FC = () => {
                             locale={{ emptyText: 'No hay solicitudes archivadas' }}
                           />
                         ),
-                      }))}
+                      };})}
                     />
                   )
                 ),
