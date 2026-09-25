@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 interface FundItem {
   id: number;
   descripcion: string;
+  cantidad: string;
   importeBolivianos: string;
 }
 
@@ -21,7 +22,7 @@ interface SfonInitialData {
   lugar?: string;
   fechaInicio?: string;
   fechaFinalizacion?: string;
-  fondos?: { id: number; descripcion: string; importeBolivianos?: string }[];
+  fondos?: { id: number; descripcion: string; cantidad?: string; importeBolivianos?: string }[];
 }
 
 interface FundsRequestModalProps {
@@ -41,8 +42,8 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
   const [fechaFinalizacion, setFechaFinalizacion] = useState(initialData?.fechaFinalizacion ?? '');
   const [fondos, setFondos] = useState<FundItem[]>(
     initialData?.fondos && initialData.fondos.length > 0
-      ? initialData.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: f.importeBolivianos ?? '' }))
-      : [{ id: 1, descripcion: '', importeBolivianos: '' }]
+      ? initialData.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, cantidad: f.cantidad ?? '', importeBolivianos: f.importeBolivianos ?? '' }))
+      : [{ id: 1, descripcion: '', cantidad: '', importeBolivianos: '' }]
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,7 +54,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
 
   const agregarFondo = () => {
     const newId = Math.max(...fondos.map(f => f.id), 0) + 1;
-    setFondos([...fondos, { id: newId, descripcion: '', importeBolivianos: '' }]);
+    setFondos([...fondos, { id: newId, descripcion: '', cantidad: '', importeBolivianos: '' }]);
   };
 
   const eliminarFondo = (id: number) => {
@@ -115,8 +116,9 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         return sum + importe;
       }, 0);
 
-      const fondosTexto = fondosValidos.map((f, index) => 
+      const fondosTexto = fondosValidos.map((f, index) =>
         `${index + 1}. ${f.descripcion}
+   Cantidad: ${f.cantidad || '-'}
    Importe: Bs. ${f.importeBolivianos || '0'}`
       ).join('\n\n');
 
@@ -140,8 +142,9 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         usuario: user ? { nombre: user.name, email: user.email, rol: user.role } : undefined,
         solicitante,
         cargo,
-        fondos: fondosValidos.map(({ id, descripcion, importeBolivianos }) => ({
+        fondos: fondosValidos.map(({ id, descripcion, cantidad, importeBolivianos }) => ({
           id, descripcion,
+          cantidad: cantidad || '-',
           importeBolivianos: importeBolivianos || '0',
         })),
       };
@@ -334,12 +337,21 @@ ${JSON.stringify(jsonData, null, 2)}
               }
             >
               <Row gutter={16}>
-                <Col span={16}>
+                <Col span={12}>
                   <Form.Item label="Descripción" required style={{ marginBottom: 0 }}>
                     <Input
                       value={fondo.descripcion}
                       onChange={(e) => actualizarFondo(fondo.id, 'descripcion', e.target.value)}
                       placeholder="Descripción del gasto"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={4}>
+                  <Form.Item label="Cantidad" style={{ marginBottom: 0 }}>
+                    <Input
+                      value={fondo.cantidad}
+                      onChange={(e) => actualizarFondo(fondo.id, 'cantidad', e.target.value)}
+                      placeholder="Ej: 10"
                     />
                   </Form.Item>
                 </Col>

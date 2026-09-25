@@ -54,7 +54,7 @@ import {
   exportMaterialReturnToPDF,
 } from '../services/pdf.service';
 
-interface FundItem { id: number; descripcion: string; importeBolivianos: string; }
+interface FundItem { id: number; descripcion: string; cantidad: string; importeBolivianos: string; }
 interface MaterialItem { id: number; detalle: string; cantidad: string; unidad: string; observaciones: string; almacen?: string; }
 
 function parseFundsRequest(task: AsanaTask) {
@@ -69,6 +69,7 @@ function parseFundsRequest(task: AsanaTask) {
       fondos: ((data.fondos as Record<string, unknown>[]) ?? []).map((f, idx) => ({
         id: (f.id as number) ?? idx + 1,
         descripcion: (f.descripcion as string) ?? '',
+        cantidad: f.cantidad != null ? String(f.cantidad) : '-',
         importeBolivianos: f.importeBolivianos != null ? String(f.importeBolivianos) : '0',
       })),
       total: data.totalBolivianos != null ? String(data.totalBolivianos) : (data.total as string) ?? '',
@@ -86,8 +87,9 @@ function parseFundsRequest(task: AsanaTask) {
   if (fondosSection) {
     fondosSection[1].split(/\n\n(?=\d+\.)/).forEach((item, idx) => {
       const descMatch = item.match(/\d+\.\s*(.+)/);
+      const cantidadMatch = item.match(/Cantidad:\s*(.+)/);
       const importeMatch = item.match(/Importe:\s*Bs\.\s*([\d.]+)/);
-      if (descMatch) fondos.push({ id: idx + 1, descripcion: descMatch[1].trim(), importeBolivianos: importeMatch ? importeMatch[1] : '0' });
+      if (descMatch) fondos.push({ id: idx + 1, descripcion: descMatch[1].trim(), cantidad: cantidadMatch ? cantidadMatch[1].trim() : '-', importeBolivianos: importeMatch ? importeMatch[1] : '0' });
     });
   }
   const totalMatch = notes.match(/TOTAL:\s*Bs\.\s*([\d.]+)/);
@@ -566,7 +568,7 @@ const HomePage: React.FC = () => {
         const [d, m, y] = parts;
         return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
       };
-      const smatMateriales = smatData?.materiales as { id: number; detalle: string }[] | undefined;
+      const smatMateriales = smatData?.materiales as { id: number; detalle: string; cantidad?: string }[] | undefined;
       const initialData = smatData ? {
         titulo: (smatData.titulo as string) || undefined,
         area: (smatData.area as string) || undefined,
@@ -574,7 +576,7 @@ const HomePage: React.FC = () => {
         fechaInicio: parseDdMmYyyy(smatData.fechaInicio as string | undefined),
         fechaFinalizacion: parseDdMmYyyy(smatData.fechaFinalizacion as string | undefined),
         fondos: smatMateriales && smatMateriales.length > 0
-          ? smatMateriales.map((m, idx) => ({ id: m.id ?? idx + 1, descripcion: m.detalle ?? '' }))
+          ? smatMateriales.map((m, idx) => ({ id: m.id ?? idx + 1, descripcion: m.detalle ?? '', cantidad: m.cantidad && m.cantidad !== '-' ? m.cantidad : '' }))
           : undefined,
       } : undefined;
       setSfonFromSmat({ task: fullTask, projectName: row.projectName, parentTaskName: row.parentTaskName, initialData });
@@ -1330,7 +1332,7 @@ const HomePage: React.FC = () => {
         lugar: (data?.lugar as string) ?? '',
         fechaInicio: (data?.fechaInicio as string) ?? '',
         fechaFinalizacion: (data?.fechaFinalizacion as string) ?? '',
-        fondos: (data?.fondos as { id: number; descripcion: string; importeBolivianos: string }[]) ?? [],
+        fondos: (data?.fondos as { id: number; descripcion: string; cantidad?: string; importeBolivianos: string }[]) ?? [],
         projectName: row.projectName,
         parentTaskName: fondosParentTaskName,
         fechaGeneracion: fechaGeneracionOpt,
@@ -2331,7 +2333,7 @@ const HomePage: React.FC = () => {
                         items={seccionesAprobadasPorMes.map(sec => {
                           const groupIndex = buildRowGroupIndex(sec.solicitudes);
                           return {
-                            key: sec.clave,
+                            key: `${aprobadasSubTab}:${sec.clave}`,
                             label: (
                               <Space size={8}>
                                 <Typography.Text strong>{sec.etiqueta}</Typography.Text>
@@ -2930,12 +2932,14 @@ const HomePage: React.FC = () => {
                       columns={[
                         { title: '#', key: 'idx', width: 36, render: (_: unknown, __: unknown, index: number) => index + 1 },
                         { title: 'Descripción', dataIndex: 'descripcion' },
+                        { title: 'Cantidad', dataIndex: 'cantidad', width: 90, align: 'center' as const,
+                          render: (v: string) => v || '-' },
                         { title: 'Importe (Bs.)', dataIndex: 'importeBolivianos', width: 120, align: 'right' as const,
                           render: (v: string) => <Typography.Text strong style={{ color: '#1a5c2a' }}>Bs. {v}</Typography.Text> },
                       ]}
                       summary={() => total ? (
                         <Table.Summary.Row>
-                          <Table.Summary.Cell index={0} colSpan={2}>
+                          <Table.Summary.Cell index={0} colSpan={3}>
                             <Typography.Text strong>Total</Typography.Text>
                           </Table.Summary.Cell>
                           <Table.Summary.Cell index={1} align="right">
@@ -3298,8 +3302,8 @@ const HomePage: React.FC = () => {
             lugar: duplicarSol.data.lugar as string | undefined,
             fechaInicio: toDateInput(duplicarSol.data.fechaInicio as string | undefined),
             fechaFinalizacion: toDateInput(duplicarSol.data.fechaFinalizacion as string | undefined),
-            fondos: ((duplicarSol.data.fondos as { id: number; descripcion: string; importeBolivianos?: string }[] | undefined) ?? [])
-              .map((f, idx) => ({ id: f.id ?? idx + 1, descripcion: f.descripcion ?? '', importeBolivianos: String(f.importeBolivianos ?? '') })),
+            fondos: ((duplicarSol.data.fondos as { id: number; descripcion: string; cantidad?: string; importeBolivianos?: string }[] | undefined) ?? [])
+              .map((f, idx) => ({ id: f.id ?? idx + 1, descripcion: f.descripcion ?? '', cantidad: f.cantidad ?? '', importeBolivianos: String(f.importeBolivianos ?? '') })),
           }}
           onClose={() => setDuplicarSol(null)}
           onSuccess={(titulo) => {

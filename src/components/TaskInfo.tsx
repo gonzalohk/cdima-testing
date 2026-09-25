@@ -178,6 +178,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
   interface FundItem {
     id: number;
     descripcion: string;
+    cantidad?: string;
     importeBolivianos: string;
   }
 
@@ -788,6 +789,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                         <tr style={{ backgroundColor: '#e9ecef' }}>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>#</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Descripción</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Cantidad</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>Importe (Bs.)</th>
                         </tr>
                       </thead>
@@ -796,11 +798,12 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
                           <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
                             <td style={{ padding: '0.4rem 0.75rem', color: '#888' }}>{i + 1}</td>
                             <td style={{ padding: '0.4rem 0.75rem' }}>{f.descripcion}</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'center' }}>{f.cantidad || '-'}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{parseFloat(f.importeBolivianos).toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
                         <tr style={{ backgroundColor: '#f8f9fa', fontWeight: 700 }}>
-                          <td colSpan={2} style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total:</td>
+                          <td colSpan={3} style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total:</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Bs. {total.toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
                         </tr>
                       </tbody>
@@ -2063,7 +2066,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
               lugar: d.lugar,
               fechaInicio: toDateInput(d.fechaInicio),
               fechaFinalizacion: toDateInput(d.fechaFinalizacion),
-              fondos: d.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, importeBolivianos: f.importeBolivianos })),
+              fondos: d.fondos.map(f => ({ id: f.id, descripcion: f.descripcion, cantidad: f.cantidad, importeBolivianos: f.importeBolivianos })),
             }}
             onClose={() => setDuplicarTarget(null)}
             onSuccess={() => { setDuplicarTarget(null); onSubtaskCreated?.(); }}

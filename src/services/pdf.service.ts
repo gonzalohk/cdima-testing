@@ -1649,6 +1649,7 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
 // Interfaz para items de fondos
 interface FundItem {
   descripcion: string;
+  cantidad?: string;
   importeBolivianos: string;
 }
 
@@ -1742,11 +1743,11 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
 
   autoTable(doc, {
     startY: yPos3,
-    head: [['#', 'DESCRIPCIÓN', 'IMPORTE (Bs.)']],
+    head: [['#', 'DESCRIPCIÓN', 'CANT.', 'IMPORTE (Bs.)']],
     body: data.fondos.map((f, i) => [
-      (i + 1).toString(), f.descripcion, `Bs. ${parseFloat(f.importeBolivianos).toFixed(2)}`,
+      (i + 1).toString(), f.descripcion, f.cantidad || '-', `Bs. ${parseFloat(f.importeBolivianos).toFixed(2)}`,
     ]),
-    foot: [['', 'TOTAL', `Bs. ${total3.toFixed(2)}`]],
+    foot: [['', { content: 'TOTAL', colSpan: 2, styles: { halign: 'right' as const } }, `Bs. ${total3.toFixed(2)}`]],
     theme: 'plain',
     headStyles: {
       fillColor: [220, 220, 220] as [number, number, number],
@@ -1776,7 +1777,8 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
     columnStyles: {
       0: { cellWidth: 12, halign: 'center' as const },
       1: { cellWidth: 'auto' as const },
-      2: { cellWidth: 35, halign: 'right' as const },
+      2: { cellWidth: 20, halign: 'center' as const },
+      3: { cellWidth: 35, halign: 'right' as const },
     },
     margin: { left: margins.left, right: margins.right },
   });
