@@ -11,6 +11,7 @@ import { asanaService } from '../services/asana.service';
 import { exportMaterialRequestToPDF } from '../services/pdf.service';
 import Notification from './Notification';
 import { useAuth } from '../context/AuthContext';
+import { correlativosService } from '../services/correlativos.service';
 
 
 interface MaterialItem {
@@ -109,8 +110,9 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
         throw new Error('Debe agregar al menos un material');
       }
 
-      // Construir el nombre de la subtarea
-      const subtaskName = `SMAT - ${titulo}`;
+      // Reservar el código correlativo (se reinicia cada gestión) y construir el nombre de la subtarea
+      const { codigo, numero, gestion } = await correlativosService.siguienteCodigo('SMAT');
+      const subtaskName = `${codigo} - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -137,6 +139,9 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
       const fechaFinalizacionStr = formatDateStr(fechaFinalizacion);
 
       const jsonData = {
+        codigo,
+        numero,
+        gestion,
         tipo: 'Solicitud de Material',
         titulo,
         area,
@@ -161,6 +166,7 @@ const MaterialRequestModal: React.FC<MaterialRequestModalProps> = ({ task, onClo
 Actividad: ${titulo}
 
 INFORMACIÓN GENERAL:
+• Código: ${codigo}
 • Área: ${area}
 • Lugar de entrega: ${lugar}
 • Fecha de inicio: ${fechaInicioStr}
@@ -216,6 +222,7 @@ ${JSON.stringify(jsonData, null, 2)}
       setTimeout(() => {
         exportMaterialRequestToPDF({
           taskName: titulo,
+          codigo,
           area,
           lugar,
           fechaInicio: fechaInicioStr,

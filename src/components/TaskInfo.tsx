@@ -255,6 +255,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     const data = extractJsonData(task.notes);
     return {
       taskName: (data?.titulo as string) ?? task.name,
+      codigo: data?.codigo as string | undefined,
       area: (data?.area as string) ?? '',
       lugar: (data?.lugar as string) ?? '',
       fechaInicio: (data?.fechaInicio as string) ?? '',
@@ -268,6 +269,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     const data = extractJsonData(task.notes);
     return {
       taskName: (data?.titulo as string) ?? task.name,
+      codigo: data?.codigo as string | undefined,
       area: (data?.area as string) ?? '',
       lugar: (data?.lugar as string) ?? '',
       fechaInicio: (data?.fechaInicio as string) ?? '',
@@ -281,6 +283,7 @@ const TaskInfo: React.FC<TaskInfoProps> = ({ task, subtasksCount, subtasks, stat
     const data = extractJsonData(task.notes);
     return {
       taskName: (data?.titulo as string) ?? task.name,
+      codigo: data?.codigo as string | undefined,
       area: (data?.area as string) ?? '',
       lugar: (data?.lugar as string) ?? '',
       fechaDevolucion: (data?.fechaDevolucion as string) ?? '-',

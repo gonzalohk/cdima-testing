@@ -8,6 +8,7 @@ import { asanaService } from '../services/asana.service';
 import { exportFundsRequestToPDF } from '../services/pdf.service';
 import Notification from './Notification';
 import { useAuth } from '../context/AuthContext';
+import { correlativosService } from '../services/correlativos.service';
 
 interface FundItem {
   id: number;
@@ -97,8 +98,19 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
         throw new Error('Debe agregar al menos un ítem de fondos');
       }
 
-      // Construir el nombre de la subtarea
-      const subtaskName = `SFON - ${titulo}`;
+      // Reservar el código correlativo (se reinicia cada gestión) y construir el nombre de la subtarea
+      const { codigo, numero, gestion } = await correlativosService.siguienteCodigo('SFON');
+      const subtaskName = `${codigo} - ${titulo}`;
+      // Si la SFON nace de una SMAT, se guarda el código de esa SMAT como referencia
+      const smatJson = task.name.trim().toUpperCase().startsWith('SMAT')
+        ? (task.notes ?? '').match(/===DATOS_JSON===\s*([\s\S]+?)\s*===FIN_DATOS_JSON===/)
+        : null;
+      let codigoSmat: string | undefined;
+      try {
+        codigoSmat = smatJson ? (JSON.parse(smatJson[1]).codigo as string | undefined) : undefined;
+      } catch {
+        codigoSmat = undefined;
+      }
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -130,6 +142,10 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
       const fechaFinalizacionStr = formatDateStr(fechaFinalizacion);
 
       const jsonData = {
+        codigo,
+        numero,
+        gestion,
+        codigoSmat,
         tipo: 'Solicitud de Fondos',
         titulo,
         area,
@@ -154,6 +170,7 @@ const FundsRequestModal: React.FC<FundsRequestModalProps> = ({ task, onClose, on
 Actividad: ${titulo}
 
 INFORMACIÓN GENERAL:
+• Código: ${codigo}
 • Área: ${area}
 • Lugar de entrega: ${lugar}
 • Fecha de inicio: ${fechaInicioStr}
@@ -212,6 +229,7 @@ ${JSON.stringify(jsonData, null, 2)}
       setTimeout(() => {
         exportFundsRequestToPDF({
           taskName: titulo,
+          codigo,
           area,
           lugar,
           fechaInicio: fechaInicioStr,

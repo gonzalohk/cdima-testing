@@ -1060,9 +1060,33 @@ interface MaterialItem {
   almacen?: string;
 }
 
+// Dibuja el código correlativo de la solicitud centrado bajo el logo del encabezado
+// (logo de 28 mm de ancho en la esquina superior izquierda). Devuelve la Y inferior del bloque.
+function drawCodigoBajoLogo(doc: jsPDF, codigo: string, left: number, top: number): number {
+  const centerX = left + 14;
+  const labelY = top + 27.5;
+  const valueY = labelY + 4;
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(150, 150, 150);
+  doc.text('CÓDIGO', centerX, labelY, { align: 'center', charSpace: 0.4 });
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(codigo, centerX, valueY, { align: 'center' });
+
+  // Restaurar el estilo del bloque de metadatos
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  return valueY;
+}
+
 // Interfaz para datos de solicitud de material
 interface MaterialRequestData {
   taskName: string;
+  codigo?: string;
   area: string;
   lugar: string;
   fechaInicio: string;
@@ -1133,6 +1157,10 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
   metaY1 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX1, metaY1, { align: 'right' });
+  if (data.codigo) {
+    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
+    metaY1 = Math.max(metaY1, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
+  }
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1274,6 +1302,7 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
 // Interfaz para datos del detalle de solicitud de material (incluye estado de almacén)
 interface MaterialRequestDetailData {
   taskName: string;
+  codigo?: string;
   area: string;
   lugar: string;
   fechaInicio: string;
@@ -1347,6 +1376,10 @@ export const exportMaterialRequestDetailToPDF = (data: MaterialRequestDetailData
   doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaXD, metaYD, { align: 'right' });
   metaYD += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaXD, metaYD, { align: 'right' });
+  if (data.codigo) {
+    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
+    metaYD = Math.max(metaYD, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
+  }
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1454,6 +1487,7 @@ export const exportMaterialRequestDetailToPDF = (data: MaterialRequestDetailData
 // Interfaz para datos de solicitud de devolución
 interface MaterialReturnData {
   taskName: string;
+  codigo?: string;
   area: string;
   lugar: string;
   fechaDevolucion: string;
@@ -1523,6 +1557,10 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.text(`FECHA DE DEVOLUCIÓN: ${data.fechaDevolucion}`, metaX2, metaY2, { align: 'right' });
   metaY2 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
+  if (data.codigo) {
+    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
+    metaY2 = Math.max(metaY2, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
+  }
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
@@ -1655,6 +1693,7 @@ interface FundItem {
 
 interface FundsRequestData {
   taskName: string;
+  codigo?: string;
   area: string;
   lugar: string;
   fechaInicio: string;
@@ -1725,6 +1764,10 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
   metaY3 += 5;
   doc.text(`LUGAR: ${data.lugar}`, metaX3, metaY3, { align: 'right' });
+  if (data.codigo) {
+    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
+    metaY3 = Math.max(metaY3, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
+  }
 
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);

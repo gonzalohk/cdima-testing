@@ -1328,6 +1328,7 @@ const HomePage: React.FC = () => {
         : row.parentTaskName;
       exportFundsRequestToPDF({
         taskName: (data?.titulo as string) ?? row.task.name,
+        codigo: data?.codigo as string | undefined,
         area: (data?.area as string) ?? '',
         lugar: (data?.lugar as string) ?? '',
         fechaInicio: (data?.fechaInicio as string) ?? '',
@@ -1344,6 +1345,7 @@ const HomePage: React.FC = () => {
     } else if (row.tipo === 'Solicitud de Material') {
       exportMaterialRequestToPDF({
         taskName: (data?.titulo as string) ?? row.task.name,
+        codigo: data?.codigo as string | undefined,
         area: (data?.area as string) ?? '',
         lugar: (data?.lugar as string) ?? '',
         fechaInicio: (data?.fechaInicio as string) ?? '',
@@ -1360,6 +1362,7 @@ const HomePage: React.FC = () => {
     } else if (row.tipo === 'Devolución de Material') {
       exportMaterialReturnToPDF({
         taskName: (data?.titulo as string) ?? row.task.name,
+        codigo: data?.codigo as string | undefined,
         area: (data?.area as string) ?? '',
         lugar: (data?.lugar as string) ?? '',
         fechaDevolucion: (data?.fechaDevolucion as string) ?? '-',
@@ -1383,6 +1386,7 @@ const HomePage: React.FC = () => {
     const fechaSolicitud = extractFechaSolicitud(row.task.notes);
     exportMaterialRequestDetailToPDF({
       taskName: (data?.titulo as string) ?? row.task.name,
+      codigo: data?.codigo as string | undefined,
       area: (data?.area as string) ?? '',
       lugar: (data?.lugar as string) ?? '',
       fechaInicio: (data?.fechaInicio as string) ?? '',
@@ -2874,6 +2878,7 @@ const HomePage: React.FC = () => {
         const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.5px' };
 
         const fields: { icon: string; label: string; value?: string }[] = [
+          ...(detailJsonData?.codigo ? [{ icon: '🔢', label: 'Código', value: detailJsonData.codigo as string }] : []),
           { icon: '📁', label: 'Proyecto', value: detailModal.projectName },
           { icon: '📌', label: 'Actividad', value: detailModal.parentTaskName },
           { icon: '🗓️', label: 'Fecha solicitud', value: detailModal.fecha },

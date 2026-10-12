@@ -107,6 +107,9 @@ Delimitadas por `===DATOS_JSON=== ... ===FIN_DATOS_JSON===` y parseadas por `ext
 ### T6 · `solicitud_json` (embebida en T5.notes)
 | Columna | Tipo | Restricción |
 |---|---|---|
+| `codigo` | string | `{PREFIJO}-{gestión}-{NNNN}`, asignado al crear (RN-35); ausente en solicitudes antiguas |
+| `numero`, `gestion` | number | correlativo por tipo y año |
+| `codigoSmat` | string | solo SFON anidada: código de su SMAT |
 | `tipo` | string | enum de negocio |
 | `titulo` | string | forma el `name` de la subtarea |
 | `area`, `lugar` | string | **NOT NULL** (validado) |
@@ -265,7 +268,7 @@ No hay índices de base de datos. Los "índices" que usa la app son:
 
 ### 7.2 Convenciones estructurales (equivalentes a constraints)
 - **Prefijo del nombre** define el tipo: `SMAT` / `SFON` / `DMAT` / `CPER`.
-- Nombre de subtarea = `"{PREFIJO} - {titulo}"`.
+- Nombre de subtarea = `"{codigo} - {titulo}"` (p. ej. `SMAT-2026-0042 - …`); las anteriores al correlativo conservan `"{PREFIJO} - {titulo}"`.
 - Bloque JSON delimitado por `===DATOS_JSON=== / ===FIN_DATOS_JSON===` (obligatorio para el modelo nuevo; hay **fallback de texto** para registros antiguos).
 - **UNIQUE lógico**: SMAT ↔ SFON 1:1 (asumida por la UI, no forzada).
 - **Enum cerrado** de estados de contratación (5 valores): `Requerimiento de contratación`, `Elaboración de TDRs`, `Lanzamiento de convocatoria`, `Selección del consultor`, `Informe final del consultor`.

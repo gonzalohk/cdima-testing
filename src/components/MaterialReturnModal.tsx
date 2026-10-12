@@ -8,6 +8,7 @@ import { asanaService } from '../services/asana.service';
 import { exportMaterialReturnToPDF } from '../services/pdf.service';
 import Notification from './Notification';
 import { useAuth } from '../context/AuthContext';
+import { correlativosService } from '../services/correlativos.service';
 
 interface MaterialItem {
   id: number;
@@ -96,8 +97,9 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
         throw new Error('Debe agregar al menos un material');
       }
 
-      // Construir el nombre de la subtarea
-      const subtaskName = `DMAT - ${titulo}`;
+      // Reservar el código correlativo (se reinicia cada gestión) y construir el nombre de la subtarea
+      const { codigo, numero, gestion } = await correlativosService.siguienteCodigo('DMAT');
+      const subtaskName = `${codigo} - ${titulo}`;
 
       // Construir las notas con toda la información
       const fechaSolicitud = new Date().toLocaleString('es-ES', {
@@ -123,6 +125,9 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
       const fechaDevolucionStr = formatDateStr(fechaDevolucion);
 
       const jsonData = {
+        codigo,
+        numero,
+        gestion,
         tipo: 'Devolucion de Material',
         titulo,
         area,
@@ -146,6 +151,7 @@ const MaterialReturnModal: React.FC<MaterialReturnModalProps> = ({ task, onClose
 Actividad: ${titulo}
 
 INFORMACIÓN GENERAL:
+• Código: ${codigo}
 • Área: ${area}
 • Lugar de devolución: ${lugar}
 • Fecha de devolución: ${fechaDevolucionStr}
@@ -199,6 +205,7 @@ ${JSON.stringify(jsonData, null, 2)}
       setTimeout(() => {
         exportMaterialReturnToPDF({
           taskName: titulo,
+          codigo,
           area,
           lugar,
           fechaDevolucion: fechaDevolucionStr,

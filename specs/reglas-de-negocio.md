@@ -346,6 +346,16 @@
 - **Excepciones**: `alert('Error al archivar/desarchivar…')` + `console.error`; el estado local no cambia si falla.
 - **Dependencias**: `asanaService.updateTask`, `extractJsonData`, `insertApprovedRow`, `matchSolicitud`. Fecha en `America/La_Paz`.
 
+## RN-35 · Código correlativo de solicitudes
+- **Descripción**: Toda solicitud nueva (SMAT, SFON, DMAT) recibe al crearse un código `{PREFIJO}-{gestión}-{NNNN}` (p. ej. `SMAT-2026-0042`). La numeración es independiente por tipo, global a todos los proyectos y se reinicia cada gestión (año, hora de La Paz). El código se guarda en el JSON (`codigo`, `numero`, `gestion`) y forma el nombre de la subtarea: `{codigo} - {titulo}`. Una SFON creada desde una SMAT guarda además `codigoSmat`. No es retroactivo: las solicitudes anteriores no tienen código.
+- **Ubicación**: [src/services/correlativos.service.ts](../src/services/correlativos.service.ts); uso en los tres modales de creación.
+- **Método**: `correlativosService.siguienteCodigo(tipo)`
+- **Entradas**: `tipo: 'SMAT' | 'SFON' | 'DMAT'`.
+- **Salidas**: `{ codigo, numero, gestion }`; actualiza el contador en Asana.
+- **Validaciones**: el contador vive en la tarea `CORRELATIVOS` del proyecto `CDIMA Configuración` (la tarea se crea sola; el proyecto debe existir). Tras escribir se relee y se compara un token único; si otro usuario lo sobrescribió, se reintenta (máx. 5).
+- **Excepciones**: lanza si no existe el proyecto, si el JSON del contador está dañado o si se agotan los reintentos; en ese caso la solicitud no se crea.
+- **Dependencias**: `asanaService`. Limitación: Asana no tiene transacciones, por lo que la unicidad no está garantizada al 100 % ante creaciones simultáneas; los números no se reutilizan (eliminar una solicitud deja un hueco).
+
 ---
 
 ## Índice de reglas
@@ -386,6 +396,7 @@
 | RN-32 | PDF automático | Modales |
 | RN-33 | Color de almacén | HomePage |
 | RN-34 | Archivado/Desarchivado por mes | HomePage |
+| RN-35 | Código correlativo | correlativos.service |
 
 ---
 
