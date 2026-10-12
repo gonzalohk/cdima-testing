@@ -1060,27 +1060,117 @@ interface MaterialItem {
   almacen?: string;
 }
 
-// Dibuja el código correlativo de la solicitud centrado bajo el logo del encabezado
-// (logo de 28 mm de ancho en la esquina superior izquierda). Devuelve la Y inferior del bloque.
-function drawCodigoBajoLogo(doc: jsPDF, codigo: string, left: number, top: number): number {
-  const centerX = left + 14;
-  const labelY = top + 27.5;
-  const valueY = labelY + 4;
+// Encabezado compartido de los PDF de solicitudes (material, detalle, fondos y devolución).
+// Izquierda: logo y, debajo, el código correlativo. Derecha: título, contexto
+// (proyecto / actividad) y una ficha de datos con etiquetas discretas y valores destacados.
+// Devuelve la Y donde debe comenzar el contenido.
+interface SolicitudHeaderData {
+  title: string;
+  projectName?: string;
+  parentTaskName?: string;
+  codigo?: string;
+  rows: [label: string, value: string][];
+}
 
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(150, 150, 150);
-  doc.text('CÓDIGO', centerX, labelY, { align: 'center', charSpace: 0.4 });
+function drawSolicitudHeader(
+  doc: jsPDF,
+  data: SolicitudHeaderData,
+  margins: { top: number; left: number; right: number }
+): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const rightX = pageWidth - margins.right;
+  const LOGO_W = 28;
+  const textMaxW = rightX - (margins.left + LOGO_W + 12);
+  const INK: [number, number, number] = [33, 37, 41];
+  const MUTED: [number, number, number] = [140, 140, 140];
 
-  doc.setFontSize(9.5);
+  // ---- Logo ----
+  try {
+    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, LOGO_W, 0);
+  } catch (error) {
+    console.error('Error al cargar logo:', error);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...INK);
+    doc.text('CDIMA', margins.left, margins.top + 8);
+  }
+
+  // ---- Código bajo el logo ----
+  let leftBottom = margins.top + 24;
+  if (data.codigo) {
+    const centerX = margins.left + LOGO_W / 2;
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...MUTED);
+    doc.text('CÓDIGO', centerX, margins.top + 27.5, { align: 'center', charSpace: 0.4 });
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...INK);
+    doc.text(data.codigo, centerX, margins.top + 31.5, { align: 'center' });
+    leftBottom = margins.top + 32.5;
+  }
+
+  // ---- Título ----
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(codigo, centerX, valueY, { align: 'center' });
+  doc.setTextColor(...INK);
+  doc.text(data.title, rightX, margins.top + 5.5, { align: 'right' });
 
-  // Restaurar el estilo del bloque de metadatos
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  return valueY;
+  // ---- Contexto: proyecto (destacado) y actividad ----
+  let y = margins.top + 11;
+  if (data.projectName) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(95, 95, 95);
+    doc.text(data.projectName, rightX, y, { align: 'right' });
+    y += 3.8;
+  }
+  if (data.parentTaskName) {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...MUTED);
+    const lines: string[] = doc.splitTextToSize(data.parentTaskName, textMaxW);
+    lines.forEach(line => {
+      doc.text(line, rightX, y, { align: 'right' });
+      y += 3.6;
+    });
+  }
+
+  // ---- Ficha de datos: etiqueta gris en versalitas + valor ----
+  y += 3.4;
+  const ROW_H = 4.9;
+  data.rows.forEach(([label, value]) => {
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    const labelW = doc.getTextWidth(label) + label.length * 0.3;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const valueLines: string[] = doc.splitTextToSize(value || '-', textMaxW - labelW - 3);
+
+    valueLines.forEach((line, idx) => {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...INK);
+      doc.text(line, rightX, y, { align: 'right' });
+      if (idx === 0) {
+        const valueW = doc.getTextWidth(line);
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...MUTED);
+        doc.text(label, rightX - valueW - 2.5 - labelW, y - 0.2, { charSpace: 0.3 });
+      }
+      y += ROW_H;
+    });
+  });
+
+  // ---- Separador ----
+  const lineY = Math.max(y - ROW_H + 5.5, leftBottom + 3.5);
+  doc.setDrawColor(215, 215, 215);
+  doc.setLineWidth(0.3);
+  doc.line(margins.left, lineY, rightX, lineY);
+
+  return lineY + 10;
 }
 
 // Interfaz para datos de solicitud de material
@@ -1108,64 +1198,18 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // ============ ENCABEZADO - ESTILO PLANNING ============
-  try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
-  } catch (error) {
-    console.error('Error al cargar logo:', error);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('CDIMA', margins.left, margins.top + 8);
-  }
-
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
-  if (data.projectName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
-  }
-  let parentTaskLines1: string[] = [];
-  if (data.parentTaskName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    parentTaskLines1 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
-    const pStartY1 = margins.top + (data.projectName ? 13 : 10);
-    parentTaskLines1.forEach((line: string, idx: number) => {
-      doc.text(line, pageWidth - margins.right, pStartY1 + idx * 3.6, { align: 'right' });
-    });
-  }
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const metaX1 = pageWidth - margins.right;
-  const extraLines1 = (data.projectName ? 1 : 0) + parentTaskLines1.length;
-  let metaY1 = margins.top + 12 + extraLines1 * 3.6;
-
-  const solicitudLines1 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
-  solicitudLines1.forEach((line: string, idx: number) => {
-    doc.text(line, metaX1, metaY1 + idx * 5, { align: 'right' });
-  });
-  metaY1 += solicitudLines1.length * 5;
-  doc.text(`ÁREA: ${data.area}`, metaX1, metaY1, { align: 'right' });
-  metaY1 += 5;
-  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX1, metaY1, { align: 'right' });
-  metaY1 += 5;
-  doc.text(`LUGAR: ${data.lugar}`, metaX1, metaY1, { align: 'right' });
-  if (data.codigo) {
-    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
-    metaY1 = Math.max(metaY1, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
-  }
-
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, metaY1 + 6, pageWidth - margins.right, metaY1 + 6);
-  let yPos1 = metaY1 + 16;
+  let yPos1 = drawSolicitudHeader(doc, {
+    title: 'SOLICITUD DE MATERIAL',
+    projectName: data.projectName,
+    parentTaskName: data.parentTaskName,
+    codigo: data.codigo,
+    rows: [
+      ['SOLICITUD', data.taskName],
+      ['ÁREA', data.area],
+      ['FECHA', `${data.fechaInicio} — ${data.fechaFinalizacion}`],
+      ['LUGAR', data.lugar],
+    ],
+  }, margins);
   // ============ FIN ENCABEZADO ============
 
   // ---- MATERIALES SOLICITADOS ----
@@ -1327,64 +1371,18 @@ export const exportMaterialRequestDetailToPDF = (data: MaterialRequestDetailData
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // ============ ENCABEZADO - ESTILO PLANNING ============
-  try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
-  } catch (error) {
-    console.error('Error al cargar logo:', error);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('CDIMA', margins.left, margins.top + 8);
-  }
-
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('DETALLE DE SOLICITUD DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
-  if (data.projectName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
-  }
-  let parentTaskLinesD: string[] = [];
-  if (data.parentTaskName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    parentTaskLinesD = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
-    const pStartYD = margins.top + (data.projectName ? 13 : 10);
-    parentTaskLinesD.forEach((line: string, idx: number) => {
-      doc.text(line, pageWidth - margins.right, pStartYD + idx * 3.6, { align: 'right' });
-    });
-  }
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const metaXD = pageWidth - margins.right;
-  const extraLinesD = (data.projectName ? 1 : 0) + parentTaskLinesD.length;
-  let metaYD = margins.top + 12 + extraLinesD * 3.6;
-
-  const solicitudLinesD = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
-  solicitudLinesD.forEach((line: string, idx: number) => {
-    doc.text(line, metaXD, metaYD + idx * 5, { align: 'right' });
-  });
-  metaYD += solicitudLinesD.length * 5;
-  doc.text(`ÁREA: ${data.area}`, metaXD, metaYD, { align: 'right' });
-  metaYD += 5;
-  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaXD, metaYD, { align: 'right' });
-  metaYD += 5;
-  doc.text(`LUGAR: ${data.lugar}`, metaXD, metaYD, { align: 'right' });
-  if (data.codigo) {
-    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
-    metaYD = Math.max(metaYD, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
-  }
-
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, metaYD + 6, pageWidth - margins.right, metaYD + 6);
-  let yPosD = metaYD + 16;
+  let yPosD = drawSolicitudHeader(doc, {
+    title: 'DETALLE DE SOLICITUD DE MATERIAL',
+    projectName: data.projectName,
+    parentTaskName: data.parentTaskName,
+    codigo: data.codigo,
+    rows: [
+      ['SOLICITUD', data.taskName],
+      ['ÁREA', data.area],
+      ['FECHA', `${data.fechaInicio} — ${data.fechaFinalizacion}`],
+      ['LUGAR', data.lugar],
+    ],
+  }, margins);
   // ============ FIN ENCABEZADO ============
 
   // ---- INFORMACIÓN DE LA SOLICITUD ----
@@ -1508,64 +1506,18 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // ============ ENCABEZADO - ESTILO PLANNING ============
-  try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
-  } catch (error) {
-    console.error('Error al cargar logo:', error);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('CDIMA', margins.left, margins.top + 8);
-  }
-
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('DEVOLUCIÓN DE MATERIAL', pageWidth - margins.right, margins.top + 5, { align: 'right' });
-  if (data.projectName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
-  }
-  let parentTaskLines2: string[] = [];
-  if (data.parentTaskName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    parentTaskLines2 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
-    const pStartY2 = margins.top + (data.projectName ? 13 : 10);
-    parentTaskLines2.forEach((line: string, idx: number) => {
-      doc.text(line, pageWidth - margins.right, pStartY2 + idx * 3.6, { align: 'right' });
-    });
-  }
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const metaX2 = pageWidth - margins.right;
-  const extraLines2 = (data.projectName ? 1 : 0) + parentTaskLines2.length;
-  let metaY2 = margins.top + 12 + extraLines2 * 3.6;
-
-  const solicitudLines2 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
-  solicitudLines2.forEach((line: string, idx: number) => {
-    doc.text(line, metaX2, metaY2 + idx * 5, { align: 'right' });
-  });
-  metaY2 += solicitudLines2.length * 5;
-  doc.text(`ÁREA: ${data.area}`, metaX2, metaY2, { align: 'right' });
-  metaY2 += 5;
-  doc.text(`FECHA DE DEVOLUCIÓN: ${data.fechaDevolucion}`, metaX2, metaY2, { align: 'right' });
-  metaY2 += 5;
-  doc.text(`LUGAR: ${data.lugar}`, metaX2, metaY2, { align: 'right' });
-  if (data.codigo) {
-    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
-    metaY2 = Math.max(metaY2, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
-  }
-
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, metaY2 + 6, pageWidth - margins.right, metaY2 + 6);
-  let yPos2 = metaY2 + 16;
+  let yPos2 = drawSolicitudHeader(doc, {
+    title: 'DEVOLUCIÓN DE MATERIAL',
+    projectName: data.projectName,
+    parentTaskName: data.parentTaskName,
+    codigo: data.codigo,
+    rows: [
+      ['SOLICITUD', data.taskName],
+      ['ÁREA', data.area],
+      ['FECHA DE DEVOLUCIÓN', data.fechaDevolucion],
+      ['LUGAR', data.lugar],
+    ],
+  }, margins);
   // ============ FIN ENCABEZADO ============
 
   // ---- MATERIALES A DEVOLVER ----
@@ -1715,64 +1667,18 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // ============ ENCABEZADO - ESTILO PLANNING ============
-  try {
-    doc.addImage(logoInicial, 'PNG', margins.left, margins.top, 28, 0);
-  } catch (error) {
-    console.error('Error al cargar logo:', error);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('CDIMA', margins.left, margins.top + 8);
-  }
-
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('SOLICITUD DE FONDOS', pageWidth - margins.right, margins.top + 5, { align: 'right' });
-  if (data.projectName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    doc.text(data.projectName, pageWidth - margins.right, margins.top + 10, { align: 'right' });
-  }
-  let parentTaskLines3: string[] = [];
-  if (data.parentTaskName) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    parentTaskLines3 = doc.splitTextToSize(data.parentTaskName, pageWidth - margins.right - (margins.left + 33));
-    const pStartY3 = margins.top + (data.projectName ? 13 : 10);
-    parentTaskLines3.forEach((line: string, idx: number) => {
-      doc.text(line, pageWidth - margins.right, pStartY3 + idx * 3.6, { align: 'right' });
-    });
-  }
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  const metaX3 = pageWidth - margins.right;
-  const extraLines3 = (data.projectName ? 1 : 0) + parentTaskLines3.length;
-  let metaY3 = margins.top + 12 + extraLines3 * 3.6;
-
-  const solicitudLines3 = doc.splitTextToSize(`SOLICITUD: ${data.taskName}`, pageWidth - margins.right - (margins.left + 33));
-  solicitudLines3.forEach((line: string, idx: number) => {
-    doc.text(line, metaX3, metaY3 + idx * 5, { align: 'right' });
-  });
-  metaY3 += solicitudLines3.length * 5;
-  doc.text(`ÁREA: ${data.area}`, metaX3, metaY3, { align: 'right' });
-  metaY3 += 5;
-  doc.text(`FECHA: ${data.fechaInicio} — ${data.fechaFinalizacion}`, metaX3, metaY3, { align: 'right' });
-  metaY3 += 5;
-  doc.text(`LUGAR: ${data.lugar}`, metaX3, metaY3, { align: 'right' });
-  if (data.codigo) {
-    // El código va bajo el logo; el encabezado se alarga si hace falta para no pisar el separador
-    metaY3 = Math.max(metaY3, drawCodigoBajoLogo(doc, data.codigo, margins.left, margins.top) - 2.5);
-  }
-
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.3);
-  doc.line(margins.left, metaY3 + 6, pageWidth - margins.right, metaY3 + 6);
-  let yPos3 = metaY3 + 16;
+  let yPos3 = drawSolicitudHeader(doc, {
+    title: 'SOLICITUD DE FONDOS',
+    projectName: data.projectName,
+    parentTaskName: data.parentTaskName,
+    codigo: data.codigo,
+    rows: [
+      ['SOLICITUD', data.taskName],
+      ['ÁREA', data.area],
+      ['FECHA', `${data.fechaInicio} — ${data.fechaFinalizacion}`],
+      ['LUGAR', data.lugar],
+    ],
+  }, margins);
   // ============ FIN ENCABEZADO ============
 
   // ---- FONDOS SOLICITADOS ----
