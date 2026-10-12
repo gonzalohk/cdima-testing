@@ -1315,10 +1315,14 @@ export const exportMaterialRequestToPDF = (data: MaterialRequestData) => {
   doc.text('Nombre y Firma', c1b, signaturesY1);
   doc.text('Nombre y Firma', c1c, signaturesY1);
   signaturesY1 += 5;
-  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c1a, signaturesY1);
+  // Un cargo largo se parte en varias líneas para no invadir la columna siguiente
+  const cargoLines1: string[] = doc.splitTextToSize(
+    data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', slw1
+  );
+  cargoLines1.forEach((line, idx) => doc.text(line, c1a, signaturesY1 + idx * 3.6));
   doc.text('Cargo: ................................', c1b, signaturesY1);
   doc.text('Cargo: ................................', c1c, signaturesY1);
-  signaturesY1 += 5;
+  signaturesY1 += 5 + (cargoLines1.length - 1) * 3.6;
   doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c1a, signaturesY1);
   doc.text('Fecha: __/__/____', c1b, signaturesY1);
   doc.text('Fecha: __/__/____', c1c, signaturesY1);
@@ -1608,10 +1612,14 @@ export const exportMaterialReturnToPDF = (data: MaterialReturnData) => {
   doc.text('Nombre y Firma', c2b, signaturesY2);
   doc.text('Nombre y Firma', c2c, signaturesY2);
   signaturesY2 += 5;
-  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c2a, signaturesY2);
+  // Un cargo largo se parte en varias líneas para no invadir la columna siguiente
+  const cargoLines2: string[] = doc.splitTextToSize(
+    data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', slw2
+  );
+  cargoLines2.forEach((line, idx) => doc.text(line, c2a, signaturesY2 + idx * 3.6));
   doc.text('Cargo: ................................', c2b, signaturesY2);
   doc.text('Cargo: ................................', c2c, signaturesY2);
-  signaturesY2 += 5;
+  signaturesY2 += 5 + (cargoLines2.length - 1) * 3.6;
   doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c2a, signaturesY2);
   doc.text('Fecha: __/__/____', c2b, signaturesY2);
   doc.text('Fecha: __/__/____', c2c, signaturesY2);
@@ -1778,10 +1786,14 @@ export const exportFundsRequestToPDF = (data: FundsRequestData) => {
   doc.text('Nombre y Firma', c3b, signaturesY3);
   doc.text('Nombre y Firma', c3c, signaturesY3);
   signaturesY3 += 5;
-  doc.text(data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', c3a, signaturesY3);
+  // Un cargo largo se parte en varias líneas para no invadir la columna siguiente
+  const cargoLines3: string[] = doc.splitTextToSize(
+    data.cargo ? `Cargo: ${data.cargo}` : 'Cargo: ................................', slw3
+  );
+  cargoLines3.forEach((line, idx) => doc.text(line, c3a, signaturesY3 + idx * 3.6));
   doc.text('Cargo: ................................', c3b, signaturesY3);
   doc.text('Cargo: ................................', c3c, signaturesY3);
-  signaturesY3 += 5;
+  signaturesY3 += 5 + (cargoLines3.length - 1) * 3.6;
   doc.text(data.fechaGeneracion ? `Fecha: ${data.fechaGeneracion.split(',')[0]}` : 'Fecha: __/__/____', c3a, signaturesY3);
   doc.text('Fecha: __/__/____', c3b, signaturesY3);
   doc.text('Fecha: __/__/____', c3c, signaturesY3);
